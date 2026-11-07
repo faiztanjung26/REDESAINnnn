@@ -1,0 +1,262 @@
+<div class="row align-items-start">
+    <div class="col-md-12">
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white pb-0 border-0 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+                <h5 class="fw-bold mb-0">Checklist Data Parameters</h5>
+                <div class="d-flex flex-wrap gap-1 w-100 w-md-auto">
+                    <a href="{{ url_for('settings.export_checklists') }}" class="btn btn-sm btn-outline-secondary flex-grow-1 flex-md-grow-0 text-nowrap"><i class="bi bi-download"></i> Export Excel</a>
+                    <button class="btn btn-sm btn-outline-primary flex-grow-1 flex-md-grow-0 text-nowrap" data-bs-toggle="modal" data-bs-target="#importChecklistsModal"><i class="bi bi-upload"></i> Import Excel</button>
+                    <button class="btn btn-sm btn-warning flex-grow-1 flex-md-grow-0 text-nowrap" onclick="openAddChecklistModal()"><i class="bi bi-plus text-dark"></i> Add Checklist</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush border rounded">
+                    {% for proj, group in checklists|groupby('project_code_group') %}
+                    <li class="list-group-item px-3 py-3 border-bottom bg-white">
+                        <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-folder2-open text-warning me-2"></i> {{ proj if proj else 'General (No Project Code)' }}</h6>
+                        <ul class="list-group list-group-flush border-start border-3 border-light ms-3">
+                            {% for cl in group %}
+                            <li class="list-group-item px-3 py-2 border-0 border-bottom border-light">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <button class="btn btn-link text-decoration-none text-start p-0 m-0 flex-grow-1 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChecklist{{ cl.id }}" aria-expanded="false" style="color: inherit;">
+                                        <span class="fw-bold text-dark fs-6">
+                                            <i class="bi bi-list-check text-secondary me-2"></i> {{ cl.name }} 
+                                            <i class="bi bi-chevron-down ms-2 toggle-icon text-muted" style="transition: transform 0.2s; font-size: 0.8rem;"></i>
+                                        </span>
+                                    </button>
+                                    <div class="d-inline-flex ms-3 align-items-center">
+                                        <button type="button" class="btn btn-sm text-primary border-0 bg-transparent p-0 me-3" onclick='openEditChecklistModal({{ cl.id }}, {{ cl.name|tojson }}, {{ cl.project_code|tojson if cl.project_code else "null" }})'><i class="bi bi-pencil fs-5"></i></button>
+                                        <button type="button" class="btn btn-sm text-danger border-0 bg-transparent p-0" onclick="deleteChecklist({{ cl.id }})"><i class="bi bi-trash fs-5"></i></button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Checklist Parameters Branch -->
+                                <div class="collapse" id="collapseChecklist{{ cl.id }}">
+                                <div class="ms-4 mt-2 mb-1 fw-bold small text-muted"><i class="bi bi-input-cursor"></i> Parameters</div>
+                                {% set cl_params = cl.cached_parameters if cl.cached_parameters is not none else cl.parameters %}
+                                <ul class="list-group list-group-flush ms-4 border-start border-2 border-warning rounded-0 pl-3">
+                                    {% for param in cl_params %}
+                                    <li class="list-group-item bg-transparent border-0 py-1 pe-0 ps-3">
+                                        <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded border shadow-sm" style="transition: all 0.2s ease;">
+                                            <span class="text-secondary small fw-semibold">
+                                                <i class="bi bi-rulers text-warning"></i> {{ param.parameter }}
+                                                <span class="badge bg-light text-dark border ms-2" style="font-size:0.65rem;">Std: {{ param.standard }}</span>
+                                            </span>
+                                        </div>
+                                    </li>
+                                    {% endfor %}
+                                    {% if not (cl_params|length if cl.cached_parameters is not none else cl.parameters.count()) %}
+                                    <li class="list-group-item bg-transparent border-0 py-1 ps-3 text-muted small fst-italic">No parameters defined.</li>
+                                    {% endif %}
+                                </ul>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center text-muted py-4">No Checklists configured.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Global Hidden Forms for Delete -->
+<form id="globalDeleteChecklistForm" method="POST" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+</form>
+<form id="globalDeleteChecklistParamForm" method="POST" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+</form>
+
+<!-- Import Checklists Modal -->
+<div class="modal fade" id="importChecklistsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Import Checklists</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{{ url_for('settings.import_checklists') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <p class="small text-muted mb-0">Upload an Excel file (.xlsx) containing Checklist Parameters. The Excel file must have the following exact headers:</p>
+                <a href="{{ url_for('settings.download_checklist_template') }}" class="btn btn-sm btn-outline-info"><i class="bi bi-file-earmark-excel"></i> Download Template</a>
+            </div>
+            <pre class="bg-light p-2 small border">Checklist Name,Project Code,Parameter,Standard</pre>
+            <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Import Excel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Checklist Modal -->
+<div class="modal fade" id="editChecklistModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content form-glass">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="bi bi-list-check text-warning me-2"></i>Edit Checklist & Parameters</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editChecklistForm" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body">
+            <div class="row">
+              <div class="col-md-6 mb-2">
+                  <label class="form-label small fw-bold">Checklist Name *</label>
+                  <input type="text" name="name" id="editChecklistName" class="form-control form-control-sm" required>
+              </div>
+              <div class="col-md-6 mb-2">
+                  <label class="form-label small fw-bold">Project Code</label>
+                  <select name="project_code" id="editChecklistProjectCode" class="form-select form-select-sm">
+                      <option value="">-- No Project Code (General) --</option>
+                      {% for proj in project_codes %}
+                      <option value="{{ proj.code }}">{{ proj.code }} - {{ proj.description or 'No desc' }}</option>
+                      {% endfor %}
+                  </select>
+              </div>
+            </div>
+            
+            <hr class="text-muted">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label small fw-bold mb-0">Parameters</label>
+                <button type="button" class="btn btn-sm btn-outline-warning" id="addParameterBtn"><i class="bi bi-plus"></i> Add Parameter</button>
+            </div>
+            <p class="text-muted small mb-2"><i class="bi bi-info-circle"></i> Drag and drop the handles (<i class="bi bi-grip-vertical"></i>) to reorder parameters.</p>
+            <ul id="editChecklistParameters" class="list-group list-group-flush mb-2 border rounded p-1 bg-light" style="min-height: 50px;"></ul>
+            <input type="hidden" name="parameters_json" id="editChecklistParametersJson">
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-warning text-dark fw-bold">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentParameters = [];
+
+function renderParameters() {
+    const list = document.getElementById('editChecklistParameters');
+    if (!list) return;
+    list.innerHTML = '';
+    currentParameters.forEach((param) => {
+        const li = document.createElement('li');
+        li.className = "list-group-item d-flex justify-content-between align-items-center bg-white border mb-1 rounded shadow-sm p-2";
+        li.dataset.id = param.id || ('new_' + Math.random().toString(36).substr(2, 9));
+        
+        li.innerHTML = `
+            <i class="bi bi-grip-vertical text-secondary me-2 fs-5" style="cursor: grab;"></i>
+            <div class="row w-100 gx-2">
+                <div class="col-7">
+                    <input type="text" class="form-control form-control-sm param-name-input w-100" value="${param.parameter || ''}" placeholder="Parameter Name" title="Parameter Name" required>
+                </div>
+                <div class="col-5">
+                    <input type="text" class="form-control form-control-sm param-std-input w-100" value="${param.standard || ''}" placeholder="Standard (eg 10 - 15A)" title="Standard Value" required>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm text-danger border-0 bg-transparent p-0 ms-2" onclick="removeParameter(this)"><i class="bi bi-x-circle fs-5"></i></button>
+        `;
+        list.appendChild(li);
+        
+        li.querySelector('.param-name-input').addEventListener('input', updateParametersJson);
+        li.querySelector('.param-std-input').addEventListener('input', updateParametersJson);
+    });
+    updateParametersJson();
+}
+
+function updateParametersJson() {
+    const list = document.getElementById('editChecklistParameters');
+    if (!list) return;
+    const reordered = [];
+    list.querySelectorAll('li').forEach(li => {
+        const id = li.dataset.id;
+        const parameter = li.querySelector('.param-name-input').value;
+        const standard = li.querySelector('.param-std-input').value;
+        reordered.push({ id, parameter, standard });
+    });
+    const hidden = document.getElementById('editChecklistParametersJson');
+    if (hidden) hidden.value = JSON.stringify(reordered);
+}
+
+function removeParameter(btn) {
+    btn.closest('li').remove();
+    updateParametersJson();
+}
+
+document.getElementById('addParameterBtn')?.addEventListener('click', () => {
+    currentParameters.push({ id: 'new_' + Math.random().toString(36).substr(2, 9), parameter: '', standard: '' });
+    renderParameters();
+});
+
+function openAddChecklistModal() {
+    document.getElementById('editChecklistForm').action = "/settings/checklist/add";
+    document.getElementById('editChecklistName').value = "";
+    document.getElementById('editChecklistProjectCode').value = "";
+    
+    const titleEl = document.querySelector('#editChecklistModal .modal-title');
+    if (titleEl) titleEl.innerHTML = '<i class="bi bi-list-check text-warning me-2"></i>Add Checklist & Parameters';
+    
+    currentParameters = [];
+    renderParameters();
+    
+    new bootstrap.Modal(document.getElementById('editChecklistModal')).show();
+}
+
+function openEditChecklistModal(id, name, projectCode) {
+    document.getElementById('editChecklistForm').action = "/settings/checklist/" + id + "/edit";
+    document.getElementById('editChecklistName').value = name;
+    document.getElementById('editChecklistProjectCode').value = projectCode || "";
+    
+    const titleEl = document.querySelector('#editChecklistModal .modal-title');
+    if (titleEl) titleEl.innerHTML = '<i class="bi bi-list-check text-warning me-2"></i>Edit Checklist & Parameters';
+    
+    document.getElementById('editChecklistParameters').innerHTML = '<li class="list-group-item text-center text-muted border-0 bg-transparent py-2"><div class="spinner-border spinner-border-sm text-warning"></div> Loading...</li>';
+    
+    fetch('/settings/api/checklist/' + id + '/parameters')
+    .then(r => r.json())
+    .then(data => {
+        currentParameters = data.parameters || [];
+        renderParameters();
+    });
+    
+    new bootstrap.Modal(document.getElementById('editChecklistModal')).show();
+}
+
+function deleteChecklist(id) {
+    if (confirm('Delete this Checklist and ALL its parameters?')) {
+        const form = document.getElementById('globalDeleteChecklistForm');
+        form.action = "{{ url_for('settings.index') }}checklist/" + id + "/delete";
+        form.submit();
+    }
+}
+
+function deleteChecklistParam(id) {
+    if (confirm('Delete this checklist parameter?')) {
+        const form = document.getElementById('globalDeleteChecklistParamForm');
+        form.action = "{{ url_for('settings.index') }}checklist/parameter/" + id + "/delete";
+        form.submit();
+    }
+}
+
+if (typeof Sortable !== 'undefined') {
+    const paramList = document.getElementById('editChecklistParameters');
+    if (paramList) {
+        new Sortable(paramList, {
+            animation: 150,
+            handle: '.bi-grip-vertical',
+            onEnd: updateParametersJson
+        });
+    }
+}
+</script>

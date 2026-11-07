@@ -1,0 +1,315 @@
+<div class="row align-items-start">
+    <div class="{% if not current_user.site_id %}col-md-8{% else %}col-md-12{% endif %}">
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white pb-0 border-0 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+                <h5 class="fw-bold mb-0">Sites Management</h5>
+                <div class="d-flex flex-wrap gap-1 w-100 w-md-auto">
+                    <a href="{{ url_for('settings.download_site_template') }}" class="btn btn-sm btn-outline-info flex-grow-1 flex-md-grow-0 text-nowrap"><i class="bi bi-file-earmark-spreadsheet"></i> Download Template</a>
+                    <a href="{{ url_for('settings.export_sites') }}" class="btn btn-sm btn-outline-secondary flex-grow-1 flex-md-grow-0 text-nowrap"><i class="bi bi-download"></i> Export Excel</a>
+                    <button class="btn btn-sm btn-outline-primary flex-grow-1 flex-md-grow-0 text-nowrap" data-bs-toggle="modal" data-bs-target="#importSitesModal"><i class="bi bi-upload"></i> Import Excel</button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-premium mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Address</th>
+                                <th>Timezone</th>
+                                <th>Project Code</th>
+                                <th>API Site ID</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for site in sites %}
+                            <tr>
+                                <td>{{ site.id }}</td>
+                                <td class="fw-bold">{{ site.name }}</td>
+                                <td>{{ site.address or '-' }}</td>
+                                <td>{{ site.timezone }}</td>
+                                <td><span class="badge bg-secondary">{{ site.project_code or 'General' }}</span></td>
+                                <td><span class="badge bg-info text-dark">{{ site.api_site_id or 'Unmapped' }}</span></td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="openSafeRangesModal({{ site.id }}, '{{ site.name|replace("'", "\\'") }}', '{{ site.api_site_id or "" }}')" title="Configure Safe Ranges"><i class="bi bi-sliders"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick='openEditSiteModal({{ site.id }}, {{ site.name|tojson }}, {{ site.address|tojson if site.address else "null" }}, {{ site.timezone|tojson }}, {{ site.api_site_id|tojson if site.api_site_id else "null" }}, {{ site.project_code|tojson if site.project_code else "null" }})'><i class="bi bi-pencil"></i></button>
+                                    {% if not current_user.site_id %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSite({{ site.id }})"><i class="bi bi-trash"></i></button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-muted text-center py-3">No sites configured.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% if not current_user.site_id %}
+    <div class="col-md-4">
+        <div class="settings-form-card">
+            <div class="card-body">
+                <h5>Add New Site</h5>
+                <form action="{{ url_for('settings.add_site') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Site Name *</label>
+                        <input type="text" name="name" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Address</label>
+                        <input type="text" name="address" class="form-control form-control-sm">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Timezone</label>
+                        <input type="text" name="timezone" class="form-control form-control-sm" value="UTC">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Project Code</label>
+                        <select name="project_code" class="form-select form-select-sm">
+                            <option value="">-- No Project Code (General) --</option>
+                            {% for proj in project_codes %}
+                            <option value="{{ proj.code }}">{{ proj.code }} - {{ proj.description or 'No desc' }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">API Site ID <small class="text-muted fw-normal">(Optional, for IoT Chiller Monitor)</small></label>
+                        <input type="text" name="api_site_id" class="form-control form-control-sm" placeholder="e.g. btpn">
+                    </div>
+                    <button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus"></i> Add Site</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Global Hidden Delete Form -->
+<form id="globalDeleteSiteForm" method="POST" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+</form>
+
+<!-- Import Sites Modal -->
+<div class="modal fade" id="importSitesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Import Sites</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{{ url_for('settings.import_sites') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <p class="small text-muted mb-0">Upload an Excel (.xlsx / .xls) file containing site records.</p>
+            <a href="{{ url_for('settings.download_site_template') }}" class="btn btn-sm btn-outline-info"><i class="bi bi-file-earmark-excel"></i> Template</a>
+          </div>
+          <p class="small text-muted">Required headers:</p>
+          <pre class="bg-light p-2 small border">Site Name, Address, Timezone, Project Code, API Site ID</pre>
+          <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+          <div class="form-text mt-2" style="font-size: 0.75rem;">
+            <strong>Site Name:</strong> Required.<br>
+            <strong>Timezone:</strong> e.g. Asia/Jakarta, Asia/Makassar, Asia/Jayapura (default: Asia/Jakarta)<br>
+            <strong>Project Code:</strong> Must match an existing Project Code or leave empty for General.<br>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Import Excel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Site Modal -->
+<div class="modal fade" id="editSiteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Site</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editSiteForm" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body">
+          <div class="mb-2">
+              <label class="form-label small fw-bold">Site Name *</label>
+              <input type="text" name="name" id="editSiteName" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+              <label class="form-label small fw-bold">Address</label>
+              <input type="text" name="address" id="editSiteAddress" class="form-control form-control-sm">
+          </div>
+          <div class="mb-2">
+              <label class="form-label small fw-bold">Timezone</label>
+              <input type="text" name="timezone" id="editSiteTimezone" class="form-control form-control-sm">
+          </div>
+          <div class="mb-2">
+              <label class="form-label small fw-bold">Project Code</label>
+              <select name="project_code" id="editSiteProjectCode" class="form-select form-select-sm">
+                  <option value="">-- No Project Code (General) --</option>
+                  {% for proj in project_codes %}
+                  <option value="{{ proj.code }}">{{ proj.code }} - {{ proj.description or 'No desc' }}</option>
+                  {% endfor %}
+              </select>
+          </div>
+          <div class="mb-3">
+              <label class="form-label small fw-bold">API Site ID</label>
+              <input type="text" name="api_site_id" id="editSiteApiId" class="form-control form-control-sm">
+              <div class="form-text" style="font-size: 0.7rem;">Optional mapping ID for IoT Monitoring dashboards to pull data for this site (e.g. 'btpn').</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Safe Ranges Modal -->
+<div class="modal fade" id="safeRangesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Configure Safe Ranges - <span id="srSiteName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="safeRangesForm" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body">
+            <p class="small text-muted mb-2">Define minimum and maximum acceptable values for specific telemetry parameters. Values outside this range will turn RED on the dashboard.</p>
+            
+            <datalist id="telemetryKeysList"></datalist>
+            <div id="srLoadingMsg" class="small text-info mb-3" style="display:none;"><i class="bi bi-arrow-repeat spin"></i> Auto-fetching parameter keys from active chiller...</div>
+            
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Parameter Key (e.g. chilled_water_leaving_temp)</th>
+                            <th style="width:120px">Min Value</th>
+                            <th style="width:120px">Max Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="srTableBody">
+                        <!-- Rows injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <a href="#" id="exportSafeRangesBtn" class="btn btn-outline-info btn-sm me-auto"><i class="bi bi-file-earmark-excel"></i> Export CSV</a>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-save"></i> Save Ranges</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openEditSiteModal(id, name, address, timezone, api_site_id, projectCode) {
+    document.getElementById('editSiteForm').action = "/settings/site/" + id + "/edit";
+    document.getElementById('editSiteName').value = name;
+    document.getElementById('editSiteAddress').value = address;
+    document.getElementById('editSiteTimezone').value = timezone;
+    document.getElementById('editSiteApiId').value = api_site_id;
+    document.getElementById('editSiteProjectCode').value = projectCode || '';
+    new bootstrap.Modal(document.getElementById('editSiteModal')).show();
+}
+
+var siteSafeRanges = {
+    {% for site in sites %}
+    "{{ site.id }}": [
+        {% for r in (site.cached_safe_ranges if site.cached_safe_ranges is not none else site.safe_ranges) %}
+        {key: "{{ r.parameter_key }}", min: "{{ r.min_value if r.min_value is not none else '' }}", max: "{{ r.max_value if r.max_value is not none else '' }}"},
+        {% endfor %}
+    ],
+    {% endfor %}
+};
+
+var globalDynamicKeys = [];
+
+async function openSafeRangesModal(id, name, apiSiteId) {
+    document.getElementById('srSiteName').innerText = name;
+    document.getElementById('safeRangesForm').action = "/settings/site/" + id + "/safe_ranges/save";
+    document.getElementById('exportSafeRangesBtn').href = "/settings/site/" + id + "/safe_ranges/export";
+    
+    let tbody = document.getElementById('srTableBody');
+    tbody.innerHTML = '';
+    globalDynamicKeys = [];
+    
+    let ranges = siteSafeRanges[id] || [];
+    
+    if (apiSiteId) {
+        document.getElementById('srLoadingMsg').style.display = 'block';
+        try {
+            let res = await fetch(`/monitoring/api_proxy/chillers`);
+            let chillers = await res.json();
+            let siteChillers = chillers.filter(c => String(c.site_id) === String(apiSiteId));
+            if (siteChillers.length > 0) {
+                let latestRes = await fetch(`/monitoring/api_proxy/chillers/${siteChillers[0].id}/latest_data`);
+                let data = await latestRes.json();
+                let keys = Object.keys(data);
+                keys.forEach(k => {
+                    if (k === 'id' || k === 'chiller_id' || k === 'timestamp' || k === 'date' || k === 'time' || k === 'status' || k === 'image_name') return;
+                    globalDynamicKeys.push(k);
+                });
+            }
+        } catch(e) {
+            console.error("Failed to fetch dynamic keys:", e);
+        } finally {
+            document.getElementById('srLoadingMsg').style.display = 'none';
+        }
+    } else {
+        document.getElementById('srLoadingMsg').style.display = 'none';
+    }
+    
+    let combinedKeys = new Set([...globalDynamicKeys]);
+    ranges.forEach(r => combinedKeys.add(r.key));
+    
+    if (combinedKeys.size === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4"><i class="bi bi-exclamation-triangle mt-3 d-block text-warning fs-3"></i>Data tidak ditemukan. Pastikan API Site ID sudah dikonfigurasi.</td></tr>';
+    } else {
+        Array.from(combinedKeys).sort().forEach(key => {
+            let existing = ranges.find(r => r.key === key);
+            addSafeRangeRow(key, existing ? existing.min : '', existing ? existing.max : '');
+        });
+    }
+    
+    new bootstrap.Modal(document.getElementById('safeRangesModal')).show();
+}
+
+function addSafeRangeRow(key, min, max) {
+    let tbody = document.getElementById('srTableBody');
+    let tr = document.createElement('tr');
+    
+    tr.innerHTML = `
+        <td class="align-middle text-dark fw-semibold font-monospace" style="font-size:0.85rem;">
+            <input type="hidden" name="param_key[]" value="${key}">
+            ${key}
+        </td>
+        <td><input type="number" step="0.01" name="min_val[]" class="form-control form-control-sm" value="${min}" placeholder="Limit Bawah"></td>
+        <td><input type="number" step="0.01" name="max_val[]" class="form-control form-control-sm" value="${max}" placeholder="Limit Atas"></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function deleteSite(id) {
+    if (confirm('Delete this site?')) {
+        const form = document.getElementById('globalDeleteSiteForm');
+        form.action = "{{ url_for('settings.index') }}site/" + id + "/delete";
+        form.submit();
+    }
+}
+</script>

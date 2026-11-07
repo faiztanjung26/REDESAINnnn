@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+
+{% block title %}Live Chiller Monitoring - CMMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 mt-3">
+    <div>
+        <a href="{{ url_for('chiller_monitoring.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill shadow-sm mb-2"><i class="bi bi-arrow-left"></i> Hub</a>
+        <h4 class="fw-bold mb-0 text-dark"><i class="bi bi-broadcast me-2 text-primary"></i>Live IoT Monitoring: {{ site_id }}</h4>
+    </div>
+    {% if assets %}
+    <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addTopicModal">
+        <i class="bi bi-plus-circle me-1"></i> Add Custom Topic
+    </button>
+    {% endif %}
+</div>
+
+<div class="row" id="chillersContainer">
+    <!-- Chillers populated via JS -->
+    <div class="col-12 text-center" id="loadingSpinner" style="margin-top: 100px;">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+        <p class="mt-3 text-muted fw-bold">Securely connecting to API Gateway...</p>
+    </div>
+</div>
+
+<!-- Add Topic Modal -->
+<div class="modal fade" id="addTopicModal" tabindex="-1" aria-labelledby="addTopicModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <form action="{{ url_for('chiller_monitoring.add_topic') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold" id="addTopicModalLabel"><i class="bi bi-hdd-network"></i> Add MQTT Topic Data Source</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Target Asset</label>
+                        <select name="asset_id" class="form-select" required>
+                            <option value="">Select Asset...</option>
+                            {% for asset in assets %}
+                            <option value="{{ asset.id }}">{{ asset.name }} ({{ asset.code }}){% if asset.site %} - {{ asset.site.name }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Meter Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Current Sensor" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Unit</label>
+                            <input type="text" name="unit" class="form-control" placeholder="e.g. Amps">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-semibold">MQTT Broker</label>
+                            <input type="text" name="broker" class="form-control" placeholder="e.g. broker.hivemq.com" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Port</label>
+                            <input type="number" name="port" class="form-control" value="1883" required>
+                        </div>
+                    </div>
+                    <div class="row align-items-end">
+                        <div class="col-md-9 mb-3">
+                            <label class="form-label fw-semibold">MQTT Topic</label>
+                            <input type="text" name="topic" class="form-control" placeholder="e.g. factory/machine/current" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <button type="button" class="btn btn-outline-secondary w-100" id="btnScanMqtt">
+                                <i class="bi bi-search"></i> Scan
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="payloadKeyContainer">
+                        <label class="form-label fw-semibold">Payload Key (Optional)</label>
+                        <input type="text" name="payload_key" class="form-control" placeholder="e.g. current_value">
+                        <div class="form-text">Specify the JSON key to extract the value if the payload is a JSON object.</div>
+                    </div>
+
+                    <!-- Auto-bulk sensor selector: shown after scan -->
+                    <div id="sensorBulkPanel" class="d-none mt-2 p-2 rounded border bg-light">
+                        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                            <label class="form-label small fw-bold mb-0 text-primary">
+                                <i class="bi bi-cpu"></i> Filter Sensor:
+                            </label>
+                            <select id="sensorPrefixSelect" class="form-select form-select-sm" style="width:auto; min-width:130px;">
+                                <option value="">-- All Tags --</option>
+                            </select>
+                            <button type="button" id="btnSelectAll" class="btn btn-sm btn-success">
+                                <i class="bi bi-check-all"></i> Select All
+                            </button>
+                            <button type="button" id="btnDeselectAll" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-x-square"></i> Deselect
+                            </button>
+                            <span id="selectedCount" class="badge bg-primary ms-auto">0 selected</span>
+                        </div>
+                        <div id="payloadKeyCheckboxList" class="d-flex flex-column gap-1" style="max-height:220px; overflow-y:auto;">
+                            <!-- Checkboxes injected here by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save & Connect</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = "/monitoring/api_proxy";
+    const TARGET_SITE = "{{ site_id }}";
+
+    async function loadChillers() {
+        try {
+            // 1. Fetch chillers
+            let res = await fetch(`${API_BASE}/chillers`);
+            let rawChillers = await res.json();
+            
+            // Filter by selected site dynamically
+            let chillers = rawChillers.filter(ch => ch.site_id === TARGET_SITE);
+            
+            // 2. Fetch latest data individually for each child in site (bypassing broken bulk endpoint)
+            let dataMap = {};
+            await Promise.all(chillers.map(async (ch) => {
+                try {
+                    let dRes = await fetch(`${API_BASE}/chillers/${ch.id}/latest_data`);
+                    if(dRes.ok) {
+                        dataMap[ch.id] = await dRes.json();
+                    }
+                } catch(e) {
+                    console.log(`No latest data for ${ch.id}`);
+                }
+            }));
+            
+            let container = document.getElementById('chillersContainer');
+            container.innerHTML = '';
+            
+            chillers.forEach(ch => {
+                let d = dataMap[ch.id];
+                let statusHtml = '<span class="badge bg-secondary">Offline</span>';
+                let isRunning = false;
+                if(d) {
+                    if (d.fla !== undefined && d.fla !== null && !isNaN(d.fla)) {
+                        isRunning = parseFloat(d.fla) > 2;
+                    } else {
+                        let statVal = d.status !== undefined && d.status !== null ? String(d.status).toLowerCase() : '';
+                        isRunning = ['run', 'running', '1', 'true', 'on'].includes(statVal);
+                    }
+
+                    if(isRunning) {
+                        statusHtml = '<span class="badge bg-success shadow-sm px-3 py-2 rounded-pill">RUNNING</span>';
+                    } else {
+                        statusHtml = '<span class="badge bg-danger shadow-sm px-3 py-2 rounded-pill">STOPPED</span>';
+                    }
+                    if(d.safety_fault > 0) {
+                        statusHtml += ` <span class="badge bg-warning text-dark mt-1 shadow-sm px-3 py-2 rounded-pill"><i class="bi bi-exclamation-triangle-fill"></i> FAULT</span>`;
+                    }
+                }
+                
+                let imgFile = isRunning ? "{{ url_for('static', filename='images/chiller-active.gif') }}" : "{{ url_for('static', filename='images/chiller.png') }}";
+                
+                let card = document.createElement('div');
+                card.className = "col-md-6 col-lg-4 mb-4";
+                card.innerHTML = `
+                    <div class="card h-100 border-0 shadow rounded-4 overflow-hidden" style="cursor: pointer; transition: transform 0.2s;" onclick="window.location.href='/monitoring/dashboard/${ch.id}';" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div class="card-header bg-dark text-white border-0 py-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="fw-bold mb-1 text-white"><i class="bi bi-cpu text-info me-2"></i>${ch.chiller_num}</h5>
+                                    <span class="badge bg-secondary border border-light">${ch.chiller_type} | SN: ${ch.serial_number || 'N/A'}</span>
+                                </div>
+                                <div class="text-end">${statusHtml}</div>
+                            </div>
+                        </div>
+                        <div class="card-body bg-light">
+                            <div class="text-center py-3 mb-2">
+                                <img src="${imgFile}" style="max-height: 110px; object-fit: contain;">
+                            </div>
+                            ${d ? `
+
+                            <div class="d-flex justify-content-between align-items-center mt-3 mx-1">
+                                <small class="text-muted fw-bold" style="font-size:0.7rem;"><i class="bi bi-clock-history text-secondary me-1"></i> Data: ${new Date(d.timestamp).toLocaleString()}</small>
+                            </div>
+                            ` : '<div class="text-center py-4"><i class="bi bi-hdd-network text-muted" style="font-size: 2rem;"></i><p class="text-muted small mt-2">No telemetry data arriving from API.</p></div>'}
+                        </div>
+                        <div class="card-footer bg-white border-top border-light py-3 text-center" style="transition: background-color 0.2s;" onmouseover="this.classList.add('bg-primary', 'text-white')" onmouseout="this.classList.remove('bg-primary', 'text-white')">
+                            <span class="fw-bold" style="font-size:0.9rem;">View Dashboard <i class="bi bi-arrow-right"></i></span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            
+        } catch(err) {
+            document.getElementById('loadingSpinner').innerHTML = `
+                <div class="alert alert-danger rounded-4 py-4 d-inline-block shadow-sm">
+                    <i class="bi bi-exclamation-triangle-fill fs-2"></i><br>
+                    <strong>Failed to connect to API Server.</strong><br>
+                    <small>Attempted to reach: ${API_BASE}<br>${err.message}</small>
+                </div>
+            `;
+        }
+    }
+
+    // Refresh every 5 seconds
+    loadChillers();
+    setInterval(loadChillers, 5000);
+
+    // ── Scan button & Bulk Selection Javascript ─────────────────────────────────
+    let scanBtn = document.getElementById('btnScanMqtt');
+    let allScannedKeys = [];
+
+    if (scanBtn) {
+        scanBtn.addEventListener('click', function() {
+            let broker = document.querySelector('#addTopicModal input[name="broker"]').value;
+            let port   = document.querySelector('#addTopicModal input[name="port"]').value;
+            let topic  = document.querySelector('#addTopicModal input[name="topic"]').value;
+            
+            if(!broker || !topic) {
+                alert('Please enter MQTT Broker URL and Topic first to scan for keys!');
+                return;
+            }
+            
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Scanning…';
+            this.disabled = true;
+            
+            let formData = new FormData();
+            formData.append('broker', broker);
+            formData.append('port', port);
+            formData.append('topic', topic);
+            const csrfTokenEl = document.querySelector('input[name="csrf_token"]');
+            if (csrfTokenEl) {
+                formData.append('csrf_token', csrfTokenEl.value);
+            }
+            
+            fetch("{{ url_for('assets.scan_mqtt') }}", {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.innerHTML = '<i class="bi bi-search"></i> Scan';
+                this.disabled = false;
+                
+                if(data.success) {
+                    allScannedKeys = data.keys;
+                    buildSensorPanel(allScannedKeys);
+                } else {
+                    alert('Scan Failed: ' + data.error);
+                }
+            })
+            .catch(err => {
+                this.innerHTML = '<i class="bi bi-search"></i> Scan';
+                this.disabled = false;
+                alert('Connection error: ' + err);
+            });
+        });
+    }
+
+    function buildSensorPanel(keys) {
+        let prefixSet = new Set();
+        keys.forEach(k => {
+            let colonIdx = k.indexOf(':');
+            if (colonIdx > 0) prefixSet.add(k.substring(0, colonIdx));
+        });
+        let prefixes = Array.from(prefixSet).sort();
+
+        let prefixSelect = document.getElementById('sensorPrefixSelect');
+        prefixSelect.innerHTML = '<option value="">-- All Tags --</option>';
+        prefixes.forEach(p => {
+            prefixSelect.innerHTML += `<option value="${p}">${p}</option>`;
+        });
+
+        if (prefixes.length > 0) prefixSelect.value = prefixes[0];
+
+        document.getElementById('sensorBulkPanel').classList.remove('d-none');
+        let container = document.getElementById('payloadKeyContainer');
+        if (container) {
+            container.innerHTML = '<label class="form-label fw-semibold text-muted">Payload Key</label><p class="text-success small mb-0"><i class="bi bi-check-circle"></i> Keys detected! Use the panel below.</p>';
+        }
+
+        renderCheckboxes(prefixSelect.value);
+        prefixSelect.addEventListener('change', () => renderCheckboxes(prefixSelect.value));
+    }
+
+    function renderCheckboxes(filterPrefix) {
+        let list = document.getElementById('payloadKeyCheckboxList');
+        let filtered = filterPrefix
+            ? allScannedKeys.filter(k => k.startsWith(filterPrefix + ':') || k === filterPrefix)
+            : allScannedKeys;
+
+        list.innerHTML = '';
+        filtered.forEach(k => {
+            let label = k.includes(':') ? k.split(':').slice(1).join(':') : k;
+            let div = document.createElement('div');
+            div.className = 'form-check';
+            div.innerHTML = `
+                <input class="form-check-input sensor-key-cb" type="checkbox"
+                       name="payload_key" value="${k}" id="cb_${k.replace(/[^a-zA-Z0-9]/g,'_')}">
+                <label class="form-check-label small" for="cb_${k.replace(/[^a-zA-Z0-9]/g,'_')}">
+                    <span class="text-muted">${filterPrefix ? filterPrefix + ':' : ''}</span><strong>${label}</strong>
+                    <span class="text-muted ms-1">(${k})</span>
+                </label>`;
+            list.appendChild(div);
+        });
+
+        updateCount();
+        list.querySelectorAll('.sensor-key-cb').forEach(cb => {
+            cb.addEventListener('change', updateCount);
+        });
+    }
+
+    function updateCount() {
+        let checked = document.querySelectorAll('.sensor-key-cb:checked').length;
+        document.getElementById('selectedCount').textContent = checked + ' selected';
+    }
+
+    document.getElementById('btnSelectAll').addEventListener('click', function() {
+        document.querySelectorAll('.sensor-key-cb').forEach(cb => cb.checked = true);
+        updateCount();
+    });
+
+    document.getElementById('btnDeselectAll').addEventListener('click', function() {
+        document.querySelectorAll('.sensor-key-cb').forEach(cb => cb.checked = false);
+        updateCount();
+    });
+</script>
+{% endblock %}

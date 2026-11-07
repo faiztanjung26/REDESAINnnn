@@ -1,0 +1,34 @@
+<div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+    <h5 class="fw-bold text-primary mb-0">Asset Timeline & Activity Log</h5>
+</div>
+
+<div class="timeline position-relative ps-4 ms-2" style="border-left: 2px solid #dee2e6;">
+    {% for wo in (asset.work_orders|sort(attribute='date_created', reverse=True))[:20] %}
+    <div class="timeline-item mb-4 position-relative">
+        <div class="timeline-icon bg-primary rounded-circle position-absolute" style="width: 14px; height: 14px; left: -32px; top: 4px;"></div>
+        <div class="text-muted small mb-1">{{ wo.date_created.strftime('%b %d, %Y - %H:%M') }}</div>
+        <div class="card shadow-sm border-0 bg-light">
+            <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-bold text-dark"><i class="bi bi-tools mx-1"></i> WO Created: {{ wo.code }}</span>
+                    <span class="ms-2 text-muted small">{{ wo.maintenance_type }}</span>
+                </div>
+                <a href="{{ url_for('work_orders.edit', id=wo.id) }}" class="btn btn-sm btn-outline-secondary">View <i class="bi bi-arrow-right"></i></a>
+            </div>
+            {% if wo.logs %}
+            {% set latest_log = (wo.logs|sort(attribute='created_at', reverse=True))[0] if wo.logs else None %}
+            {% if latest_log %}
+            <div class="card-footer bg-white border-top border-light">
+                <i class="bi bi-chat-text text-muted"></i> <span class="small text-muted">{{ latest_log.log_text }}</span>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="py-5 text-center text-muted w-100">
+        <i class="bi bi-calendar-x display-4 text-light"></i>
+        <p class="mt-2">No maintenance history recorded.</p>
+    </div>
+    {% endfor %}
+</div>

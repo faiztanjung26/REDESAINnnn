@@ -1,0 +1,39 @@
+<!-- Overdue Work Orders Widget -->
+<div class="card h-100">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold text-danger"><i class="bi bi-exclamation-circle me-2"></i> Overdue Work Orders</h6>
+        <span class="badge soft-badge-danger rounded-pill">{{ overdue_wos_count }}</span>
+    </div>
+    <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+            {% for wo in overdue_wos %}
+            <li class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <a href="{{ url_for('work_orders.edit', id=wo.id) }}" class="fw-bold text-decoration-none text-danger text-truncate" style="font-size: 0.9rem; max-width: 60%;" title="{{ wo.description }}">{{ wo.code }} - {{ wo.description }}</a>
+                    <span class="badge soft-badge-danger rounded-pill small ms-1" title="Tenggat Waktu"><i class="bi bi-calendar-x me-1"></i>{{ wo.suggested_completion_date.strftime('%d %b %Y') }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-muted text-truncate" style="font-size: 0.8rem; max-width: 50%;">
+                        <i class="bi bi-box me-1"></i>{{ wo.asset.name if wo.asset else 'No Asset' }}
+                    </div>
+                    <div style="font-size: 0.75rem;" class="d-flex gap-1">
+                        {% if wo.priority == 'Highest' or wo.priority == 'High' %}
+                            <span class="badge soft-badge-danger rounded-pill px-2">{{ wo.priority }}</span>
+                        {% elif wo.priority == 'Medium' %}
+                            <span class="badge soft-badge-warning rounded-pill px-2">{{ wo.priority }}</span>
+                        {% else %}
+                            <span class="badge soft-badge-info rounded-pill px-2">{{ wo.priority }}</span>
+                        {% endif %}
+                        <span class="badge soft-badge-secondary rounded-pill px-2">{{ wo.maintenance_type }}</span>
+                    </div>
+                </div>
+            </li>
+            {% else %}
+            <li class="list-group-item text-center text-muted small py-4 d-flex flex-column align-items-center">
+                <i class="bi bi-check-circle fs-3 text-success mb-2"></i>
+                <div>No overdue work orders.</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>

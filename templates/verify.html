@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="light">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi Dokumen</title>
+    <!-- Use Bootstrap for styling since the main app uses it -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .verify-card {
+            max-width: 500px;
+            margin: 2rem auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: none;
+            overflow: hidden;
+        }
+        .status-header {
+            padding: 1.5rem;
+            text-align: center;
+            color: white;
+        }
+        .status-valid {
+            background-color: #198754;
+        }
+        .status-invalid {
+            background-color: #dc3545;
+        }
+        .status-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+        .detail-row {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.2rem;
+        }
+        .detail-value {
+            font-weight: 500;
+            color: #212529;
+            word-break: break-all;
+        }
+        .hash-badge {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #495057;
+            word-break: break-all;
+        }
+        .company-logo {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .company-logo img {
+            max-height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        
+        <div class="company-logo">
+            <!-- You can point this to the actual logo -->
+            <h4 class="text-secondary fw-bold">PT JAYA TEKNIK INDONESIA</h4>
+        </div>
+
+        <div class="card verify-card">
+            {% if status == 'valid' %}
+            <div class="status-header status-valid">
+                <i class="bi bi-shield-check status-icon"></i>
+                <h4 class="mb-0 fw-bold">DOKUMEN VALID</h4>
+                <p class="mb-0 opacity-75">Tanda Tangan Digital Terverifikasi</p>
+            </div>
+            <div class="card-body p-4">
+                <div class="detail-row">
+                    <div class="detail-label">Nomor Referensi (WO)</div>
+                    <div class="detail-value">{{ wo.code }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Ditandatangani Oleh</div>
+                    <div class="detail-value">{{ sig.signer_name }} {% if sig.signer_title %}({{ sig.signer_title }}){% endif %}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Waktu Penandatanganan</div>
+                    <div class="detail-value">{{ wib_time.strftime('%d %B %Y, %H:%M') }} WIB</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Digital Fingerprint (SHA-256)</div>
+                    <div class="hash-badge mt-1">
+                        {{ sig.document_hash }}
+                    </div>
+                </div>
+
+                {% if sig.pdf_path %}
+                <div class="mt-4 text-center">
+                    <a href="{{ url_for('static', filename=sig.pdf_path) }}" class="btn btn-outline-success w-100 fw-bold" target="_blank" download>
+                        <i class="bi bi-file-earmark-pdf me-2"></i> Unduh PDF Asli
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% elif status == 'revoked' %}
+            <div class="status-header status-invalid">
+                <i class="bi bi-shield-x status-icon"></i>
+                <h4 class="mb-0 fw-bold">DOKUMEN DIBATALKAN</h4>
+                <p class="mb-0 opacity-75">Tanda tangan pada dokumen ini telah dicabut.</p>
+            </div>
+            <div class="card-body p-4 text-center">
+                <p class="text-muted">Dokumen ini pernah diterbitkan namun statusnya telah dibatalkan oleh sistem.</p>
+            </div>
+            
+            {% else %}
+            <div class="status-header status-invalid">
+                <i class="bi bi-exclamation-triangle status-icon"></i>
+                <h4 class="mb-0 fw-bold">TIDAK DITEMUKAN</h4>
+                <p class="mb-0 opacity-75">Dokumen Tidak Valid / Palsu</p>
+            </div>
+            <div class="card-body p-4 text-center">
+                <p class="text-muted mb-0">QR Code atau tautan verifikasi ini tidak terdaftar di sistem kami. Harap berhati-hati terhadap pemalsuan dokumen.</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="text-center text-muted small mt-4">
+            &copy; {{ wib_time.year if status == 'valid' else '2026' }} CMMS System. Hak Cipta Dilindungi.
+        </div>
+    </div>
+</body>
+</html>

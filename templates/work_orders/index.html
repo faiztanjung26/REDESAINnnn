@@ -1,0 +1,1076 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    {% if current_user.role in ['Admin', 'Supervisor'] %}
+    <a href="{{ url_for('work_orders.create') }}" class="btn btn-primary btn-premium ms-1"><i class="bi bi-plus"></i> New Work Order</a>
+    <button type="button" class="btn btn-sm btn-outline-primary ms-1 toolbar-btn" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-upload"></i> Import</button>
+    {% endif %}
+    <div class="btn-group ms-1">
+        <button type="button" class="btn btn-outline-secondary btn-premium dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-download"></i> Export
+        </button>
+        <ul class="dropdown-menu shadow">
+            <li><a class="dropdown-item fw-semibold" href="{{ url_for('reports.wo_monthly_report', site_id=selected_site_id) }}"><i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i> Laporan Bulanan (PDF / PPTX)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ url_for('work_orders.export_all', format='excel', **request.args) }}"><i class="bi bi-file-earmark-excel text-success me-2"></i> Excel (.xlsx)</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('work_orders.export_all', format='csv', **request.args) }}"><i class="bi bi-file-earmark-text text-primary me-2"></i> CSV (.csv)</a></li>
+        </ul>
+    </div>
+    <a href="{{ url_for('reports.wo_monthly_report', site_id=selected_site_id) }}" class="btn btn-outline-danger btn-premium ms-1"><i class="bi bi-file-earmark-pdf-fill me-1"></i> Laporan Bulanan</a>
+{% endblock %}
+
+{% block content %}
+<style>
+/* Premium Work Orders Design */
+.settings-header { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 1.5rem 2rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); margin-bottom: 2rem; }
+.settings-header h3 { font-weight: 700; letter-spacing: -0.5px; color: white !important; }
+
+.settings-pane-card { background: #ffffff; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 1.5rem; overflow: hidden; }
+
+.table-premium { border-collapse: separate; border-spacing: 0; width: 100%; margin-bottom: 0; }
+.table-premium thead th { background-color: #f8fafc; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.85rem 1rem; border-bottom: 2px solid #e2e8f0; border-top: none; }
+.table-premium tbody td { padding: 0.65rem 1rem; vertical-align: middle; color: #334155; border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; }
+.table-premium tbody tr:hover td { background-color: #f8fafc; cursor: pointer; }
+
+.form-select-premium { border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 0.5rem 2.25rem 0.5rem 1rem; font-size: 0.875rem; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); transition: all 0.2s; background-color: #ffffff; }
+.form-select-premium:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
+.form-control-premium { border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; font-size: 0.875rem; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); transition: all 0.2s; background-color: #ffffff; }
+.form-control-premium:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); outline: none; }
+
+.filter-bar { background: linear-gradient(180deg, #ffffff, #f8fafc); border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 1.5rem; }
+
+.btn-premium { border-radius: 0.75rem; font-weight: 600; padding: 0.5rem 1.25rem; transition: all 0.2s; font-size: 0.875rem; }
+.btn-premium:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+
+.toolbar-btn { border-radius: 2rem !important; padding: 0.4rem 1rem !important; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s; }
+.toolbar-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+</style>
+
+
+
+<form id="filterForm" method="GET" action="{{ url_for('work_orders.index') }}" class="m-0 w-100">
+    <div class="filter-bar d-flex flex-column gap-3">
+        <!-- Top Row -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="flex-grow-1" style="max-width: 500px;">
+                <input type="hidden" name="view" id="viewModeInput" value="{{ view_mode }}">
+                <div class="input-group shadow-sm align-items-center" style="border-radius: 2rem; border: 1px solid #e2e8f0; background: #fff; padding: 2px;">
+                    <span class="input-group-text bg-white border-0 ps-3 pe-2 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control border-0 px-2 shadow-none" placeholder="Search Code / Desc..." value="{{ search_query }}">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold" style="border-radius: 2rem;">Search</button>
+                </div>
+            </div>
+            <!-- Saved Views & View Switcher -->
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                {% if saved_views %}
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary btn-premium dropdown-toggle rounded-pill bg-white shadow-sm" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-bookmark-star text-warning"></i> Saved Views
+                    </button>
+                    <ul class="dropdown-menu shadow" style="min-width: 250px;">
+                        <li><h6 class="dropdown-header">Load Saved View</h6></li>
+                        {% for sv in saved_views %}
+                        <li>
+                            <a class="dropdown-item d-flex justify-content-between align-items-center py-2" href="#" onclick="loadSavedView({{ sv.id }}, '{{ sv.view_mode }}', '{{ sv.pivot_row or '' }}', '{{ sv.pivot_col or '' }}', this.getAttribute('data-filters'))" data-filters="{{ sv.filters|e if sv.filters else '{}' }}">
+                                <span><i class="bi bi-layout-sidebar text-primary me-2"></i> {{ sv.name }}</span>
+                                {% if sv.user_id == current_user.id or current_user.role in ['Admin', 'Supervisor'] %}
+                                <button type="button" class="btn btn-sm text-danger ms-3 py-0 px-1" onclick="deleteSavedView(event, {{ sv.id }})" title="Delete"><i class="bi bi-trash"></i></button>
+                                {% endif %}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <button type="button" class="btn btn-sm btn-light text-muted border shadow-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#saveViewModal" title="Save Current View"><i class="bi bi-save"></i></button>
+                
+                <!-- View Switcher -->
+                <div class="view-switcher btn-group bg-white rounded-pill shadow-sm border p-1" role="group">
+                <button type="button" class="btn btn-sm {% if view_mode == 'kanban' %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('kanban')" title="Kanban"><i class="bi bi-kanban"></i></button>
+                <button type="button" class="btn btn-sm {% if view_mode == 'list' or not view_mode %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('list')" title="List"><i class="bi bi-list-task"></i></button>
+                <button type="button" class="btn btn-sm {% if view_mode == 'pivot' %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('pivot')" title="Pivot"><i class="bi bi-table"></i></button>
+                <button type="button" class="btn btn-sm {% if view_mode == 'graph' %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('graph')" title="Graph"><i class="bi bi-bar-chart-fill"></i></button>
+                <button type="button" class="btn btn-sm {% if view_mode == 'calendar' %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('calendar')" title="Calendar"><i class="bi bi-calendar3"></i></button>
+            </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row: Filters -->
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="fw-bold small text-muted me-1"><i class="bi bi-funnel-fill me-1"></i> Filters:</span>
+            
+            <!-- Time Range Filter -->
+            <div class="d-inline-flex align-items-center bg-white shadow-sm rounded-pill border px-2 py-1">
+                <i class="bi bi-calendar3 text-muted me-2 ms-1"></i>
+                <select name="time_range" id="timeRangeSelect" class="form-select form-select-sm border-0 bg-transparent shadow-none w-auto" style="min-width: 110px;" onchange="handleTimeRangeChange()">
+                    <option value="today" {% if time_range == 'today' %}selected{% endif %}>Hari Ini</option>
+                    <option value="this_month" {% if time_range == 'this_month' %}selected{% endif %}>Bulan Ini</option>
+                    <option value="last_month" {% if time_range == 'last_month' %}selected{% endif %}>Bulan Lalu</option>
+                    <option value="this_year" {% if time_range == 'this_year' %}selected{% endif %}>Tahun Ini</option>
+                    <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Custom</option>
+                </select>
+                
+                <div id="customDateRange" class="d-inline-flex align-items-center border-start ps-2 ms-1" style="{% if time_range != 'custom' %}display: none !important;{% endif %}">
+                    <input type="date" name="start_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ start_date_str }}" style="width: 110px;">
+                    <span class="mx-1 text-muted">-</span>
+                    <input type="date" name="end_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ end_date_str }}" style="width: 110px;">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill ms-2 py-0"><i class="bi bi-search"></i></button>
+                </div>
+            </div>
+
+            {% if available_sites %}
+            <select name="site_id" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+                <option value="">All Sites</option>
+                {% for site in available_sites %}
+                <option value="{{ site.id }}" {% if selected_site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            
+            <select name="maintenance_type" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+                <option value="">All Types</option>
+                {% for mt in maintenance_types %}
+                <option value="{{ mt }}" {% if selected_mt == mt %}selected{% endif %}>{{ mt }}</option>
+                {% endfor %}
+            </select>
+            
+            <select name="completeness" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+                <option value="">All Completeness</option>
+                <option value="no_tasklist" {% if completeness_filter == 'no_tasklist' %}selected{% endif %}>No Tasklist</option>
+                <option value="no_checklist" {% if completeness_filter == 'no_checklist' %}selected{% endif %}>No Checklist</option>
+                <option value="no_both" {% if completeness_filter == 'no_both' %}selected{% endif %}>No Tasklist & Checklist</option>
+            </select>
+            
+            <select name="status" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                {% for s in statuses %}
+                <option value="{{ s.name }}" {% if request.args.get('status') == s.name %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <select name="assigned_to" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+                <option value="">All Users</option>
+                {% for u in users %}
+                <option value="{{ u.id }}" {% if request.args.get('assigned_to') == u.id|string %}selected{% endif %}>{{ u.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <a href="{{ url_for('work_orders.index') }}" class="btn btn-sm btn-light text-muted ms-auto rounded-pill px-3 shadow-sm border fw-bold" title="Clear Filters"><i class="bi bi-x-circle me-1"></i> Clear</a>
+        </div>
+        
+        <script>
+            function handleTimeRangeChange() {
+                var val = document.getElementById('timeRangeSelect').value;
+                if (val === 'custom') {
+                    document.getElementById('customDateRange').style.setProperty('display', 'inline-flex', 'important');
+                } else {
+                    document.getElementById('customDateRange').style.setProperty('display', 'none', 'important');
+                    document.getElementById('filterForm').submit();
+                }
+            }
+        </script>
+    </div>
+</form>
+
+<script>
+function switchView(mode) {
+    document.getElementById('viewModeInput').value = mode;
+    document.getElementById('filterForm').submit();
+}
+</script>
+
+{% if view_mode == 'list' or not view_mode %}
+<div class="settings-pane-card">
+    <div class="card-body p-0">
+        <div class="table-responsive" style="font-size: 0.85rem;">
+            <table class="table table-hover table-premium align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 30px;" ><input class="form-check-input" type="checkbox"></th>
+                        <th >Code</th>
+                        <th >Start Date</th>
+                        <th >Description</th>
+                        <th >Priority</th>
+                        <th >Asset & Site</th>
+                        <th >Assigned User</th>
+                        <th >Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for wo in work_orders %}
+                    <tr>
+                        <td ><input class="form-check-input" type="checkbox"></td>
+                        <td class="fw-bold"><a href="{{ url_for('work_orders.edit', id=wo.id) }}" class="text-decoration-none">{{ wo.code }}</a></td>
+                        <td class="text-nowrap text-muted" style="font-size: 0.75rem;">
+                            {{ wo.suggested_start_date.strftime('%d %b %Y') if wo.suggested_start_date else '-' }}
+                        </td>
+                        <td >
+                            <span class="desc-text" title="{{ wo.description }}">{{ wo.description }}</span>
+                        </td>
+                        <td >
+                            {% if wo.priority == 'Highest' or wo.priority == 'High' %}
+                                <span class="badge bg-danger" style="font-size: 0.70rem; padding: 0.35em 0.5em;"><i class="bi bi-exclamation-triangle"></i> {{ wo.priority }}</span>
+                            {% elif wo.priority == 'Medium' %}
+                                <span class="badge bg-warning text-dark" style="font-size: 0.70rem; padding: 0.35em 0.5em;">{{ wo.priority }}</span>
+                            {% elif wo.priority == 'Low' %}
+                                <span class="badge bg-success" style="font-size: 0.70rem; padding: 0.35em 0.5em;">{{ wo.priority }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary" style="font-size: 0.70rem; padding: 0.35em 0.5em;">{{ wo.priority }}</span>
+                            {% endif %}
+                        </td>
+                        <td >
+                            {% if wo.asset %}
+                                <div class="fw-semibold text-truncate" style="max-width: 180px;"><i class="bi bi-box text-muted"></i> {{ wo.asset.name }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-geo-alt"></i> {{ wo.asset.site.name if wo.asset.site else 'No Site' }}</div>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td >
+                            {% if wo.assignees %}
+                                <div class="d-flex flex-wrap gap-1">
+                                {% for assignee in wo.assignees %}
+                                <div class="badge bg-light text-primary border shadow-sm" style="font-size: 0.70rem; padding: 0.3em 0.5em;">
+                                    <i class="bi bi-person-fill"></i> {{ assignee.name.split(' ')[0] }}
+                                </div>
+                                {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted fst-italic" style="font-size: 0.75rem;">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td >
+                            {% if wo.current_status %}
+                                {% if wo.current_status.control_type == 'Draft' %}
+                                    <span class="badge bg-secondary" style="font-size: 0.70rem;"><i class="bi bi-pencil"></i> {{ wo.current_status.name }}</span>
+                                {% elif wo.current_status.control_type == 'Pending' %}
+                                    <span class="badge bg-warning text-dark" style="font-size: 0.70rem;"><i class="bi bi-hourglass-split"></i> {{ wo.current_status.name }}</span>
+                                {% elif wo.current_status.control_type == 'Active' %}
+                                    <span class="badge bg-primary" style="font-size: 0.70rem;"><i class="bi bi-play-circle"></i> {{ wo.current_status.name }}</span>
+                                {% elif wo.current_status.control_type == 'Closed' or wo.current_status.name == 'Completed' %}
+                                    <span class="badge bg-success" style="font-size: 0.70rem;"><i class="bi bi-check-circle"></i> {{ wo.current_status.name }}</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.70rem;">{{ wo.current_status.name }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-light text-dark border" style="font-size: 0.70rem;">No Status</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if current_user.role in ['Admin', 'Supervisor'] %}
+                            <a href="{{ url_for('work_orders.create', copy_from=wo.id) }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" title="Duplicate / Salin WO"><i class="bi bi-copy"></i></a>
+                            {% endif %}
+                            <a href="{{ url_for('work_orders.edit', id=wo.id) }}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" title="Edit WO"><i class="bi bi-pencil"></i></a>
+                            {% if current_user.role in ['Admin', 'Supervisor'] %}
+                            <form action="{{ url_for('work_orders.delete', id=wo.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this work order?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 0.75rem;" title="Delete WO"><i class="bi bi-trash"></i></button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">No open work orders. Good job!</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-transparent border-top p-3 d-flex justify-content-between">
+        <small class="text-muted">{{ work_orders|length }} records.</small>
+    </div>
+</div>
+{% elif view_mode == 'kanban' %}
+    <div id="kanban-view-container" class="mt-3"></div>
+{% elif view_mode == 'calendar' %}
+    <div class="settings-pane-card p-4">
+        <div id="calendar-view-container"></div>
+    </div>
+{% elif view_mode == 'graph' %}
+    <div class="settings-pane-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <h5 class="fw-bold mb-0 text-secondary" id="graph-title">Graph View</h5>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small fw-bold">Group By:</span>
+                <select id="graph-group-select" class="form-select form-select-sm form-select-premium w-auto">
+                    <option value="status">Status</option>
+                    <option value="priority">Priority</option>
+                    <option value="maintenance_type">Maintenance Type</option>
+                    <option value="status_control">Status Control</option>
+                    <option value="asset">Asset</option>
+                    <option value="site">Site</option>
+                    <option value="team">Team</option>
+                </select>
+                
+                <span class="text-muted small fw-bold ms-2">Type:</span>
+                <select id="graph-type-select" class="form-select form-select-sm form-select-premium w-auto">
+                    <option value="bar">Bar Chart</option>
+                    <option value="doughnut">Doughnut</option>
+                    <option value="pie">Pie Chart</option>
+                    <option value="line">Line Chart</option>
+                </select>
+            </div>
+        </div>
+        <div style="position: relative; height: 450px; width: 100%;">
+            <canvas id="main-chart"></canvas>
+        </div>
+    </div>
+{% elif view_mode == 'pivot' %}
+    <div class="settings-pane-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="fw-bold mb-0 text-secondary">Pivot Table</h5>
+        </div>
+        <div class="row mb-4 d-none" id="custom-pivot-controls">
+            <div class="col-md-4">
+                <label class="form-label text-muted small fw-bold">Rows (Y-Axis)</label>
+                <select id="pivot-row-select" class="form-select form-select-sm">
+                    <option value="">-- Total Only --</option>
+                    <option value="Maintenance Type">Maintenance Type</option>
+                    <option value="Status">Status</option>
+                    <option value="Priority">Priority</option>
+                    <option value="Asset">Asset</option>
+                    <option value="Site">Site</option>
+                    <option value="Status Control">Status Control</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label text-muted small fw-bold">Columns (X-Axis)</label>
+                <select id="pivot-col-select" class="form-select form-select-sm">
+                    <option value="">-- Total Only --</option>
+                    <option value="Maintenance Type">Maintenance Type</option>
+                    <option value="Status">Status</option>
+                    <option value="Priority">Priority</option>
+                    <option value="Asset">Asset</option>
+                    <option value="Site">Site</option>
+                    <option value="Status Control">Status Control</option>
+                </select>
+            </div>
+        </div>
+        <div id="pivot-view-container" class="table-responsive" style="min-height: 400px; padding-bottom: 50px;"></div>
+    </div>
+{% endif %}
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('work_orders.import_all') }}" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importModalLabel"><i class="bi bi-upload"></i> Import Work Orders</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Use the template to ensure correct data formatting.
+                        <div class="mt-2 text-center">
+                            <a href="{{ url_for('work_orders.download_template') }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-file-earmark-excel"></i> Download Template
+                            </a>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Choose CSV or Excel File</label>
+                        <input class="form-control" type="file" id="file" name="file" accept=".csv, .xlsx, .xls" required>
+                    </div>
+                    <div class="small text-muted">
+                        <p class="mb-1"><strong>Required Columns:</strong></p>
+                        <ul>
+                            <li><strong>Description</strong>: Task details</li>
+                            <li><strong>Asset Code</strong>: Unique identifier from Assets module</li>
+                        </ul>
+                        <p class="mb-0"><strong>Optional Columns:</strong> Code, Priority, Maintenance Type, Assignee NRP, Project Code, Tasklist Name, Checklist Name, Suggested Start Date, Suggested Completion Date.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Start Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Save View Modal -->
+<div class="modal fade" id="saveViewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-save"></i> Save Current View</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">View Name</label>
+                    <input type="text" class="form-control" id="saveViewName" placeholder="e.g. Pivot Laporan AC" required>
+                </div>
+                {% if current_user.role in ['Admin', 'Supervisor'] %}
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="saveViewPublic" checked>
+                    <label class="form-check-label" for="saveViewPublic">Make Public (Others can see)</label>
+                </div>
+                {% else %}
+                <input type="hidden" id="saveViewPublic" value="false">
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitSaveView()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadSavedView(id, viewMode, pivotRow, pivotCol, filtersStr) {
+    const filters = JSON.parse(filtersStr || '{}');
+    
+    // Construct the query string from filters
+    const url = new URL(window.location.href);
+    
+    // Clear existing known filters first
+    const knownFilters = ['q', 'time_range', 'start_date', 'end_date', 'site_id', 'maintenance_type', 'completeness', 'status', 'assigned_to'];
+    knownFilters.forEach(f => url.searchParams.delete(f));
+    
+    // Set view mode
+    url.searchParams.set('view', viewMode);
+    
+    // Set new filters
+    for (const [key, value] of Object.entries(filters)) {
+        if (value) url.searchParams.set(key, value);
+    }
+    
+    // If pivot, set row/col parameters
+    if (viewMode === 'pivot') {
+        if (pivotRow) url.searchParams.set('pivot_row', pivotRow);
+        else url.searchParams.delete('pivot_row');
+        if (pivotCol) url.searchParams.set('pivot_col', pivotCol);
+        else url.searchParams.delete('pivot_col');
+    }
+    
+    window.location.href = url.toString();
+}
+
+function deleteSavedView(event, id) {
+    event.stopPropagation();
+    event.preventDefault();
+    if (!confirm('Are you sure you want to delete this saved view?')) return;
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]') ? document.querySelector('input[name="csrf_token"]').value : '';
+    
+    fetch(`/work-orders/delete-view/${id}`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Failed to delete: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(e => {
+        console.error(e);
+        alert('Error communicating with server.');
+    });
+}
+
+function submitSaveView() {
+    const name = document.getElementById('saveViewName').value;
+    if (!name.trim()) {
+        alert('Please enter a name for the view.');
+        return;
+    }
+    const isPublic = document.getElementById('saveViewPublic').checked;
+    const viewMode = document.getElementById('viewModeInput').value || 'list';
+    
+    // Collect filters from form
+    const form = document.getElementById('filterForm');
+    const formData = new FormData(form);
+    const filters = {};
+    for (const [key, value] of formData.entries()) {
+        if (value && key !== 'view' && key !== 'q' && key !== 'csrf_token') {
+            filters[key] = value;
+        }
+    }
+    
+    // Add search query explicitly if exists
+    const q = document.querySelector('input[name="q"]').value;
+    if (q) filters['q'] = q;
+    
+    // Collect pivot row/col if in pivot view
+    let pivotRow = '', pivotCol = '';
+    if (viewMode === 'pivot') {
+        const rowSelect = document.getElementById('pivot-row-select');
+        const colSelect = document.getElementById('pivot-col-select');
+        if (rowSelect) pivotRow = rowSelect.value;
+        if (colSelect) pivotCol = colSelect.value;
+    }
+    
+    const submitData = new FormData();
+    submitData.append('name', name);
+    submitData.append('is_public', isPublic);
+    submitData.append('view_mode', viewMode);
+    submitData.append('pivot_row', pivotRow);
+    submitData.append('pivot_col', pivotCol);
+    submitData.append('filters', JSON.stringify(filters));
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]') ? document.querySelector('input[name="csrf_token"]').value : '';
+    if (csrfToken) submitData.append('csrf_token', csrfToken);
+    
+    fetch('/work-orders/save-view', {
+        method: 'POST',
+        body: submitData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Failed to save view: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(e => {
+        console.error(e);
+        alert('Error communicating with server.');
+    });
+}
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+
+<style>
+/* Kanban Styles */
+.kanban-board { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; min-height: 60vh; }
+.kanban-column { background: #f1f5f9; border-radius: 0.75rem; min-width: 300px; max-width: 300px; display: flex; flex-direction: column; }
+.kanban-header { padding: 1rem; font-weight: 600; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+.kanban-cards { padding: 0.75rem; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 0.75rem; }
+.kanban-card { background: white; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; cursor: pointer; transition: transform 0.1s; }
+.kanban-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.kanban-card-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 0.25rem; color: #1e293b; }
+.kanban-card-desc { font-size: 0.8rem; color: #64748b; margin-bottom: 0.75rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.kanban-card-footer { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; }
+
+/* Pivot Styles Override */
+.pvtTable { width: 100%; border-collapse: collapse; font-size: 0.875rem; background: white; margin-top: 0.5rem; }
+table.pvtTable th, table.pvtTable td { border: 1px solid #e2e8f0; padding: 0.85rem 1.25rem; vertical-align: middle; transition: background-color 0.2s; }
+table.pvtTable th { background: #f8fafc; font-weight: 600; color: #475569; text-align: center; }
+table.pvtTable th.pvtRowLabel { text-align: left; color: #1e293b; font-weight: 600; }
+table.pvtTable th.pvtAxisLabel { background: #f8fafc; font-size: 0; color: transparent; border: none; }
+table.pvtTable td.pvtVal, table.pvtTable td.pvtTotal { background: #ffffff; color: #334155; text-align: right; }
+table.pvtTable td.pvtTotal, table.pvtTable th.pvtTotalLabel { font-weight: 700; background: #f8fafc; color: #0f172a; }
+table.pvtTable tbody tr:hover td.pvtVal, table.pvtTable tbody tr:hover td.pvtTotal, table.pvtTable tbody tr:hover th.pvtRowLabel { background-color: #f1f5f9; cursor: default; }
+table.pvtUi { width: 100%; }
+.pvtAxisContainer, .pvtVals { display: none; } /* Hide drag-and-drop containers */
+.pvtAttr { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.25rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; color: #1e293b; font-weight: 500; cursor: pointer; display: inline-block; margin: 0.2rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s; }
+.pvtAttr:hover { border-color: #94a3b8; background: #f1f5f9; }
+.pvtTriangle { color: #64748b; margin-left: 0.5rem; }
+select.pvtRenderer, select.pvtAggregator, select.pvtAttrDropdown { 
+    display: inline-block;
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: #475569;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.375rem;
+    appearance: none;
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+select.pvtRenderer:focus, select.pvtAggregator:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25); }
+.pvtFilterBox { position: absolute; width: 300px; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: #ffffff; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 1rem; z-index: 1050; }
+.pvtFilterBox h4 { font-size: 1rem; font-weight: 600; margin-top: 0; margin-bottom: 1rem; color: #1e293b; text-align: center; }
+.pvtFilterBox p { margin-bottom: 0.75rem; text-align: center; }
+.pvtFilterBox p input[type="text"] { width: 100%; padding: 0.375rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.85rem; }
+.pvtFilterBox p input[type="text"]:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 0.2rem rgba(59,130,246,0.25); }
+.pvtFilterBox p button { background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.8rem; margin: 0 0.15rem; cursor: pointer; transition: all 0.2s; }
+.pvtFilterBox p button:hover { background: #f1f5f9; color: #1e293b; }
+.pvtCheckContainer { padding: 0.5rem 0; margin: 0.5rem 0; max-height: 250px; overflow-y: auto; overflow-x: hidden; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; text-align: left; }
+.pvtCheckContainer label { font-size: 0.85rem; color: #334155; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; white-space: nowrap; cursor: pointer; }
+.pvtCheckContainer input[type="checkbox"] { margin: 0; width: 1rem; height: 1rem; border-radius: 0.25rem; border-color: #cbd5e1; cursor: pointer; }
+.pvtFilterBox > button { background: #3b82f6; color: white; border: none; padding: 0.4rem 1rem; border-radius: 0.375rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; margin-right: 0.5rem; }
+.pvtFilterBox > button:hover { background: #2563eb; }
+.pvtFilterBox > button:last-child { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 500; }
+.pvtFilterBox > button:last-child:hover { background: #e2e8f0; color: #1e293b; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const workOrders = {{ work_orders_json|safe }};
+    const viewMode = "{{ view_mode }}";
+
+    if (viewMode === 'kanban') {
+        renderKanban(workOrders);
+    } else if (viewMode === 'calendar') {
+        renderCalendar(workOrders);
+    } else if (viewMode === 'graph') {
+        renderGraph(workOrders);
+    } else if (viewMode === 'pivot') {
+        renderPivot(workOrders);
+    }
+});
+
+function renderKanban(workOrders) {
+    const container = document.getElementById('kanban-view-container');
+    container.innerHTML = '<div class="kanban-board" id="kanbanBoard"></div>';
+    const board = document.getElementById('kanbanBoard');
+    
+    // Group by status instead of status_control
+    const columns = {};
+    
+    // First, pass through data to identify all unique statuses and initialize columns
+    // We try to sort them logically if we know them, otherwise they just appear.
+    const knownOrder = ['Draft', 'Assigned', 'Confirmed', 'Pending', 'Hold', 'In Progress', 'Active', 'Solved', 'Completed', 'Incompleted', 'Closed', 'Cancelled'];
+    
+    workOrders.forEach(wo => {
+        const status = wo.status || 'Unknown';
+        if (!columns[status]) {
+            let color = 'text-secondary';
+            const sLower = status.toLowerCase();
+            if (sLower.includes('progress') || sLower.includes('active')) color = 'text-primary';
+            else if (sLower.includes('complete') && !sLower.includes('incomp') || sLower.includes('solve') || sLower.includes('close')) color = 'text-success';
+            else if (sLower.includes('hold') || sLower.includes('pending')) color = 'text-warning';
+            else if (sLower.includes('cancel') || sLower.includes('incomp') || sLower.includes('fail')) color = 'text-danger';
+            else if (sLower.includes('confirm')) color = 'text-info';
+            
+            columns[status] = { title: status, color: color, items: [], order: knownOrder.indexOf(status) !== -1 ? knownOrder.indexOf(status) : 999 };
+        }
+        columns[status].items.push(wo);
+    });
+    
+    // Sort columns by preferred order, then alphabetically
+    const sortedColumnKeys = Object.keys(columns).sort((a, b) => {
+        if (columns[a].order !== columns[b].order) return columns[a].order - columns[b].order;
+        return a.localeCompare(b);
+    });
+    
+    sortedColumnKeys.forEach(key => {
+        const col = columns[key];
+        const colDiv = document.createElement('div');
+        colDiv.className = 'kanban-column shadow-sm';
+        colDiv.setAttribute('ondragover', 'kanbanAllowDrop(event)');
+        colDiv.setAttribute('ondrop', `kanbanDrop(event, '${col.title}')`);
+        
+        let cardsHtml = '';
+        col.items.forEach(wo => {
+            let priorityBadge = '';
+            if(wo.priority === 'Highest' || wo.priority === 'High') priorityBadge = '<span class="badge bg-danger">High</span>';
+            else if(wo.priority === 'Medium') priorityBadge = '<span class="badge bg-warning text-dark">Med</span>';
+            else if(wo.priority === 'Low') priorityBadge = '<span class="badge bg-success">Low</span>';
+            
+            cardsHtml += `
+                <div class="kanban-card" draggable="true" ondragstart="kanbanDrag(event, ${wo.id}, '${wo.status}')" onclick="window.location.href='/work-orders/${wo.id}/edit'">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <div class="kanban-card-title">${wo.code}</div>
+                        ${priorityBadge}
+                    </div>
+                    <div class="kanban-card-desc">${wo.description}</div>
+                    <div class="kanban-card-footer mt-2">
+                        <span class="text-muted"><i class="bi bi-box"></i> ${wo.asset.substring(0,15)}</span>
+                        <span class="badge bg-light text-dark border">${wo.status}</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        colDiv.innerHTML = `
+            <div class="kanban-header ${col.color}">
+                <span>${col.title}</span>
+                <span class="badge bg-secondary rounded-pill">${col.items.length}</span>
+            </div>
+            <div class="kanban-cards">
+                ${cardsHtml}
+            </div>
+        `;
+        board.appendChild(colDiv);
+    });
+}
+
+function kanbanAllowDrop(ev) {
+    ev.preventDefault();
+}
+
+function kanbanDrag(ev, woId, currentStatus) {
+    ev.dataTransfer.setData("woId", woId);
+    ev.dataTransfer.setData("currentStatus", currentStatus);
+    // Optional: Only allow dragging from Solved
+    // But generalized drag is better. Backend checks permission.
+}
+
+function kanbanDrop(ev, newStatus) {
+    ev.preventDefault();
+    const woId = ev.dataTransfer.getData("woId");
+    const currentStatus = ev.dataTransfer.getData("currentStatus");
+    
+    if (!woId || currentStatus === newStatus) return;
+
+    // Mapping kanban column name to backend actions
+    // (See work_orders.py -> change_status)
+    const actionMap = {
+        'In Progress': 'start',
+        'Hold': 'hold',
+        'Solved': 'solve',
+        'Incompleted': 'incomplete',
+        'Completed': 'complete',
+        'Draft': 'cancel_to_draft'
+    };
+
+    const action = actionMap[newStatus];
+    if (!action) {
+        alert("Pindah status ke '" + newStatus + "' secara langsung dari Kanban tidak didukung.");
+        return;
+    }
+
+    // Role check for UX (Admin/Supervisor -> Completed)
+    const role = "{{ current_user.role }}";
+    if (newStatus === 'Completed' && role === 'Technician') {
+        alert("Akses ditolak: Hanya Admin dan Supervisor yang dapat mengubah ke Completed.");
+        return;
+    }
+
+    if (!confirm("Ubah status Work Order ini menjadi " + newStatus + "?")) return;
+
+    const formData = new FormData();
+    formData.append('action', action);
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+    fetch(`/work-orders/${woId}/status`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert("Gagal mengubah status. Anda mungkin tidak memiliki izin.");
+        }
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Terjadi kesalahan jaringan.");
+    });
+}
+
+function renderCalendar(workOrders) {
+    const calendarEl = document.getElementById('calendar-view-container');
+    const events = workOrders.map(wo => {
+        let color = '#3b82f6'; // default primary
+        if(wo.status_control === 'Closed') color = '#10b981';
+        else if(wo.status_control === 'Pending') color = '#f59e0b';
+        else if(wo.status_control === 'Draft') color = '#64748b';
+        
+        const startVal = (wo.start_date && wo.start_date !== '-') ? wo.start_date : (wo.date_created && wo.date_created !== '-' ? wo.date_created : null);
+        const endVal = (wo.target_date && wo.target_date !== '-') ? wo.target_date : startVal;
+        
+        if (!startVal) return null;
+
+        const eventObj = {
+            id: wo.id,
+            title: `${wo.code} - ${wo.asset}`,
+            start: startVal,
+            url: `/work-orders/${wo.id}/edit`,
+            color: color,
+            allDay: true
+        };
+
+        if (endVal && endVal > startVal) {
+            const d = new Date(endVal + 'T00:00:00');
+            d.setDate(d.getDate() + 1);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            eventObj.end = `${yyyy}-${mm}-${dd}`;
+        }
+
+        return eventObj;
+    }).filter(e => e !== null);
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: events,
+        eventClick: function(info) {
+            info.jsEvent.preventDefault();
+            if (info.event.url) {
+                window.location.href = info.event.url;
+            }
+        },
+        height: 650
+    });
+    calendar.render();
+}
+
+let mainChartInstance = null;
+
+function renderGraph(workOrders) {
+    if (!document.getElementById('main-chart')) return;
+
+    window.updateGraph = function() {
+        const typeSelect = document.getElementById('graph-type-select').value;
+        const groupSelect = document.getElementById('graph-group-select').value;
+        const groupSelectElem = document.getElementById('graph-group-select');
+        const groupLabel = groupSelectElem.options[groupSelectElem.selectedIndex].text;
+        
+        document.getElementById('graph-title').innerText = 'Work Orders by ' + groupLabel;
+
+        const counts = {};
+        workOrders.forEach(wo => {
+            let key = wo[groupSelect];
+            if (!key) key = 'Unassigned / None';
+            if (Array.isArray(key)) key = key.join(', ');
+            counts[key] = (counts[key] || 0) + 1;
+        });
+
+        // Sort data descending by count
+        const sortedData = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        const labels = sortedData.map(item => item[0]);
+        const dataValues = sortedData.map(item => item[1]);
+
+        if (mainChartInstance) {
+            mainChartInstance.destroy();
+        }
+
+        const ctx = document.getElementById('main-chart').getContext('2d');
+        const colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f43f5e', '#84cc16', '#64748b', '#d946ef'];
+        
+        let bgColors = colorPalette;
+        if (typeSelect === 'bar' || typeSelect === 'line') {
+            bgColors = 'rgba(59, 130, 246, 0.85)';
+        }
+
+        mainChartInstance = new Chart(ctx, {
+            type: typeSelect,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Work Orders',
+                    data: dataValues,
+                    backgroundColor: bgColors,
+                    borderColor: typeSelect === 'line' ? '#2563eb' : '#ffffff',
+                    borderWidth: 2,
+                    fill: typeSelect === 'line' ? false : true,
+                    tension: 0.3,
+                    borderRadius: typeSelect === 'bar' ? 4 : 0
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: (typeSelect === 'doughnut' || typeSelect === 'pie'),
+                        position: 'right',
+                        labels: { padding: 20, font: { family: "'Inter', sans-serif" } }
+                    },
+                    tooltip: {
+                        padding: 12,
+                        cornerRadius: 8,
+                        titleFont: { size: 14, family: "'Inter', sans-serif" },
+                        bodyFont: { size: 14, family: "'Inter', sans-serif" }
+                    }
+                },
+                scales: (typeSelect === 'bar' || typeSelect === 'line') ? {
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { stepSize: 1, precision: 0 },
+                        grid: { borderDash: [4, 4], color: '#e2e8f0' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                } : {}
+            }
+        });
+    };
+
+    // Bind events natively just in case inline fails
+    document.getElementById('graph-type-select').addEventListener('change', window.updateGraph);
+    document.getElementById('graph-group-select').addEventListener('change', window.updateGraph);
+
+    // Initial draw
+    window.updateGraph();
+}
+
+function renderPivot(workOrders) {
+    const container = document.getElementById('pivot-view-container');
+    const rowSelect = document.getElementById('pivot-row-select');
+    const colSelect = document.getElementById('pivot-col-select');
+    
+    if (workOrders.length === 0) {
+        container.innerHTML = '<p class="text-muted">No data available for pivot table.</p>';
+        return;
+    }
+
+    // Define the fields we want to expose in the Pivot Table
+    const fieldMapping = {
+        'code': 'Code',
+        'description': 'Description',
+        'priority': 'Priority',
+        'maintenance_type': 'Maintenance Type',
+        'asset': 'Asset',
+        'site': 'Site',
+        'team': 'Team',
+        'status': 'Status',
+        'status_control': 'Status Control',
+        'project': 'Project Code',
+        'tasklist': 'Tasklist',
+        'customer_name': 'Customer',
+        'estimated_hours': 'Estimated Hours',
+        'date_created': 'Date Created',
+        'start_date': 'Start Date',
+        'target_date': 'Target Date'
+    };
+
+    // Populate dropdowns dynamically
+    rowSelect.innerHTML = '<option value="">-- Total Only --</option>';
+    colSelect.innerHTML = '<option value="">-- Total Only --</option>';
+    
+    // Sort keys alphabetically
+    const sortedKeys = Object.values(fieldMapping).sort();
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialRow = urlParams.get('pivot_row') || '';
+    const initialCol = urlParams.get('pivot_col') || '';
+    
+    sortedKeys.forEach(label => {
+        rowSelect.innerHTML += `<option value="${label}" ${label === initialRow ? 'selected' : ''}>${label}</option>`;
+        colSelect.innerHTML += `<option value="${label}" ${label === initialCol ? 'selected' : ''}>${label}</option>`;
+    });
+
+    // Map data to the format expected by PivotTable.js
+    const pivotData = workOrders.map(wo => {
+        let mapped = {};
+        for (const [key, label] of Object.entries(fieldMapping)) {
+            let val = wo[key];
+            if (Array.isArray(val)) { val = val.join(', '); }
+            mapped[label] = val || '-';
+        }
+        return mapped;
+    });
+
+    window.setPivotRow = function(val) {
+        rowSelect.value = val;
+        drawPivot();
+    };
+    window.setPivotCol = function(val) {
+        colSelect.value = val;
+        drawPivot();
+    };
+
+    function drawPivot() {
+        const rowVal = rowSelect.value;
+        const colVal = colSelect.value;
+        
+        const rows = rowVal ? [rowVal] : [];
+        const cols = colVal ? [colVal] : [];
+
+        // Use pivot() instead of pivotUI()
+        $(container).pivot(pivotData, {
+            rows: rows,
+            cols: cols,
+            aggregatorName: "Count"
+        });
+
+        const table = container.querySelector('table.pvtTable');
+        if (!table) return;
+
+        const listItemsRow = `<li><a class="dropdown-item fw-bold text-danger" href="#" onclick="event.preventDefault(); setPivotRow('');">-- Clear Row --</a></li>` + sortedKeys.map(k => `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); setPivotRow('${k}');">${k}</a></li>`).join('');
+        const listItemsCol = `<li><a class="dropdown-item fw-bold text-danger" href="#" onclick="event.preventDefault(); setPivotCol('');">-- Clear Col --</a></li>` + sortedKeys.map(k => `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); setPivotCol('${k}');">${k}</a></li>`).join('');
+
+        const rowDropdownHtml = `
+        <div class="dropdown d-inline-block" style="text-align: left;">
+            <span class="dropdown-toggle text-decoration-none text-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                <i class="bi bi-plus-square-fill me-1" style="color: #343a40;"></i> Total
+            </span>
+            <ul class="dropdown-menu shadow" style="max-height: 300px; overflow-y: auto; font-size: 0.85rem;">
+                ${listItemsRow}
+            </ul>
+        </div>`;
+
+        const colDropdownHtml = `
+        <div class="dropdown d-inline-block" style="text-align: center;">
+            <span class="dropdown-toggle text-decoration-none text-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                <i class="bi bi-plus-square-fill me-1" style="color: #343a40;"></i> Total
+            </span>
+            <ul class="dropdown-menu shadow" style="max-height: 300px; overflow-y: auto; font-size: 0.85rem;">
+                ${listItemsCol}
+            </ul>
+        </div>`;
+
+        // Change 'Totals' to 'Total' with dropdown
+        $(table).find('.pvtTotalLabel').each(function() {
+            if ($(this).text() === 'Totals') {
+                const isBottomRow = $(this).hasClass('pvtRowTotalLabel');
+                // The bottom row is horizontal (X-Axis), so it should get colDropdownHtml
+                // The right col is vertical (Y-Axis), so it should get rowDropdownHtml
+                $(this).html(isBottomRow ? colDropdownHtml : rowDropdownHtml);
+            }
+        });
+
+        // Prepend [+] to other labels (like selected rows/cols), also make them clearable or changeable
+        $(table).find('th.pvtRowLabel, th.pvtColLabel').each(function() {
+            const text = $(this).text();
+            // Just make them static or they can click to clear
+            $(this).html(`<i class="bi bi-plus-square-fill me-1" style="color: #343a40;"></i> ${text}`);
+        });
+
+        // Special handling for completely empty pivot (Odoo style)
+        if (!rowVal && !colVal) {
+            const valCell = $(table).find('td.pvtTotal');
+            const countValue = valCell.text();
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th style="border: none; background: transparent;"></th>
+                        <th class="pvtTotalLabel" style="text-align: center; font-weight: 700; padding: 0.85rem; border: 1px solid #e2e8f0; background: #f8fafc;">${colDropdownHtml}</th>
+                    </tr>
+                    <tr>
+                        <th style="border: none; background: transparent;"></th>
+                        <th style="text-align: center; font-weight: 600; padding: 0.85rem; border: 1px solid #e2e8f0; background: #f8fafc;">Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th class="pvtTotalLabel" style="text-align: left; font-weight: 700; padding: 0.85rem; border: 1px solid #e2e8f0; background: #f8fafc;">${rowDropdownHtml}</th>
+                        <td style="text-align: center; padding: 0.85rem; border: 1px solid #e2e8f0; background: #ffffff;">${countValue}</td>
+                    </tr>
+                </tbody>
+            `;
+        }
+    }
+
+    // Initial draw
+    drawPivot();
+
+    // Bind events
+    rowSelect.addEventListener('change', drawPivot);
+    colSelect.addEventListener('change', drawPivot);
+}
+</script>
+{% endblock %}

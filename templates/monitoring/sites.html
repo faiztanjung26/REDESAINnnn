@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}IoT Monitoring Sites - CMMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 mt-3">
+    <h4 class="fw-bold mb-0 text-dark"><i class="bi bi-buildings me-2 text-primary"></i>Live IoT Sites</h4>
+    <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#linkSiteModal">
+        <i class="bi bi-link-45deg me-1"></i> Link IoT Site
+    </button>
+</div>
+
+<div class="row" id="sitesContainer">
+    <div class="col-12 text-center" id="loadingSpinner" style="margin-top: 100px;">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+        <p class="mt-3 text-muted fw-bold">Securely connecting to API Gateway...</p>
+    </div>
+</div>
+
+<!-- Link Site Modal -->
+<div class="modal fade" id="linkSiteModal" tabindex="-1" aria-labelledby="linkSiteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <form action="{{ url_for('chiller_monitoring.link_site') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold" id="linkSiteModalLabel"><i class="bi bi-link-45deg"></i> Link Site to IoT ID</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select DB Site</label>
+                        <select name="site_id" class="form-select" required>
+                            <option value="">Select Site...</option>
+                            {% for s in sites %}
+                            <option value="{{ s.id }}">{{ s.name }} {% if s.api_site_id %}(Linked: {{ s.api_site_id }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Choose the site name defined in CMMS Settings.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">IoT API Site ID (Topic Prefix)</label>
+                        <input type="text" name="api_site_id" class="form-control" placeholder="e.g. bxc2_sqc" required>
+                        <div class="form-text">Input the topic ID used in the telemetry (e.g. bxc2_sqc, pakubuwono).</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Link</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = "/monitoring/api_proxy";
+    
+    // DB Site Mapping to display custom human-readable names instead of technical IDs
+    const siteMap = {
+        {% for s in sites %}
+           {% if s.api_site_id %}
+              "{{ s.api_site_id }}": "{{ s.name }}",
+           {% endif %}
+        {% endfor %}
+    };
+
+    async function loadSites() {
+        try {
+            let res = await fetch(`${API_BASE}/chillers`);
+            let chillers = await res.json();
+            
+            // Group by site
+            let siteCounts = {};
+            chillers.forEach(ch => {
+                let s = ch.site_id || "Unknown Site";
+                if (!siteCounts[s]) siteCounts[s] = 0;
+                siteCounts[s]++;
+            });
+            
+            // Force include all manually linked DB sites so they display even if they don't have active telemetry chillers yet
+            for (const [apiId, dbName] of Object.entries(siteMap)) {
+                if (apiId && !siteCounts[apiId]) {
+                    siteCounts[apiId] = 0;
+                }
+            }
+            
+            let container = document.getElementById('sitesContainer');
+            container.innerHTML = '';
+            
+            let sites = Object.keys(siteCounts);
+            
+            if(sites.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center text-muted mt-5">No telemetry sites found.</div>';
+                return;
+            }
+            
+            sites.forEach(siteName => {
+                let count = siteCounts[siteName];
+                let displayName = siteMap[siteName] || siteName;
+                
+                let card = document.createElement('div');
+                card.className = "col-md-6 col-lg-4 mb-4";
+                card.innerHTML = `
+                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden" style="cursor: pointer; transition: transform 0.2s;" onclick="window.location.href='/monitoring/site/${siteName}';" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div class="card-body bg-white p-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-building fs-4"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h5 class="fw-bold mb-1 text-dark">${displayName}</h5>
+                                    <span class="badge bg-light text-secondary border">IoT Activated (${siteName})</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 mt-4">
+                                <span class="fw-bold text-muted small">Connected Chillers</span>
+                                <h4 class="mb-0 fw-bold text-primary">${count}</h4>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white border-top-0 py-3 text-center" style="transition: background-color 0.2s;" onmouseover="this.classList.add('bg-primary', 'text-white')" onmouseout="this.classList.remove('bg-primary', 'text-white')">
+                            <span class="fw-bold" style="font-size:0.9rem;">View Telemetry <i class="bi bi-arrow-right"></i></span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            
+        } catch(err) {
+            document.getElementById('loadingSpinner').innerHTML = `
+                <div class="alert alert-danger rounded-4 py-4 d-inline-block shadow-sm">
+                    <i class="bi bi-exclamation-triangle-fill fs-2"></i><br>
+                    <strong>Failed to fetch site list from API.</strong><br>
+                    <small>Attempted to reach: ${API_BASE}<br>${err.message}</small>
+                </div>
+            `;
+        }
+    }
+
+    loadSites();
+</script>
+{% endblock %}

@@ -1,0 +1,22 @@
+<!-- Low Stock Alerts Widget -->
+<div class="card h-100">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold text-danger"><i class="bi bi-exclamation-octagon me-2"></i> Low Stock Alerts</h6>
+        <span class="badge soft-badge-danger rounded-pill">{{ low_stock_items|length }}</span>
+    </div>
+    <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+            {% for item in low_stock_items %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('supplies.part_detail', id=item.part.id) }}" class="fw-bold text-decoration-none text-dark small text-truncate" style="max-width: 70%;">{{ item.part.name }}</a>
+                <span class="badge soft-badge-danger rounded-pill"><i class="bi bi-box-seam me-1"></i>{{ item.qty_on_hand }} / {{ item.min_qty }}</span>
+            </li>
+            {% else %}
+            <li class="list-group-item text-center text-muted py-4 d-flex flex-column align-items-center">
+                <i class="bi bi-check-circle fs-3 text-success mb-2"></i>
+                <div class="small">No low stock items.</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>

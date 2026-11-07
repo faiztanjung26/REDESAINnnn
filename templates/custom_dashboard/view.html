@@ -1,0 +1,1126 @@
+{% extends "base.html" %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+{% endblock %}
+
+{% block toolbar_left %}
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard Utama
+        </a>
+        <h4 class="mb-0 fw-bold text-dark">
+            <i class="bi {{ dashboard.icon }} text-primary me-2"></i>
+            <span id="dashboardName">{{ dashboard.name }}</span>
+        </h4>
+        <button class="btn btn-sm btn-ghost text-muted" onclick="renameDashboard()" title="Rename">
+            <i class="bi bi-pencil"></i>
+        </button>
+    </div>
+{% endblock %}
+
+{% block content %}
+<style>
+    /* ── Empty Canvas ── */
+    .empty-canvas {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        min-height: 50vh; background: linear-gradient(135deg, #f8fafc, #eef2ff);
+        border: 2px dashed rgba(79, 70, 229, 0.2); border-radius: 24px; padding: 48px;
+    }
+    .empty-canvas i { font-size: 4rem; color: rgba(79, 70, 229, 0.15); }
+    .empty-canvas h4 { color: #64748b; margin-top: 16px; }
+
+    /* ── Widget Cards ── */
+    .param-card {
+        background: linear-gradient(145deg, #ffffff, #f8fafc); 
+        border-radius: 20px; 
+        border: none;
+        box-shadow: 0 10px 30px -5px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+        overflow: hidden; 
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease; 
+        position: relative; 
+        height: 100%;
+    }
+    .param-card:hover { 
+        box-shadow: 0 20px 40px -5px rgba(79, 70, 229, 0.15); 
+        transform: translateY(-4px); 
+    }
+    .param-card .color-stripe { height: 4px; width: 100%; }
+    .param-card .param-header {
+        padding: 18px 24px 8px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .param-card .param-title {
+        font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;
+        font-weight: 800; color: #0f172a; margin: 0;
+    }
+    .param-card .param-value { padding: 4px 24px 24px; }
+    .param-card .param-value h2 { font-size: 2.2rem; font-weight: 800; margin: 0; line-height: 1.1; }
+    .param-card .param-value .unit { font-size: 0.9rem; font-weight: 500; opacity: 0.6; margin-left: 4px; }
+    .param-card .param-footer {
+        padding: 10px 24px; font-size: 0.75rem; color: #64748b;
+        border-top: 1px solid rgba(0,0,0,0.04); background: transparent;
+    }
+    .param-card .param-delete {
+        position: absolute; top: 12px; right: 12px; opacity: 0; transition: opacity 0.2s;
+    }
+    .param-card:hover .param-delete { opacity: 1; }
+    .param-card .param-subtitle {
+        font-size: 0.72rem; color: #94a3b8; margin-top: 2px; font-weight: 500;
+    }
+
+    /* ── Info Card ── */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 18px 14px; }
+    .info-item { padding: 6px 0; }
+    .info-item-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; font-weight: 600; }
+    .info-item-value { font-size: 0.85rem; font-weight: 700; color: #1e293b; }
+
+    /* ── Chart Area ── */
+    .chart-container { padding: 8px 14px 14px; position: relative; height: 200px; }
+    .chart-stats {
+        display: flex; gap: 12px; padding: 8px 18px; background: #fafbfc;
+        border-top: 1px solid #f1f5f9; font-size: 0.7rem;
+    }
+    .chart-stats .stat { text-align: center; flex:1; }
+    .chart-stats .stat-label { color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .chart-stats .stat-value { font-size: 1rem; font-weight: 800; color: #334155; }
+
+    /* ── Table Card ── */
+    .table-mini { font-size: 0.75rem; margin: 0; }
+    .table-mini th { background: #f8fafc; font-weight: 700; white-space: nowrap; font-size: 0.7rem; text-transform: uppercase; }
+    .table-mini td { padding: 6px 10px; }
+    .table-card-body { padding: 0 14px 14px; max-height: 260px; overflow-y: auto; }
+    .sql-error { padding: 14px 18px; color: #ef4444; font-size: 0.8rem; font-weight: 600; }
+
+    /* ── Category Tabs in Modal ── */
+    .cat-tab {
+        display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+        border-radius: 12px; border: 1px solid #e2e8f0; cursor: pointer;
+        font-size: 0.8rem; font-weight: 600; transition: all 0.2s; color: #64748b;
+        background: white;
+    }
+    .cat-tab:hover { border-color: #6366f1; color: #6366f1; }
+    .cat-tab.active { background: #6366f1; color: white; border-color: #6366f1; }
+    .cat-tab i { font-size: 1rem; }
+
+    /* ── Source Option ── */
+    .source-option {
+        display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+        border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer;
+        transition: all 0.2s ease; margin-bottom: 6px;
+    }
+    .source-option:hover, .source-option.selected {
+        border-color: var(--color-primary, #4f46e5); background: rgba(79, 70, 229, 0.04);
+    }
+    .source-option.selected { box-shadow: 0 0 0 2px var(--color-primary, #4f46e5); }
+    .source-option i.src-icon {
+        font-size: 1.2rem; color: var(--color-primary, #4f46e5); width: 34px; height: 34px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(79, 70, 229, 0.1); border-radius: 10px; flex-shrink: 0;
+    }
+    .source-option .src-meta .fw-bold { font-size: 0.82rem; }
+    .source-option .src-meta .text-muted { font-size: 0.7rem; }
+
+    .source-list { max-height: 320px; overflow-y: auto; padding-right: 4px; }
+    .source-list::-webkit-scrollbar { width: 5px; }
+    .source-list::-webkit-scrollbar-track { background: transparent; }
+    .source-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    .color-chip {
+        width: 28px; height: 28px; border-radius: 8px; border: 2px solid transparent;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .color-chip:hover, .color-chip.selected { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+    .config-section { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .sql-textarea { font-family: 'Courier New', monospace; font-size: 0.82rem; min-height: 80px; }
+    .preview-result { max-height: 150px; overflow-y: auto; font-size: 0.75rem; margin-top: 8px; }
+
+    /* ── Edit Mode ── */
+    .edit-mode .param-card { border: 2px dashed #6366f1; }
+    .edit-mode .drag-handle { display: flex !important; }
+    .edit-mode .resize-handle { display: block !important; }
+    .edit-mode .edit-btn-inline { display: flex !important; }
+    .drag-handle {
+        display: none; position: absolute; top: 12px; left: 12px; z-index: 5;
+        cursor: grab; color: #6366f1; font-size: 1rem; opacity: 0.6;
+        width: 26px; height: 26px; align-items: center; justify-content: center;
+        background: rgba(99,102,241,0.1); border-radius: 6px;
+    }
+    .drag-handle:hover { opacity: 1; }
+    .resize-handle {
+        display: none; position: absolute; top: 0; right: -6px; width: 12px; height: 100%;
+        cursor: col-resize; z-index: 10; border-radius: 0 8px 8px 0;
+        background: transparent; transition: background 0.15s;
+    }
+    .resize-handle:hover, .resize-handle.active {
+        background: rgba(99,102,241,0.15);
+    }
+    .resize-handle::after {
+        content: ''; position: absolute; top: 50%; right: 3px; transform: translateY(-50%);
+        width: 4px; height: 28px; border-radius: 2px;
+        background: #6366f1; opacity: 0.4; transition: opacity 0.15s;
+    }
+    .resize-handle:hover::after, .resize-handle.active::after { opacity: 0.9; }
+    .edit-btn-inline {
+        display: none; position: absolute; bottom: 8px; right: 8px; z-index: 5;
+        width: 28px; height: 28px; align-items: center; justify-content: center;
+        background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+        cursor: pointer; color: #6366f1; font-size: 0.8rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.15s;
+    }
+    .edit-btn-inline:hover { background: #6366f1; color: white; }
+    .size-indicator {
+        display: none; position: fixed; padding: 6px 14px; border-radius: 10px;
+        background: #1e293b; color: white; font-size: 0.85rem; font-weight: 700;
+        z-index: 9999; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    .sortable-ghost { opacity: 0.4; }
+    .sortable-drag { box-shadow: 0 12px 40px rgba(99,102,241,0.3); }
+    .edit-banner {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;
+        border-radius: 12px; padding: 10px 20px; margin-bottom: 16px;
+        display: flex; align-items: center; justify-content: space-between;
+        animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown { from { opacity:0; transform: translateY(-10px); } to { opacity:1; transform: translateY(0); } }
+</style>
+<div class="container-fluid px-4 py-3">
+<div id="sizeIndicator" class="size-indicator"></div>
+
+<!-- Edit Mode Banner (hidden by default) -->
+<div id="editBanner" class="edit-banner" style="display:none;">
+    <div>
+        <i class="bi bi-arrows-move me-2"></i>
+        <strong>Mode Edit Layout</strong> — Tarik pinggir kanan widget untuk resize, drag ikon ☰ untuk pindahkan
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-light rounded-pill px-3" onclick="saveLayout()">
+            <i class="bi bi-check-lg me-1"></i> Simpan Layout
+        </button>
+        <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="toggleEditMode()">
+            <i class="bi bi-x-lg me-1"></i> Selesai
+        </button>
+    </div>
+</div>
+
+<!-- Controls Bar -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <span class="text-muted small">{{ widget_data|length }} parameter aktif</span>
+    </div>
+    <div class="d-flex gap-2">
+        {% if widget_data %}
+        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="editLayoutBtn" onclick="toggleEditMode()">
+            <i class="bi bi-arrows-move me-1"></i> Edit Layout
+        </button>
+        {% endif %}
+        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" onclick="openAddWidget()">
+            <i class="bi bi-plus-circle me-1"></i> Tambah Parameter
+        </button>
+        <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="deleteDashboard()">
+            <i class="bi bi-trash me-1"></i> Hapus Dashboard
+        </button>
+    </div>
+</div>
+
+<!-- Widget Grid -->
+{% if widget_data %}
+<div class="row g-3" id="widgetGrid">
+    {% for wd in widget_data %}
+    <div class="col-lg-{{ wd.widget.col_span }} col-md-6 col-12" data-widget-id="{{ wd.widget.id }}">
+        <div class="param-card" data-config="{{ wd.widget.data_config | default('{}') | e }}" data-col-span="{{ wd.widget.col_span }}" data-source="{{ wd.widget.data_source }}" data-title="{{ wd.widget.title }}" data-color="{{ wd.widget.color }}">
+            <div class="color-stripe bg-{{ wd.widget.color }}"></div>
+            <div class="drag-handle" title="Drag untuk pindahkan"><i class="bi bi-grip-vertical"></i></div>
+            <button class="btn btn-sm btn-outline-danger border-0 rounded-pill param-delete" onclick="deleteWidget({{ wd.widget.id }})">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <div class="resize-handle" data-widget-id="{{ wd.widget.id }}"></div>
+            <div class="edit-btn-inline" onclick="openFullEditWidget({{ wd.widget.id }}, this)" title="Edit properties">
+                <i class="bi bi-pencil"></i>
+            </div>
+            <div class="param-header">
+                <p class="param-title">{{ wd.widget.title }}</p>
+                <span class="badge bg-{{ wd.widget.color }}-subtle text-{{ wd.widget.color }} border border-{{ wd.widget.color }}-subtle" style="font-size: 0.6rem;">
+                    {{ wd.widget.data_source | replace('_', ' ') | title }}
+                </span>
+            </div>
+
+            {% set dtype = wd.data.type if wd.data.type is defined else 'value_card' %}
+
+            {% if dtype == 'value_card' %}
+            <!-- VALUE CARD -->
+            <div class="param-value">
+                <h2 class="text-{{ wd.widget.color }} widget-val-text" id="value-{{ wd.widget.id }}">
+                    {{ wd.data.value }}<span class="unit">{{ wd.data.unit }}</span>
+                </h2>
+                {% if wd.data.subtitle is defined and wd.data.subtitle %}
+                <div class="param-subtitle">{{ wd.data.subtitle }}</div>
+                {% endif %}
+            </div>
+            {% if wd.data.updated is defined and wd.data.updated %}
+            <div class="param-footer"><i class="bi bi-clock me-1"></i> Updated: {{ wd.data.updated }}</div>
+            {% endif %}
+            {% if wd.data.min_qty is defined %}
+            <div class="param-footer"><i class="bi bi-exclamation-triangle me-1"></i> Min. Stock: {{ wd.data.min_qty }}</div>
+            {% endif %}
+
+            {% elif dtype == 'info_card' %}
+            <!-- INFO CARD -->
+            <div class="info-grid">
+                {% for f in wd.data.fields %}
+                <div class="info-item">
+                    <div class="info-item-label">{{ f.label }}</div>
+                    <div class="info-item-value">{{ f.value }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% elif dtype == 'line_chart' %}
+            <!-- LINE CHART -->
+            <div class="chart-container">
+                <canvas id="chart-{{ wd.widget.id }}"></canvas>
+            </div>
+            {% if wd.data.stats is defined and wd.data.stats %}
+            <div class="chart-stats">
+                <div class="stat"><div class="stat-label">Min</div><div class="stat-value text-info">{{ wd.data.stats.min }}</div></div>
+                <div class="stat"><div class="stat-label">Max</div><div class="stat-value text-danger">{{ wd.data.stats.max }}</div></div>
+                <div class="stat"><div class="stat-label">Avg</div><div class="stat-value text-primary">{{ wd.data.stats.avg }}</div></div>
+                <div class="stat"><div class="stat-label">N</div><div class="stat-value">{{ wd.data.stats.count }}</div></div>
+            </div>
+            {% endif %}
+
+            {% elif dtype == 'bar_chart' %}
+            <!-- BAR CHART -->
+            <div class="chart-container">
+                <canvas id="chart-{{ wd.widget.id }}"></canvas>
+            </div>
+
+            {% elif dtype == 'pie_chart' %}
+            <!-- PIE CHART -->
+            <div class="chart-container">
+                <canvas id="chart-{{ wd.widget.id }}"></canvas>
+            </div>
+
+            {% elif dtype == 'table_card' %}
+            <!-- TABLE -->
+            {% if wd.data.error is defined and wd.data.error %}
+            <div class="sql-error"><i class="bi bi-exclamation-triangle me-1"></i> {{ wd.data.error }}</div>
+            {% elif wd.data.columns is defined and wd.data.columns %}
+            <div class="table-card-body">
+                <table class="table table-mini table-striped table-sm mb-0">
+                    <thead><tr>{% for col in wd.data.columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+                    <tbody>
+                        {% for row in wd.data.rows %}
+                        <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="param-value"><h2 class="text-muted">-</h2></div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<!-- Empty Canvas State -->
+<div class="empty-canvas">
+    <i class="bi bi-grid-1x2"></i>
+    <h4 class="fw-bold">Dashboard Kosong</h4>
+    <p class="text-muted text-center mb-4" style="max-width: 400px;">
+        Mulai dengan menambahkan parameter dari database. Pilih data asset, IoT, analisis data, atau tulis custom SQL query.
+    </p>
+    <button class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="openAddWidget()">
+        <i class="bi bi-plus-circle me-1"></i> Tambah Parameter Pertama
+    </button>
+</div>
+{% endif %}
+
+<!-- ════════════════════════════════════════ -->
+<!-- ADD WIDGET MODAL (Redesigned) -->
+<!-- ════════════════════════════════════════ -->
+<div class="modal fade" id="addWidgetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+            <div class="modal-header border-0 pb-2 border-bottom">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-square text-primary me-2"></i> Tambah Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- STEP 1: Choose Data Source -->
+                <div id="step1">
+                    <h6 class="fw-bold text-dark mb-3"><span class="badge bg-primary rounded-pill me-2">1</span> Pilih Sumber Data</h6>
+
+                    <!-- Category Tabs -->
+                    <div class="d-flex gap-2 flex-wrap mb-3" id="catTabs">
+                        {% for cat_key, cat in data_source_categories.items() %}
+                        {% if cat_key != 'advanced' or is_admin %}
+                        <div class="cat-tab {% if loop.first %}active{% endif %}" data-cat="{{ cat_key }}" onclick="filterCategory('{{ cat_key }}', this)">
+                            <i class="bi {{ cat.icon }}"></i> {{ cat.label }}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- Source List -->
+                    <div class="source-list" id="sourceList">
+                        {% for key, src in data_sources.items() %}
+                        {% if key != 'custom_sql' or is_admin %}
+                        <div class="source-option" data-source="{{ key }}" data-cat="{{ src.category }}"
+                             onclick="selectSource(this, '{{ key }}')"
+                             {% if src.category != (data_source_categories.keys()|list)[0] %}style="display:none;"{% endif %}>
+                            <i class="bi {{ src.icon }} src-icon"></i>
+                            <div class="src-meta">
+                                <div class="fw-bold">{{ src.label }}</div>
+                                <div class="text-muted">{{ src.description }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- STEP 2: Configure -->
+                <div id="step2" class="d-none">
+                    <h6 class="fw-bold text-dark mb-3"><span class="badge bg-primary rounded-pill me-2">2</span> Konfigurasi</h6>
+
+                    <div class="config-section">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Judul Parameter <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="widgetTitle" placeholder="Contoh: Suhu Chiller 1, Total WO Bulan Ini">
+                        </div>
+
+                        <!-- Dynamic config fields will be inserted here -->
+                        <div id="dynamicConfigFields"></div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Lebar Widget</label>
+                            <select class="form-select form-select-sm" id="widgetColSpan">
+                                <option value="3">3 Kolom (Kecil)</option>
+                                <option value="4" selected>4 Kolom (Default)</option>
+                                <option value="6">6 Kolom (Sedang)</option>
+                                <option value="8">8 Kolom (Besar)</option>
+                                <option value="12">12 Kolom (Full Width)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Tinggi Widget</label>
+                            <select class="form-select form-select-sm" id="widgetHeight">
+                                <option value="auto" selected>Auto</option>
+                                <option value="140px">Small (140px)</option>
+                                <option value="200px">Medium (200px)</option>
+                                <option value="280px">Large (280px)</option>
+                                <option value="380px">Extra Large (380px)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Ukuran Font Nilai</label>
+                            <select class="form-select form-select-sm" id="widgetFontSize">
+                                <option value="1.4rem">Small</option>
+                                <option value="2.2rem" selected>Normal</option>
+                                <option value="3rem">Large</option>
+                                <option value="4rem">Extra Large</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Warna</label>
+                            <div class="d-flex gap-2 flex-wrap mt-1" id="colorPicker">
+                                <div class="color-chip bg-primary selected" data-color="primary" onclick="selectColor('primary')"></div>
+                                <div class="color-chip bg-success" data-color="success" onclick="selectColor('success')"></div>
+                                <div class="color-chip bg-danger" data-color="danger" onclick="selectColor('danger')"></div>
+                                <div class="color-chip bg-warning" data-color="warning" onclick="selectColor('warning')"></div>
+                                <div class="color-chip bg-info" data-color="info" onclick="selectColor('info')"></div>
+                                <div class="color-chip bg-dark" data-color="dark" onclick="selectColor('dark')"></div>
+                                <div class="color-chip" style="background: #8b5cf6;" data-color="purple" onclick="selectColor('purple')"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 d-flex justify-content-between">
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="backBtn" onclick="goToStep(1)" style="display:none;">
+                    <i class="bi bi-arrow-left me-1"></i> Kembali
+                </button>
+                <div>
+                    <button class="btn btn-sm btn-primary rounded-pill px-4 shadow-sm" id="nextBtn" onclick="goToStep(2)" disabled>
+                        Lanjut <i class="bi bi-arrow-right ms-1"></i>
+                    </button>
+                    <button class="btn btn-sm btn-success rounded-pill px-4 shadow-sm d-none" id="saveBtn" onclick="saveWidget()">
+                        <i class="bi bi-check-lg me-1"></i> Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+    const DASHBOARD_ID = {{ dashboard.id }};
+    let selectedSource = null;
+    let selectedColor = 'primary';
+    let currentStep = 1;
+    let editingWidgetId = null;
+
+    // Data for dynamic selects
+    const assetsData = {{ assets | tojson | safe }};
+    const sitesData = {{ sites | tojson | safe }};
+    const partsData = {{ parts | tojson | safe }};
+    const iotParams = {{ iot_params | tojson | safe }};
+    const DATA_SOURCES = {{ data_sources | tojson | safe }};
+    const IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+
+    // ── Category Filter ──
+    function filterCategory(cat, tabEl) {
+        document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+        tabEl.classList.add('active');
+        document.querySelectorAll('.source-option').forEach(o => {
+            o.style.display = o.dataset.cat === cat ? 'flex' : 'none';
+            o.classList.remove('selected');
+        });
+        selectedSource = null;
+        document.getElementById('nextBtn').disabled = true;
+    }
+
+    function openAddWidget() {
+        editingWidgetId = null;
+        currentStep = 1;
+        selectedSource = null;
+        document.getElementById('addWidgetModal').querySelector('.modal-title').innerHTML = '<i class="bi bi-plus-square text-primary me-2"></i> Tambah Parameter';
+        document.getElementById('step1').classList.remove('d-none');
+        document.getElementById('step2').classList.add('d-none');
+        document.getElementById('nextBtn').classList.remove('d-none');
+        document.getElementById('nextBtn').disabled = true;
+        document.getElementById('saveBtn').classList.add('d-none');
+        document.getElementById('backBtn').style.display = 'none';
+        document.querySelectorAll('.source-option').forEach(el => el.classList.remove('selected'));
+        // Reset to first category
+        const firstTab = document.querySelector('.cat-tab');
+        if (firstTab) filterCategory(firstTab.dataset.cat, firstTab);
+
+        const modal = new bootstrap.Modal(document.getElementById('addWidgetModal'));
+        modal.show();
+    }
+
+    function selectSource(el, key) {
+        document.querySelectorAll('.source-option').forEach(o => o.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedSource = key;
+        document.getElementById('nextBtn').disabled = false;
+    }
+
+    function goToStep(step) {
+        currentStep = step;
+        if (step === 1) {
+            document.getElementById('step1').classList.remove('d-none');
+            document.getElementById('step2').classList.add('d-none');
+            document.getElementById('nextBtn').classList.remove('d-none');
+            document.getElementById('saveBtn').classList.add('d-none');
+            document.getElementById('backBtn').style.display = 'none';
+        } else if (step === 2) {
+            document.getElementById('step1').classList.add('d-none');
+            document.getElementById('step2').classList.remove('d-none');
+            document.getElementById('nextBtn').classList.add('d-none');
+            document.getElementById('saveBtn').classList.remove('d-none');
+            document.getElementById('backBtn').style.display = 'inline-block';
+            buildConfigFields(selectedSource);
+
+            // Auto-set suggested col_span for charts
+            const src = DATA_SOURCES[selectedSource];
+            if (src && (src.widget_type === 'line_chart' || src.widget_type === 'bar_chart' || src.widget_type === 'pie_chart')) {
+                document.getElementById('widgetColSpan').value = '6';
+            } else if (src && src.widget_type === 'table_card') {
+                document.getElementById('widgetColSpan').value = '6';
+            } else if (src && src.widget_type === 'info_card') {
+                document.getElementById('widgetColSpan').value = '4';
+            } else {
+                document.getElementById('widgetColSpan').value = '4';
+            }
+        }
+    }
+
+    function buildConfigFields(sourceKey) {
+        const container = document.getElementById('dynamicConfigFields');
+        container.innerHTML = '';
+        const fields = DATA_SOURCES[sourceKey].config_fields;
+
+        fields.forEach(field => {
+            const div = document.createElement('div');
+            div.className = 'mb-3';
+
+            if (field.type === 'select_asset') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <select class="form-select form-select-sm" id="config_${field.name}" onchange="onAssetChange(this.value)">
+                        <option value="">-- Pilih Asset --</option>
+                        ${assetsData.map(a => `<option value="${a.id}">${a.name} (${a.code})${a.site_name ? ' - ' + a.site_name : ''}</option>`).join('')}
+                    </select>`;
+            } else if (field.type === 'select_meter') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <select class="form-select form-select-sm" id="config_${field.name}">
+                        <option value="">-- Pilih Asset terlebih dahulu --</option>
+                    </select>`;
+            } else if (field.type === 'select_site') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <select class="form-select form-select-sm" id="config_${field.name}">
+                        <option value="0">Semua Site</option>
+                        ${sitesData.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                    </select>`;
+            } else if (field.type === 'select_part') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <select class="form-select form-select-sm" id="config_${field.name}">
+                        <option value="">-- Pilih Part --</option>
+                        ${partsData.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                    </select>`;
+            } else if (field.type === 'select_custom_field') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <select class="form-select form-select-sm" id="config_${field.name}">
+                        <option value="">-- Pilih Asset terlebih dahulu --</option>
+                    </select>`;
+            } else if (field.type === 'select_iot_site') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <select class="form-select form-select-sm" id="config_${field.name}" onchange="loadIotChillers(this.value)">
+                        <option value="">-- Loading... --</option>
+                    </select>`;
+                // Auto-load IoT sites
+                setTimeout(() => loadIotSites(), 100);
+            } else if (field.type === 'select_iot_chiller') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <select class="form-select form-select-sm" id="config_${field.name}">
+                        <option value="">-- Pilih Site IoT terlebih dahulu --</option>
+                    </select>`;
+            } else if (field.type === 'select_iot_param') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <select class="form-select form-select-sm" id="config_${field.name}">
+                        ${iotParams.map(p => `<option value="${p.key}">${p.label} (${p.unit})</option>`).join('')}
+                    </select>`;
+            } else if (field.type === 'select') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <select class="form-select form-select-sm" id="config_${field.name}">
+                        ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                    </select>`;
+            } else if (field.type === 'textarea') {
+                div.innerHTML = `
+                    <label class="form-label small fw-bold">${field.label}</label>
+                    <textarea class="form-control form-control-sm sql-textarea" id="config_${field.name}"
+                              placeholder="SELECT COUNT(*) FROM work_order"></textarea>
+                    <button class="btn btn-sm btn-outline-info mt-2 rounded-pill px-3" onclick="previewSQL()">
+                        <i class="bi bi-play-circle me-1"></i> Preview
+                    </button>
+                    <div id="sqlPreview" class="preview-result"></div>`;
+            }
+            container.appendChild(div);
+        });
+    }
+
+    // ── Asset Change Handler (cascading) ──
+    function onAssetChange(assetId) {
+        if (!assetId) return;
+        // Load meters
+        const meterSelect = document.getElementById('config_meter_id');
+        if (meterSelect) {
+            meterSelect.innerHTML = '<option value="">Loading...</option>';
+            fetch(`/custom-dashboard/api/meters/${assetId}`)
+                .then(r => r.json())
+                .then(data => {
+                    meterSelect.innerHTML = '<option value="">-- Pilih Meter --</option>';
+                    data.meters.forEach(m => {
+                        meterSelect.innerHTML += `<option value="${m.id}">${m.name} (${m.unit})</option>`;
+                    });
+                });
+        }
+        // Load custom fields
+        const cfSelect = document.getElementById('config_field_name');
+        if (cfSelect) {
+            cfSelect.innerHTML = '<option value="">Loading...</option>';
+            fetch(`/custom-dashboard/api/custom-fields/${assetId}`)
+                .then(r => r.json())
+                .then(data => {
+                    cfSelect.innerHTML = '<option value="">-- Pilih Field --</option>';
+                    data.fields.forEach(f => {
+                        cfSelect.innerHTML += `<option value="${f.name}">${f.name}: ${f.value || '-'}</option>`;
+                    });
+                });
+        }
+    }
+
+    // ── IoT Cascading ──
+    function loadIotSites() {
+        fetch('/custom-dashboard/api/iot/sites')
+            .then(r => r.json())
+            .then(data => {
+                const sel = document.getElementById('config_iot_site_id');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">-- Pilih Site IoT --</option>';
+                if (data.error) {
+                    sel.innerHTML = `<option value="">⚠️ ${data.error}</option>`;
+                    return;
+                }
+                data.sites.forEach(s => {
+                    sel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
+            }).catch(() => {
+                const sel = document.getElementById('config_iot_site_id');
+                if (sel) sel.innerHTML = '<option value="">⚠️ Cannot connect</option>';
+            });
+    }
+
+    function loadIotChillers(siteId) {
+        const sel = document.getElementById('config_iot_chiller_id');
+        if (!sel || !siteId) return;
+        sel.innerHTML = '<option value="">Loading...</option>';
+        fetch(`/custom-dashboard/api/iot/chillers/${siteId}`)
+            .then(r => r.json())
+            .then(data => {
+                sel.innerHTML = '<option value="">-- Pilih Chiller --</option>';
+                data.chillers.forEach(c => {
+                    sel.innerHTML += `<option value="${c.id}">${c.chiller_num} (${c.model_number || '-'})</option>`;
+                });
+            });
+    }
+
+    // ── SQL Preview ──
+    function previewSQL() {
+        const sql = document.getElementById('config_sql_query')?.value;
+        const preview = document.getElementById('sqlPreview');
+        if (!sql || !preview) return;
+
+        preview.innerHTML = '<span class="text-muted">Loading...</span>';
+        fetch('/custom-dashboard/api/sql/preview', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({sql: sql})
+        }).then(r => r.json()).then(data => {
+            if (data.error) {
+                preview.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${data.error}</div>`;
+            } else if (data.columns && data.rows) {
+                let html = '<table class="table table-sm table-bordered table-striped mb-0"><thead><tr>';
+                data.columns.forEach(c => html += `<th class="small">${c}</th>`);
+                html += '</tr></thead><tbody>';
+                data.rows.forEach(row => {
+                    html += '<tr>';
+                    row.forEach(v => html += `<td class="small">${v !== null ? v : '-'}</td>`);
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                html += `<div class="text-muted mt-1" style="font-size:0.7rem;">Showing ${data.rows.length} of first 5 rows</div>`;
+                preview.innerHTML = html;
+            }
+        }).catch(err => {
+            preview.innerHTML = `<div class="alert alert-danger py-2 small mb-0">Error: ${err}</div>`;
+        });
+    }
+
+    function selectColor(color) {
+        selectedColor = color;
+        document.querySelectorAll('.color-chip').forEach(c => c.classList.remove('selected'));
+        const chip = document.querySelector(`.color-chip[data-color="${color}"]`);
+        if (chip) chip.classList.add('selected');
+    }
+
+    function saveWidget() {
+        const title = document.getElementById('widgetTitle').value.trim();
+        if (!title) { alert('Judul parameter harus diisi!'); return; }
+
+        const configFields = DATA_SOURCES[selectedSource].config_fields;
+        const config = {};
+        configFields.forEach(field => {
+            const el = document.getElementById(`config_${field.name}`);
+            if (el) config[field.name] = el.value;
+        });
+
+        // Include display settings in data_config
+        config.widget_height = document.getElementById('widgetHeight').value;
+        config.font_size = document.getElementById('widgetFontSize').value;
+
+        const payload = {
+            title: title,
+            data_source: selectedSource,
+            data_config: config,
+            col_span: parseInt(document.getElementById('widgetColSpan').value),
+            color: selectedColor,
+            widget_type: DATA_SOURCES[selectedSource].widget_type || 'value_card'
+        };
+
+        const url = editingWidgetId 
+            ? `/custom-dashboard/api/widget/${editingWidgetId}/update`
+            : `/custom-dashboard/api/${DASHBOARD_ID}/widget/add`;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') {
+                window.location.reload();
+            } else {
+                alert(data.error || 'Gagal menambah widget');
+            }
+        });
+    }
+
+    function deleteWidget(widgetId) {
+        if (!confirm('Hapus parameter ini?')) return;
+        fetch(`/custom-dashboard/api/widget/${widgetId}/delete`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') window.location.reload();
+        });
+    }
+
+    function deleteDashboard() {
+        if (!confirm('Hapus dashboard ini beserta semua parameter-nya?')) return;
+        fetch(`/custom-dashboard/api/${DASHBOARD_ID}/delete`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') window.location.href = '/dashboard';
+        });
+    }
+
+    function renameDashboard() {
+        const newName = prompt('Nama dashboard baru:', document.getElementById('dashboardName').textContent);
+        if (!newName || !newName.trim()) return;
+        fetch(`/custom-dashboard/api/${DASHBOARD_ID}/rename`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: newName.trim()})
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') {
+                document.getElementById('dashboardName').textContent = newName.trim();
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════
+    // CHART.JS INITIALIZATION
+    // ═══════════════════════════════════════
+    const CHART_COLORS = ['#6366f1','#10b981','#f59e0b','#ec4899','#64748b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16'];
+    const widgetChartsData = {};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // ── Apply custom height/font from data-config ──
+        document.querySelectorAll('.param-card[data-config]').forEach(card => {
+            try {
+                const cfg = JSON.parse(card.dataset.config || '{}');
+                if (cfg.widget_height && cfg.widget_height !== 'auto') {
+                    card.style.minHeight = cfg.widget_height;
+                }
+                if (cfg.font_size) {
+                    const valEl = card.querySelector('.widget-val-text');
+                    if (valEl) valEl.style.fontSize = cfg.font_size;
+                }
+            } catch(e) {}
+        });
+
+        {% for wd in widget_data %}
+        {% set dtype = wd.data.type if wd.data.type is defined else 'value_card' %}
+
+        {% if dtype == 'line_chart' %}
+        (function(){
+            const ctx = document.getElementById('chart-{{ wd.widget.id }}');
+            if (!ctx) return;
+            const chartData = {{ wd.data | tojson | safe }};
+            widgetChartsData[{{ wd.widget.id }}] = chartData;
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels || [],
+                    datasets: [{
+                        label: '{{ wd.widget.title }}',
+                        data: chartData.values || [],
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99,102,241,0.08)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: chartData.values && chartData.values.length > 30 ? 0 : 3,
+                        pointHoverRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { font: { size: 9 }, maxTicksLimit: 8 }, grid: { display: false } },
+                        y: { ticks: { font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.04)' } }
+                    }
+                }
+            });
+        })();
+        {% endif %}
+
+        {% if dtype == 'bar_chart' %}
+        (function(){
+            const ctx = document.getElementById('chart-{{ wd.widget.id }}');
+            if (!ctx) return;
+            const chartData = {{ wd.data | tojson | safe }};
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.labels || [],
+                    datasets: [{
+                        data: chartData.values || [],
+                        backgroundColor: CHART_COLORS.slice(0, (chartData.values||[]).length),
+                        borderRadius: 6,
+                        barPercentage: 0.7,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                        y: { ticks: { font: { size: 10 } }, grid: { display: false } }
+                    }
+                }
+            });
+        })();
+        {% endif %}
+
+        {% if dtype == 'pie_chart' %}
+        (function(){
+            const ctx = document.getElementById('chart-{{ wd.widget.id }}');
+            if (!ctx) return;
+            const chartData = {{ wd.data | tojson | safe }};
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartData.labels || [],
+                    datasets: [{
+                        data: chartData.values || [],
+                        backgroundColor: chartData.colors || CHART_COLORS,
+                        borderWidth: 2,
+                        borderColor: '#fff',
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 12, usePointStyle: true } }
+                    },
+                    cutout: '55%'
+                }
+            });
+        })();
+        {% endif %}
+
+        {% endfor %}
+    });
+
+    // Auto-refresh widget data every 30 seconds
+    setInterval(() => {
+        if (isEditMode) return;
+        fetch(`/custom-dashboard/api/${DASHBOARD_ID}/data`)
+            .then(r => r.json())
+            .then(data => {
+                for (const [widgetId, val] of Object.entries(data.data)) {
+                    const dtype = val.type || 'value_card';
+                    if (dtype === 'value_card') {
+                        const el = document.getElementById(`value-${widgetId}`);
+                        if (el) {
+                            el.innerHTML = `${val.value}<span class="unit">${val.unit || ''}</span>`;
+                        }
+                    }
+                }
+            }).catch(() => {});
+    }, 30000);
+
+    // ═══════════════════════════════════════
+    // EDIT MODE & DRAG-AND-DROP LAYOUT
+    // ═══════════════════════════════════════
+    let isEditMode = false;
+    let sortableInstance = null;
+    const COL_SIZES = [2, 3, 4, 6, 8, 12];
+
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const grid = document.getElementById('widgetGrid');
+        const banner = document.getElementById('editBanner');
+        const editBtn = document.getElementById('editLayoutBtn');
+        if (!grid) return;
+
+        if (isEditMode) {
+            grid.classList.add('edit-mode');
+            if (banner) banner.style.display = 'flex';
+            if (editBtn) editBtn.classList.add('d-none');
+            sortableInstance = new Sortable(grid, {
+                animation: 200,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                forceFallback: false,
+            });
+            initResizeHandles();
+        } else {
+            grid.classList.remove('edit-mode');
+            if (banner) banner.style.display = 'none';
+            if (editBtn) editBtn.classList.remove('d-none');
+            if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null; }
+        }
+    }
+
+    function initResizeHandles() {
+        document.querySelectorAll('.resize-handle').forEach(handle => {
+            handle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const widgetId = this.dataset.widgetId;
+                const col = document.querySelector(`[data-widget-id="${widgetId}"]`);
+                if (!col) return;
+                const card = col.querySelector('.param-card');
+                const grid = document.getElementById('widgetGrid');
+                const gridWidth = grid.offsetWidth;
+                const indicator = document.getElementById('sizeIndicator');
+
+                handle.classList.add('active');
+                indicator.style.display = 'block';
+
+                const onMouseMove = (ev) => {
+                    const gridRect = grid.getBoundingClientRect();
+                    const colLeft = col.getBoundingClientRect().left;
+                    const mouseX = ev.clientX;
+                    const widthPx = mouseX - colLeft;
+                    const ratio = widthPx / gridWidth;
+                    const rawCols = Math.round(ratio * 12);
+
+                    // Snap to nearest valid size
+                    let best = 4;
+                    let bestDist = 999;
+                    COL_SIZES.forEach(s => {
+                        const d = Math.abs(rawCols - s);
+                        if (d < bestDist) { bestDist = d; best = s; }
+                    });
+
+                    // Apply
+                    card.dataset.colSpan = best;
+                    COL_SIZES.forEach(s => col.classList.remove(`col-lg-${s}`));
+                    col.classList.add(`col-lg-${best}`);
+
+                    // Show indicator near cursor
+                    indicator.textContent = `${best}/12 kolom`;
+                    indicator.style.left = (ev.clientX + 15) + 'px';
+                    indicator.style.top = (ev.clientY - 15) + 'px';
+                };
+
+                const onMouseUp = () => {
+                    handle.classList.remove('active');
+                    indicator.style.display = 'none';
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        });
+    }
+
+    function saveLayout() {
+        const grid = document.getElementById('widgetGrid');
+        const items = grid.querySelectorAll('[data-widget-id]');
+        const layout = [];
+        items.forEach((item, index) => {
+            const widgetId = parseInt(item.dataset.widgetId);
+            const card = item.querySelector('.param-card');
+            const colSpan = parseInt(card.dataset.colSpan) || 4;
+            layout.push({ id: widgetId, position: index + 1, col_span: colSpan });
+        });
+        fetch(`/custom-dashboard/api/${DASHBOARD_ID}/layout`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ layout: layout })
+        }).then(r => r.json()).then(data => {
+            if (data.status === 'ok') {
+                const banner = document.getElementById('editBanner');
+                const origHTML = banner.innerHTML;
+                banner.innerHTML = '<div><i class="bi bi-check-circle me-2"></i><strong>Layout tersimpan!</strong></div>';
+                setTimeout(() => { banner.innerHTML = origHTML; }, 1500);
+            }
+        });
+    }
+
+    window.openFullEditWidget = async function(id, btnEl) {
+        editingWidgetId = id;
+        const card = btnEl.closest('.param-card');
+        const source = card.dataset.source;
+        const cfg = JSON.parse(card.dataset.config || '{}');
+        const title = card.dataset.title;
+        const color = card.dataset.color || 'primary';
+        const colSpan = card.dataset.colSpan || 4;
+
+        currentStep = 2;
+        document.getElementById('step1').classList.add('d-none');
+        document.getElementById('step2').classList.remove('d-none');
+        document.getElementById('nextBtn').classList.add('d-none');
+        document.getElementById('saveBtn').classList.remove('d-none');
+        document.getElementById('backBtn').style.display = 'inline-block';
+        
+        selectedSource = source;
+        const srcEl = document.querySelector(`.source-option[data-source="${source}"]`);
+        if (srcEl) {
+            document.querySelectorAll('.source-option').forEach(o => o.classList.remove('selected'));
+            srcEl.classList.add('selected');
+        }
+
+        buildConfigFields(source);
+
+        document.getElementById('widgetTitle').value = title;
+        document.getElementById('widgetColSpan').value = colSpan;
+        selectColor(color);
+        if (cfg.widget_height) document.getElementById('widgetHeight').value = cfg.widget_height;
+        if (cfg.font_size) document.getElementById('widgetFontSize').value = cfg.font_size;
+        
+        // Wait for async cascading populations
+        for (const [k, v] of Object.entries(cfg)) {
+            const el = document.getElementById(`config_${k}`);
+            if (el) {
+                el.value = v;
+                if (k === 'asset_id') {
+                    await fetch(`/custom-dashboard/api/meters/${v}`).then(r=>r.json()).then(data=>{
+                        const sel = document.getElementById('config_meter_id');
+                        if(sel){ sel.innerHTML='<option value="">-- Pilih Meter --</option>'; data.meters.forEach(m=>sel.innerHTML+=`<option value="${m.id}">${m.name} (${m.unit})</option>`); sel.value=cfg['meter_id']||'';}
+                    });
+                    await fetch(`/custom-dashboard/api/custom-fields/${v}`).then(r=>r.json()).then(data=>{
+                        const sel = document.getElementById('config_field_name');
+                        if(sel){ sel.innerHTML='<option value="">-- Pilih Field --</option>'; data.fields.forEach(f=>sel.innerHTML+=`<option value="${f.name}">${f.name}</option>`); sel.value=cfg['field_name']||'';}
+                    });
+                } else if (k === 'iot_site_id') {
+                    await fetch(`/custom-dashboard/api/iot/chillers/${v}`).then(r=>r.json()).then(data=>{
+                        const sel = document.getElementById('config_iot_chiller_id');
+                        if(sel){ sel.innerHTML='<option value="">-- Pilih Chiller --</option>'; data.chillers.forEach(c=>sel.innerHTML+=`<option value="${c.id}">${c.chiller_num}</option>`); sel.value=cfg['iot_chiller_id']||'';}
+                    });
+                }
+            }
+        }
+        
+        for (const [k, v] of Object.entries(cfg)) {
+            const el = document.getElementById(`config_${k}`);
+            if(el) el.value = v;
+        }
+
+        const modalTitle = document.getElementById('addWidgetModal').querySelector('.modal-title');
+        modalTitle.innerHTML = '<i class="bi bi-pencil-square text-primary me-2"></i> Edit Parameter';
+        
+        const modal = new bootstrap.Modal(document.getElementById('addWidgetModal'));
+        modal.show();
+    };
+
+
+</script>
+{% endblock %}

@@ -1,0 +1,841 @@
+                <div class="row g-4 align-items-stretch">
+                    <!-- Column 1: API Configuration -->
+                    <div class="col-lg-6">
+                        <div class="settings-form-card h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex align-items-center mb-3 border-bottom pb-3">
+                                    <div class="rounded-circle p-2 bg-primary bg-opacity-10 text-primary me-2">
+                                        <i class="bi bi-gear-wide-connected fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0 border-0 pb-0">Attendance API Configuration</h5>
+                                        <div class="text-muted small">Konfigurasi integrasi koneksi dan kredensial API Odoo</div>
+                                    </div>
+                                </div>
+                                <form action="{{ url_for('settings.save_system_settings') }}" method="POST" id="attendanceConfigForm">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Sync Method</label>
+                                        <select class="form-select form-select-sm" name="ATTENDANCE_SYNC_METHOD" id="syncMethodSelect" onchange="toggleSyncMethod()">
+                                            <option value="pull" {% if sys_settings.get('ATTENDANCE_SYNC_METHOD', 'pull') == 'pull' %}selected{% endif %}>Pull (Cron fetches from IT Team)</option>
+                                            <option value="push" {% if sys_settings.get('ATTENDANCE_SYNC_METHOD') == 'push' %}selected{% endif %}>Push (IT Team sends to CMMS)</option>
+                                            <option value="zkteco" {% if sys_settings.get('ATTENDANCE_SYNC_METHOD') == 'zkteco' %}selected{% endif %}>ZKTeco F18 (Direct Fingerprint Machine)</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3" id="pullMethodConfig">
+                                        <label class="form-label small fw-bold">API URL (if using Pull method)</label>
+                                        <input type="url" name="ATTENDANCE_API_URL" id="attendanceApiUrl" class="form-control form-control-sm" value="{{ sys_settings.get('ATTENDANCE_API_URL', 'https://jayateknik.co.id/jti_api/v1/hr/attendance') }}" placeholder="https://jayateknik.co.id/jti_api/v1/hr/attendance">
+
+                                        <label class="form-label small fw-bold mt-2">Bearer Token (Authorization)</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="password" name="ATTENDANCE_API_BEARER_TOKEN" id="attendanceBearerToken" class="form-control form-control-sm font-monospace" value="{{ sys_settings.get('ATTENDANCE_API_BEARER_TOKEN', '') }}" placeholder="Masukkan Bearer token Odoo">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="toggleTokenVisibility()"><i class="bi bi-eye" id="tokenEyeIcon"></i></button>
+                                        </div>
+                                        <div class="form-text small text-muted mb-2">
+                                            <i class="bi bi-info-circle text-primary"></i> Request dikirim dengan Header <code>Origin: https://cmms.basjti.com/</code> sesuai izin server Odoo.
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 d-none" id="pushMethodConfig">
+                                        <div class="alert alert-info py-2 small mb-0">
+                                            <strong>Endpoint URL for IT Team:</strong><br>
+                                            <code id="pushEndpointUrl"></code><br>
+                                            <span class="text-muted">Method: POST | Payload: {"attendances": [{"nrp": "...", "nama": "...", "jam_masuk": "YYYY-MM-DD HH:MM:SS", "jam_pulang": "YYYY-MM-DD HH:MM:SS"}]}</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 d-none" id="zktecoMethodConfig">
+                                        <label class="form-label small fw-bold">Device IP</label>
+                                        <input type="text" name="ATTENDANCE_ZKTECO_IP" id="zktecoIp" class="form-control form-control-sm" value="{{ sys_settings.get('ATTENDANCE_ZKTECO_IP', '192.168.1.12') }}" placeholder="192.168.1.12">
+
+                                        <label class="form-label small fw-bold mt-2">Device Port</label>
+                                        <input type="number" name="ATTENDANCE_ZKTECO_PORT" id="zktecoPort" class="form-control form-control-sm" value="{{ sys_settings.get('ATTENDANCE_ZKTECO_PORT', '4370') }}" placeholder="4370">
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="pt-3 border-top mt-3">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <button type="button" class="btn btn-sm btn-outline-primary w-100 fw-semibold" id="btnTestConn" onclick="testAttendanceApiConnection()">
+                                            <i class="bi bi-arrow-repeat me-1"></i> Test Connection
+                                        </button>
+                                    </div>
+                                    <div class="col-6">
+                                        <button type="button" class="btn btn-sm btn-primary w-100 fw-semibold text-white" onclick="document.getElementById('attendanceConfigForm').submit()">
+                                            <i class="bi bi-save me-1"></i> Save Settings
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="testConnResult" class="mt-2 small d-none"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Manual Sync & Export Odoo -->
+                    <div class="col-lg-6">
+                        <div class="settings-form-card h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex align-items-center mb-3 border-bottom pb-3">
+                                    <div class="rounded-circle p-2 bg-success bg-opacity-10 text-success me-2">
+                                        <i class="bi bi-cloud-arrow-down-fill fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0 border-0 pb-0">Manual Sync & Raw Data Export</h5>
+                                        <div class="text-muted small">Tarik data absensi Odoo atau unduh seluruh log mentah ke Excel</div>
+                                    </div>
+                                </div>
+                                <p class="text-muted small mb-3">Tentukan rentang tanggal untuk mengambil absensi karyawan langsung dari server Odoo.</p>
+                                
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold">Dari Tanggal (Date From)</label>
+                                        <input type="date" id="manualDateFrom" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small fw-bold">Sampai Tanggal (Date To)</label>
+                                        <input type="date" id="manualDateTo" class="form-control form-control-sm">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Filter NRP Karyawan <span class="text-muted fw-normal">(Opsional)</span></label>
+                                    <input type="text" id="manualNrp" class="form-control form-control-sm" placeholder="Kosongkan untuk menarik semua karyawan">
+                                </div>
+
+                                <div class="d-flex flex-column gap-2 mt-4">
+                                    <button type="button" class="btn btn-warning py-2 fw-bold text-dark shadow-sm" id="btnCheckUserSync" onclick="openUserSyncChecker('manualDateFrom', 'manualDateTo')">
+                                        <i class="bi bi-person-check-fill me-2"></i> Cek Kelengkapan Data User Odoo
+                                    </button>
+                                    <button type="button" class="btn btn-primary py-2 fw-bold text-white shadow-sm" id="btnManualSync" onclick="triggerManualSync()">
+                                        <i class="bi bi-cloud-arrow-down me-2"></i> Tarik & Sinkronkan ke Jadwal CMMS
+                                    </button>
+                                    <button type="button" class="btn btn-success py-2 fw-bold text-white shadow-sm" id="btnDownloadRawOdoo" onclick="downloadRawOdooExcel('manualDateFrom', 'manualDateTo', 'manualNrp')">
+                                        <i class="bi bi-file-earmark-excel-fill me-2"></i> Download File Excel Data Mentah
+                                    </button>
+                                    <button type="button" class="btn btn-dark py-2 fw-bold text-white shadow-sm" id="btnViewRawJson" onclick="viewRawOdooJson('manualDateFrom', 'manualDateTo', 'manualNrp')">
+                                        <i class="bi bi-filetype-json me-2"></i> Tampilkan JSON Raw dari API
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="manualSyncResult" class="mt-3 small d-none"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Assistant Configuration (Sumopod GPT-5 Nano) -->
+                <div class="row g-4 align-items-stretch mt-1">
+                    <div class="col-12">
+                        <div class="settings-form-card">
+                            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle p-2 bg-info bg-opacity-10 text-info me-2">
+                                        <i class="bi bi-robot fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0 border-0 pb-0">AI Assistant Configuration (Sumopod GPT-5 Nano)</h5>
+                                        <div class="text-muted small">Konfigurasi integrasi Asisten AI untuk Portal Engineer CMMS</div>
+                                    </div>
+                                </div>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+                                    <i class="bi bi-cpu-fill me-1"></i> Model: {{ sys_settings.get('SUMOPOD_MODEL', 'gpt-5-nano') }}
+                                </span>
+                            </div>
+
+                            <form action="{{ url_for('settings.save_system_settings') }}" method="POST" id="aiConfigForm">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Sumopod API Key (SUMOPOD_API_KEY)</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="password" name="SUMOPOD_API_KEY" id="sumopodApiKey" class="form-control form-control-sm font-monospace" value="{{ sys_settings.get('SUMOPOD_API_KEY', '') }}" placeholder="sk-...">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="toggleSumopodKeyVisibility()"><i class="bi bi-eye" id="sumopodEyeIcon"></i></button>
+                                        </div>
+                                        <div class="form-text small text-muted">Kunci API dari Sumopod AI untuk mengakses model GPT-5 Nano.</div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-bold">Sumopod Base URL</label>
+                                        <input type="text" name="SUMOPOD_BASE_URL" id="sumopodBaseUrl" class="form-control form-control-sm font-monospace" value="{{ sys_settings.get('SUMOPOD_BASE_URL', 'https://ai.sumopod.com') }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-bold">Model AI</label>
+                                        <input type="text" name="SUMOPOD_MODEL" id="sumopodModel" class="form-control form-control-sm font-monospace fw-bold text-primary" value="{{ sys_settings.get('SUMOPOD_MODEL', 'gpt-5-nano') }}">
+                                    </div>
+                                </div>
+
+                                <div class="pt-3 border-top mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div id="aiTestResult" class="small fw-semibold"></div>
+                                    <div class="d-flex gap-2 ms-auto">
+                                        <button type="button" class="btn btn-sm btn-outline-info fw-semibold" id="btnTestAiConn" onclick="testAiApiConnection()">
+                                            <i class="bi bi-lightning-charge me-1"></i> Test Koneksi AI
+                                        </button>
+                                        <button type="submit" class="btn btn-sm btn-primary fw-semibold text-white">
+                                            <i class="bi bi-save me-1"></i> Simpan Pengaturan AI
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal User Sync & Presence Checker -->
+                <div class="modal fade" id="modalUserSyncChecker" tabindex="-1" aria-labelledby="modalUserSyncCheckerLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content border-0 shadow">
+                            <div class="modal-header bg-primary text-white py-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-person-check-fill fs-4 text-warning"></i>
+                                    <div>
+                                        <h6 class="modal-title fw-bold mb-0" id="modalUserSyncCheckerLabel">Cek Kelengkapan Data User Odoo vs CMMS</h6>
+                                        <div class="small text-white-50" id="userSyncMetaDate">Periode: -</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body p-3 bg-light">
+                                <!-- Summary KPI Cards -->
+                                <div class="row g-2 mb-3" id="userSyncSummaryCards">
+                                    <div class="col-md-3 col-6">
+                                        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100 border-start border-4 border-primary">
+                                            <div class="text-muted small fw-semibold">Total User CMMS</div>
+                                            <div class="fs-4 fw-bold text-primary mt-1" id="statTotalCmms">-</div>
+                                            <div class="small text-muted" style="font-size: 0.75rem;">Akun terdaftar di portal</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100 border-start border-4 border-success">
+                                            <div class="text-muted small fw-semibold">✅ Sudah Ada Data</div>
+                                            <div class="fs-4 fw-bold text-success mt-1" id="statSudahAda">-</div>
+                                            <div class="small text-muted" style="font-size: 0.75rem;">Ada log di Odoo</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100 border-start border-4 border-danger">
+                                            <div class="text-muted small fw-semibold">❌ Belum Ada Data</div>
+                                            <div class="fs-4 fw-bold text-danger mt-1" id="statBelumAda">-</div>
+                                            <div class="small text-muted" style="font-size: 0.75rem;">Tidak ada log di Odoo</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white h-100 border-start border-4 border-warning">
+                                            <div class="text-muted small fw-semibold">❓ Odoo Belum di CMMS</div>
+                                            <div class="fs-4 fw-bold text-warning mt-1" id="statUnregistered">-</div>
+                                            <div class="small text-muted" style="font-size: 0.75rem;">NRP belum didaftarkan</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Controls & Filters -->
+                                <div class="card border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                        <!-- Filter Tabs / Pills -->
+                                        <div class="btn-group btn-group-sm flex-wrap" role="group" id="userSyncFilterPills">
+                                            <button type="button" class="btn btn-outline-primary active" id="btnTabAll" onclick="filterUserSyncTable('all')">
+                                                Semua User (<span id="pillCountAll">0</span>)
+                                            </button>
+                                            <button type="button" class="btn btn-outline-success" id="btnTabSudah" onclick="filterUserSyncTable('sudah')">
+                                                ✅ Sudah Ada (<span id="pillCountSudah">0</span>)
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" id="btnTabBelum" onclick="filterUserSyncTable('belum')">
+                                                ❌ Belum Ada (<span id="pillCountBelum">0</span>)
+                                            </button>
+                                            <button type="button" class="btn btn-outline-warning" id="btnTabUnregistered" onclick="filterUserSyncTable('unregistered')">
+                                                ❓ Odoo Belum di CMMS (<span id="pillCountUnregistered">0</span>)
+                                            </button>
+                                        </div>
+
+                                        <!-- Search Box -->
+                                        <div class="input-group input-group-sm" style="max-width: 280px;">
+                                            <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                                            <input type="text" id="userSyncSearchInput" class="form-control" placeholder="Cari NRP, Nama, Site..." onkeyup="searchUserSyncTable()">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Loading State -->
+                                <div id="userSyncLoading" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="text-muted mt-2 small">Mengambil data Odoo dan mencocokkan user terdaftar...</p>
+                                </div>
+
+                                <!-- Error State -->
+                                <div id="userSyncError" class="alert alert-danger small d-none"></div>
+
+                                <!-- Table: CMMS Users -->
+                                <div id="userSyncTableWrapper" class="table-responsive bg-white rounded-3 shadow-sm d-none" style="max-height: 480px; overflow-y: auto;">
+                                    <table class="table table-hover align-middle mb-0" id="tableUserSync">
+                                        <thead class="table-light sticky-top" style="z-index: 1;">
+                                            <tr class="small text-muted text-uppercase">
+                                                <th style="width: 50px;">No</th>
+                                                <th>NRP</th>
+                                                <th>Nama (CMMS)</th>
+                                                <th>Site</th>
+                                                <th>Role</th>
+                                                <th class="text-center">Status Data Odoo</th>
+                                                <th>Nama di Odoo</th>
+                                                <th>Clock In Pertama</th>
+                                                <th>Clock Out Terakhir</th>
+                                                <th class="text-center">Jml Log</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="userSyncTableBody" class="small">
+                                            <!-- Populated dynamically -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Table: Unregistered Odoo Data -->
+                                <div id="unregisteredOdooWrapper" class="table-responsive bg-white rounded-3 shadow-sm d-none" style="max-height: 480px; overflow-y: auto;">
+                                    <div class="alert alert-warning m-3 small mb-2">
+                                        <i class="bi bi-info-circle-fill me-1"></i> Data di bawah ini ditarik dari Odoo tetapi NRP-nya belum didaftarkan sebagai User di portal CMMS.
+                                    </div>
+                                    <table class="table table-hover align-middle mb-0" id="tableUnregisteredOdoo">
+                                        <thead class="table-light sticky-top" style="z-index: 1;">
+                                            <tr class="small text-muted text-uppercase">
+                                                <th style="width: 50px;">No</th>
+                                                <th>NRP (Odoo)</th>
+                                                <th>Nama Karyawan (Odoo)</th>
+                                                <th>Tanggal</th>
+                                                <th>Clock In</th>
+                                                <th>Clock Out</th>
+                                                <th class="text-center">Jml Log</th>
+                                                <th>Keterangan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="unregisteredOdooTableBody" class="small">
+                                            <!-- Populated dynamically -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer py-2 bg-white d-flex justify-content-between">
+                                <div>
+                                    <button type="button" class="btn btn-success btn-sm fw-bold" id="btnDownloadUserSyncExcel" onclick="downloadUserSyncExcel()">
+                                        <i class="bi bi-file-earmark-excel-fill me-1"></i> Download Laporan Excel (.xlsx)
+                                    </button>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="reloadUserSyncChecker()">
+                                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Raw JSON API Viewer -->
+                <div class="modal fade" id="modalRawJsonViewer" tabindex="-1" aria-labelledby="modalRawJsonViewerLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white py-2">
+                                <h6 class="modal-title d-flex align-items-center gap-2 mb-0" id="modalRawJsonViewerLabel">
+                                    <i class="bi bi-filetype-json fs-5 text-warning"></i>
+                                    <span>Raw JSON Response dari API Odoo</span>
+                                    <span id="rawJsonBadgeCount" class="badge bg-primary ms-2">- Record</span>
+                                </h6>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body p-3 bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                    <div class="small text-muted" id="rawJsonMetaInfo">
+                                        Memuat data...
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyRawJsonToClipboard()" id="btnCopyJson">
+                                            <i class="bi bi-clipboard me-1"></i> Salin JSON
+                                        </button>
+                                        <a href="#" target="_blank" class="btn btn-sm btn-outline-primary" id="btnOpenJsonNewTab">
+                                            <i class="bi bi-box-arrow-up-right me-1"></i> Buka di Tab Baru
+                                        </a>
+                                    </div>
+                                </div>
+                                <div id="rawJsonLoading" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="text-muted mt-2 small">Menghubungi API Odoo & mengunduh payload JSON...</p>
+                                </div>
+                                <div id="rawJsonError" class="alert alert-danger small d-none"></div>
+                                <pre id="rawJsonCodeWrapper" class="bg-dark text-light p-3 rounded d-none shadow-sm mb-0" style="max-height: 520px; overflow: auto; font-size: 0.85rem; line-height: 1.4;"><code id="rawJsonContent"></code></pre>
+                            </div>
+                            <div class="modal-footer py-2">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                                <script>
+                                    function toggleTokenVisibility() {
+                                        const input = document.getElementById('attendanceBearerToken');
+                                        const icon = document.getElementById('tokenEyeIcon');
+                                        if (input.type === 'password') {
+                                            input.type = 'text';
+                                            icon.classList.replace('bi-eye', 'bi-eye-slash');
+                                        } else {
+                                            input.type = 'password';
+                                            icon.classList.replace('bi-eye-slash', 'bi-eye');
+                                        }
+                                    }
+
+                                    function toggleSyncMethod() {
+                                        const method = document.getElementById('syncMethodSelect').value;
+                                        document.getElementById('pullMethodConfig').classList.add('d-none');
+                                        document.getElementById('pushMethodConfig').classList.add('d-none');
+                                        document.getElementById('zktecoMethodConfig').classList.add('d-none');
+                                        
+                                        if (method === 'push') {
+                                            document.getElementById('pushMethodConfig').classList.remove('d-none');
+                                            document.getElementById('pushEndpointUrl').innerText = window.location.origin + "/api/attendance/sync";
+                                        } else if (method === 'zkteco') {
+                                            document.getElementById('zktecoMethodConfig').classList.remove('d-none');
+                                        } else {
+                                            document.getElementById('pullMethodConfig').classList.remove('d-none');
+                                        }
+                                    }
+
+                                    function testAttendanceApiConnection() {
+                                        const btn = document.getElementById('btnTestConn');
+                                        const resDiv = document.getElementById('testConnResult');
+                                        const method = document.getElementById('syncMethodSelect').value;
+                                        const apiUrl = document.getElementById('attendanceApiUrl').value.trim();
+                                        const token = document.getElementById('attendanceBearerToken').value.trim();
+                                        const zktecoIp = document.getElementById('zktecoIp').value.trim();
+                                        const zktecoPort = document.getElementById('zktecoPort').value.trim();
+
+                                        btn.disabled = true;
+                                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Testing...';
+                                        resDiv.className = 'alert alert-light border py-2 px-3 mt-2 small';
+                                        resDiv.innerHTML = '<i class="bi bi-hourglass-split"></i> Menghubungi server...';
+                                        resDiv.classList.remove('d-none');
+
+                                        fetch("{{ url_for('settings.test_attendance_connection') }}", {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRFToken': "{{ csrf_token() }}"
+                                            },
+                                            body: JSON.stringify({ 
+                                                sync_method: method,
+                                                api_url: apiUrl, 
+                                                bearer_token: token,
+                                                zkteco_ip: zktecoIp,
+                                                zkteco_port: zktecoPort
+                                            })
+                                        })
+                                        .then(res => res.json())
+                                        .then(data => {
+                                            btn.disabled = false;
+                                            btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Test Connection';
+                                            if (data.status === 'success') {
+                                                resDiv.className = 'alert alert-success py-2 px-3 mt-2 small';
+                                                let html = `<strong><i class="bi bi-check-circle-fill me-1"></i> Berhasil!</strong> ${data.message}`;
+                                                if (data.sample) {
+                                                    html += `<br><span class="text-muted mt-1 d-block"><i class="bi bi-person-check"></i> Sampel: ${data.sample}</span>`;
+                                                }
+                                                resDiv.innerHTML = html;
+                                            } else {
+                                                resDiv.className = 'alert alert-danger py-2 px-3 mt-2 small';
+                                                resDiv.innerHTML = `<strong><i class="bi bi-x-circle-fill me-1"></i> Gagal:</strong> ${data.message}`;
+                                            }
+                                        })
+                                        .catch(err => {
+                                            btn.disabled = false;
+                                            btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Test Connection';
+                                            resDiv.className = 'alert alert-danger py-2 px-3 mt-2 small';
+                                            resDiv.innerHTML = `<strong>Error:</strong> ${err.message}`;
+                                        });
+                                    }
+
+                                    function triggerManualSync() {
+                                        const btn = document.getElementById('btnManualSync');
+                                        const resDiv = document.getElementById('manualSyncResult');
+                                        const dateFrom = document.getElementById('manualDateFrom').value;
+                                        const dateTo = document.getElementById('manualDateTo').value;
+
+                                        btn.disabled = true;
+                                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menarik data...';
+                                        resDiv.className = 'alert alert-light border py-2 px-3 mt-2 small';
+                                        resDiv.innerHTML = '<i class="bi bi-hourglass-split"></i> Mengambil dan memproses data absensi dari Odoo...';
+                                        resDiv.classList.remove('d-none');
+
+                                        fetch("/api/attendance/pull", {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRFToken': "{{ csrf_token() }}"
+                                            },
+                                            body: JSON.stringify({ date_from: dateFrom, date_to: dateTo })
+                                        })
+                                        .then(async res => {
+                                            const isJson = res.headers.get('content-type')?.includes('application/json');
+                                            const data = isJson ? await res.json() : null;
+                                            if (!res.ok) {
+                                                const msg = data?.message || (data ? JSON.stringify(data) : `Server error (HTTP ${res.status})`);
+                                                throw new Error(msg);
+                                            }
+                                            if (!data) {
+                                                throw new Error("Respons server tidak valid (bukan JSON).");
+                                            }
+                                            return data;
+                                        })
+                                        .then(data => {
+                                            btn.disabled = false;
+                                            btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i> Tarik & Sinkronkan ke CMMS';
+                                            if (data.status === 'success') {
+                                                resDiv.className = 'alert alert-success py-2 px-3 mt-2 small';
+                                                resDiv.innerHTML = `
+                                                     <strong><i class="bi bi-check-circle-fill me-1"></i> Sukses!</strong> ${data.message}
+                                                     <div class="mt-2 pt-2 border-top d-flex gap-2 flex-wrap">
+                                                         <a href="/api/attendance/export_raw_odoo?date_from=${dateFrom}&date_to=${dateTo}" class="btn btn-sm btn-success fw-bold text-white shadow-xs">
+                                                             <i class="bi bi-file-earmark-excel-fill me-1"></i> Download File Excel Data Mentah (${data.total_fetched || 0} Log Ditarik)
+                                                         </a>
+                                                         <button type="button" class="btn btn-sm btn-dark fw-bold text-white shadow-xs" onclick="viewRawOdooJson('manualDateFrom', 'manualDateTo', 'manualNrp')">
+                                                             <i class="bi bi-filetype-json me-1"></i> Lihat JSON Raw
+                                                         </button>
+                                                     </div>
+                                                 `;
+                                             } else {
+                                                 resDiv.className = 'alert alert-danger py-2 px-3 mt-2 small';
+                                                 resDiv.innerHTML = `<strong><i class="bi bi-x-circle-fill me-1"></i> Gagal:</strong> ${data.message}`;
+                                             }
+                                         })
+                                         .catch(err => {
+                                             btn.disabled = false;
+                                             btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i> Tarik & Sinkronkan ke CMMS';
+                                             resDiv.className = 'alert alert-danger py-2 px-3 mt-2 small';
+                                             resDiv.innerHTML = `<strong>Error:</strong> ${err.message}`;
+                                         });
+                                     }
+
+                                     function downloadRawOdooExcel(dfId, dtId, nrpId) {
+                                         const df = document.getElementById(dfId).value;
+                                         const dt = document.getElementById(dtId).value;
+                                         const nrp = nrpId ? document.getElementById(nrpId).value.trim() : '';
+                                         if (!df || !dt) {
+                                             alert('Silakan pilih rentang tanggal.');
+                                             return;
+                                         }
+                                         let url = `/api/attendance/export_raw_odoo?date_from=${df}&date_to=${dt}`;
+                                         if (nrp) url += `&nrp=${encodeURIComponent(nrp)}`;
+                                         window.location.href = url;
+                                     }
+
+                                     function viewRawOdooJson(dfId, dtId, nrpId) {
+                                         const df = document.getElementById(dfId).value;
+                                         const dt = document.getElementById(dtId).value;
+                                         const nrp = nrpId ? document.getElementById(nrpId).value.trim() : '';
+
+                                         if (!df || !dt) {
+                                             alert('Silakan pilih rentang tanggal.');
+                                             return;
+                                         }
+
+                                         let url = `/api/attendance/raw_json?date_from=${encodeURIComponent(df)}&date_to=${encodeURIComponent(dt)}`;
+                                         if (nrp) url += `&nrp=${encodeURIComponent(nrp)}`;
+
+                                         const modalEl = document.getElementById('modalRawJsonViewer');
+                                         let modal = bootstrap.Modal.getInstance(modalEl);
+                                         if (!modal) modal = new bootstrap.Modal(modalEl);
+
+                                         document.getElementById('rawJsonLoading').classList.remove('d-none');
+                                         document.getElementById('rawJsonError').classList.add('d-none');
+                                         document.getElementById('rawJsonCodeWrapper').classList.add('d-none');
+                                         document.getElementById('rawJsonContent').textContent = '';
+                                         document.getElementById('btnOpenJsonNewTab').href = url;
+                                         document.getElementById('rawJsonBadgeCount').innerText = 'Memuat...';
+                                         document.getElementById('rawJsonMetaInfo').innerHTML = `<i class="bi bi-calendar3 me-1"></i> Periode: <strong>${df}</strong> s/d <strong>${dt}</strong> ${nrp ? `| NRP: <strong>${nrp}</strong>` : ''}`;
+
+                                         modal.show();
+
+                                         fetch(url)
+                                             .then(async res => {
+                                                 const isJson = res.headers.get('content-type')?.includes('application/json');
+                                                 const data = isJson ? await res.json() : null;
+                                                 if (!res.ok) {
+                                                     const msg = data?.message || `HTTP ${res.status}: Gagal memuat JSON`;
+                                                     throw new Error(msg);
+                                                 }
+                                                 return data;
+                                             })
+                                             .then(data => {
+                                                 document.getElementById('rawJsonLoading').classList.add('d-none');
+                                                 document.getElementById('rawJsonCodeWrapper').classList.remove('d-none');
+
+                                                 const count = data.count !== undefined ? data.count : (Array.isArray(data.results) ? data.results.length : 0);
+                                                 document.getElementById('rawJsonBadgeCount').innerText = `${count} Record`;
+                                                 document.getElementById('rawJsonContent').textContent = JSON.stringify(data, null, 2);
+                                             })
+                                             .catch(err => {
+                                                 document.getElementById('rawJsonLoading').classList.add('d-none');
+                                                 const errDiv = document.getElementById('rawJsonError');
+                                                 errDiv.classList.remove('d-none');
+                                                 errDiv.innerHTML = `<strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Error:</strong> ${err.message}`;
+                                                 document.getElementById('rawJsonBadgeCount').innerText = 'Gagal';
+                                             });
+                                     }
+
+                                     function copyRawJsonToClipboard() {
+                                         const code = document.getElementById('rawJsonContent').textContent;
+                                         if (!code) return;
+                                         navigator.clipboard.writeText(code).then(() => {
+                                             const btn = document.getElementById('btnCopyJson');
+                                             const oldHtml = btn.innerHTML;
+                                             btn.innerHTML = '<i class="bi bi-check2 text-success me-1"></i> Tersalin!';
+                                             setTimeout(() => { btn.innerHTML = oldHtml; }, 2000);
+                                         }).catch(err => {
+                                             alert('Gagal menyalin: ' + err);
+                                         });
+                                     }
+
+                                     let currentSyncData = null;
+                                     let currentActiveFilter = 'all';
+
+                                     function openUserSyncChecker(dfId, dtId) {
+                                         const df = document.getElementById(dfId).value;
+                                         const dt = document.getElementById(dtId).value;
+
+                                         if (!df || !dt) {
+                                             alert('Silakan pilih rentang tanggal.');
+                                             return;
+                                         }
+
+                                         const modalEl = document.getElementById('modalUserSyncChecker');
+                                         let modal = bootstrap.Modal.getInstance(modalEl);
+                                         if (!modal) modal = new bootstrap.Modal(modalEl);
+
+                                         document.getElementById('userSyncMetaDate').innerText = `Periode: ${df} s/d ${dt}`;
+                                         modal.show();
+                                         loadUserSyncData(df, dt);
+                                     }
+
+                                     function reloadUserSyncChecker() {
+                                         const df = document.getElementById('manualDateFrom').value;
+                                         const dt = document.getElementById('manualDateTo').value;
+                                         loadUserSyncData(df, dt);
+                                     }
+
+                                     function loadUserSyncData(df, dt) {
+                                         document.getElementById('userSyncLoading').classList.remove('d-none');
+                                         document.getElementById('userSyncError').classList.add('d-none');
+                                         document.getElementById('userSyncTableWrapper').classList.add('d-none');
+                                         document.getElementById('unregisteredOdooWrapper').classList.add('d-none');
+
+                                         const url = `/api/attendance/check_user_sync?date_from=${encodeURIComponent(df)}&date_to=${encodeURIComponent(dt)}`;
+                                         
+                                         fetch(url)
+                                             .then(async res => {
+                                                 const isJson = res.headers.get('content-type')?.includes('application/json');
+                                                 const data = isJson ? await res.json() : null;
+                                                 if (!res.ok) {
+                                                     const msg = data?.message || `HTTP ${res.status}: Gagal memuat data`;
+                                                     throw new Error(msg);
+                                                 }
+                                                 return data;
+                                             })
+                                             .then(data => {
+                                                 currentSyncData = data;
+                                                 document.getElementById('userSyncLoading').classList.add('d-none');
+                                                 
+                                                 // Set KPI summary stats
+                                                 const s = data.summary || {};
+                                                 document.getElementById('statTotalCmms').innerText = s.total_cmms_users || 0;
+                                                 document.getElementById('statSudahAda').innerText = s.total_has_data || 0;
+                                                 document.getElementById('statBelumAda').innerText = s.total_no_data || 0;
+                                                 document.getElementById('statUnregistered').innerText = s.total_unregistered_odoo || 0;
+
+                                                 document.getElementById('pillCountAll').innerText = s.total_cmms_users || 0;
+                                                 document.getElementById('pillCountSudah').innerText = s.total_has_data || 0;
+                                                 document.getElementById('pillCountBelum').innerText = s.total_no_data || 0;
+                                                 document.getElementById('pillCountUnregistered').innerText = s.total_unregistered_odoo || 0;
+
+                                                 // Render table
+                                                 filterUserSyncTable(currentActiveFilter || 'all');
+                                             })
+                                             .catch(err => {
+                                                 document.getElementById('userSyncLoading').classList.add('d-none');
+                                                 const errDiv = document.getElementById('userSyncError');
+                                                 errDiv.classList.remove('d-none');
+                                                 errDiv.innerHTML = `<strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Gagal Memeriksa Data:</strong> ${err.message}`;
+                                             });
+                                     }
+
+                                     function filterUserSyncTable(tab) {
+                                         currentActiveFilter = tab;
+                                         
+                                         // Update active tab buttons
+                                         document.getElementById('btnTabAll').className = 'btn btn-outline-primary' + (tab === 'all' ? ' active' : '');
+                                         document.getElementById('btnTabSudah').className = 'btn btn-outline-success' + (tab === 'sudah' ? ' active' : '');
+                                         document.getElementById('btnTabBelum').className = 'btn btn-outline-danger' + (tab === 'belum' ? ' active' : '');
+                                         document.getElementById('btnTabUnregistered').className = 'btn btn-outline-warning' + (tab === 'unregistered' ? ' active' : '');
+
+                                         if (!currentSyncData) return;
+
+                                         if (tab === 'unregistered') {
+                                             document.getElementById('userSyncTableWrapper').classList.add('d-none');
+                                             document.getElementById('unregisteredOdooWrapper').classList.remove('d-none');
+                                             renderUnregisteredOdooTable(currentSyncData.unregistered_odoo || []);
+                                         } else {
+                                             document.getElementById('unregisteredOdooWrapper').classList.add('d-none');
+                                             document.getElementById('userSyncTableWrapper').classList.remove('d-none');
+                                             
+                                             let users = currentSyncData.users || [];
+                                             if (tab === 'sudah') {
+                                                 users = users.filter(u => u.has_data);
+                                             } else if (tab === 'belum') {
+                                                 users = users.filter(u => !u.has_data);
+                                             }
+                                             renderUserSyncTable(users);
+                                         }
+                                     }
+
+                                     function renderUserSyncTable(users) {
+                                         const tbody = document.getElementById('userSyncTableBody');
+                                         tbody.innerHTML = '';
+
+                                         if (!users || users.length === 0) {
+                                             tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted"><i class="bi bi-info-circle me-1"></i> Tidak ada data user yang sesuai filter.</td></tr>`;
+                                             return;
+                                         }
+
+                                         users.forEach((u, i) => {
+                                             let badge = '';
+                                             if (u.has_data) {
+                                                 badge = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>Sudah Ada</span>`;
+                                             } else if (u.status_label === 'NRP Kosong di CMMS') {
+                                                 badge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1"><i class="bi bi-dash-circle me-1"></i>NRP Kosong</span>`;
+                                             } else {
+                                                 badge = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="bi bi-x-circle-fill me-1"></i>Belum Ada</span>`;
+                                             }
+
+                                             const tr = document.createElement('tr');
+                                             tr.className = 'user-sync-row';
+                                             tr.innerHTML = `
+                                                 <td class="text-muted text-center">${i + 1}</td>
+                                                 <td class="font-monospace fw-semibold">${u.nrp}</td>
+                                                 <td class="fw-bold text-dark">${u.name}</td>
+                                                 <td><span class="badge bg-light text-dark border">${u.site_name}</span></td>
+                                                 <td class="text-muted small">${u.role}</td>
+                                                 <td class="text-center">${badge}</td>
+                                                 <td class="${u.nama_odoo !== '-' ? 'text-primary fw-semibold' : 'text-muted'}">${u.nama_odoo}</td>
+                                                 <td class="font-monospace small">${u.first_in !== '-' ? `<span class="text-success">${u.first_in}</span>` : '<span class="text-muted">-</span>'}</td>
+                                                 <td class="font-monospace small">${u.last_out !== '-' ? `<span class="text-primary">${u.last_out}</span>` : '<span class="text-muted">-</span>'}</td>
+                                                 <td class="text-center"><span class="badge bg-light text-secondary border">${u.log_count}</span></td>
+                                             `;
+                                             tbody.appendChild(tr);
+                                         });
+                                     }
+
+                                     function renderUnregisteredOdooTable(items) {
+                                         const tbody = document.getElementById('unregisteredOdooTableBody');
+                                         tbody.innerHTML = '';
+
+                                         if (!items || items.length === 0) {
+                                             tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-success"><i class="bi bi-check-circle me-1"></i> Bagus! Seluruh data karyawan Odoo sudah memiliki akun di portal CMMS.</td></tr>`;
+                                             return;
+                                         }
+
+                                         items.forEach((item, i) => {
+                                             const tr = document.createElement('tr');
+                                             tr.innerHTML = `
+                                                 <td class="text-muted text-center">${i + 1}</td>
+                                                 <td class="font-monospace fw-bold text-danger">${item.nrp}</td>
+                                                 <td class="fw-bold">${item.nama_odoo}</td>
+                                                 <td>${item.date}</td>
+                                                 <td class="font-monospace small text-success">${item.check_in}</td>
+                                                 <td class="font-monospace small text-primary">${item.check_out}</td>
+                                                 <td class="text-center"><span class="badge bg-light text-dark border">${item.log_count}</span></td>
+                                                 <td><span class="text-muted small">NRP belum didaftarkan di CMMS</span></td>
+                                             `;
+                                             tbody.appendChild(tr);
+                                         });
+                                     }
+
+                                     function searchUserSyncTable() {
+                                         const term = document.getElementById('userSyncSearchInput').value.toLowerCase().trim();
+                                         const rows = document.querySelectorAll('#tableUserSync tbody tr.user-sync-row');
+                                         rows.forEach(row => {
+                                             const text = row.innerText.toLowerCase();
+                                             row.style.display = text.includes(term) ? '' : 'none';
+                                         });
+                                     }
+
+                                     function downloadUserSyncExcel() {
+                                         const df = document.getElementById('manualDateFrom').value;
+                                         const dt = document.getElementById('manualDateTo').value;
+                                         if (!df || !dt) {
+                                             alert('Silakan tentukan rentang tanggal.');
+                                             return;
+                                         }
+                                         window.location.href = `/api/attendance/export_user_sync_check?date_from=${encodeURIComponent(df)}&date_to=${encodeURIComponent(dt)}`;
+                                     }
+
+                                    function toggleSumopodKeyVisibility() {
+                                        const input = document.getElementById('sumopodApiKey');
+                                        const icon = document.getElementById('sumopodEyeIcon');
+                                        if (input.type === 'password') {
+                                            input.type = 'text';
+                                            icon.classList.remove('bi-eye');
+                                            icon.classList.add('bi-eye-slash');
+                                        } else {
+                                            input.type = 'password';
+                                            icon.classList.remove('bi-eye-slash');
+                                            icon.classList.add('bi-eye');
+                                        }
+                                    }
+
+                                    function testAiApiConnection() {
+                                        const btn = document.getElementById('btnTestAiConn');
+                                        const resultDiv = document.getElementById('aiTestResult');
+                                        const apiKey = document.getElementById('sumopodApiKey').value.trim();
+                                        const baseUrl = document.getElementById('sumopodBaseUrl').value.trim();
+                                        const model = document.getElementById('sumopodModel').value.trim();
+
+                                        btn.disabled = true;
+                                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menguji...';
+                                        resultDiv.className = 'small fw-semibold text-muted';
+                                        resultDiv.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Sedang menghubungi Sumopod API...';
+
+                                        fetch('/settings/api/ai/test-connection', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+                                            },
+                                            body: JSON.stringify({
+                                                api_key: apiKey,
+                                                base_url: baseUrl,
+                                                model: model
+                                            })
+                                        })
+                                        .then(async res => {
+                                            const data = await res.json();
+                                            if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+                                            return data;
+                                        })
+                                        .then(data => {
+                                            resultDiv.className = 'small fw-semibold text-success';
+                                            resultDiv.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ${data.message} | Respon: "<em>${data.response}</em>"`;
+                                        })
+                                        .catch(err => {
+                                            resultDiv.className = 'small fw-semibold text-danger';
+                                            resultDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> Error: ${err.message}`;
+                                        })
+                                        .finally(() => {
+                                            btn.disabled = false;
+                                            btn.innerHTML = '<i class="bi bi-lightning-charge me-1"></i> Test Koneksi AI';
+                                        });
+                                    }
+
+                                    // Initialize on load
+                                    document.addEventListener("DOMContentLoaded", function() {
+                                        toggleSyncMethod();
+                                        const today = new Date().toISOString().split('T')[0];
+                                        const df = document.getElementById('manualDateFrom');
+                                        const dt = document.getElementById('manualDateTo');
+                                        if (df && !df.value) df.value = today;
+                                        if (dt && !dt.value) dt.value = today;
+                                    });
+                                </script>

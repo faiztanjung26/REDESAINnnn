@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('warehouse.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+{% endblock %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+/* Select2 Bootstrap 5 Theme overrides */
+.select2-container .select2-selection--single {
+    height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px;
+    padding-left: 12px;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0 mx-auto" style="max-width: 800px;">
+    <div class="card-header bg-white">
+        <h4 class="mb-0">{% if action == 'add' %}Add Stock for:{% else %}Adjust Stock for:{% endif %} {{ part.name }} ({{ part.code }})</h4>
+    </div>
+    <div class="card-body">
+        
+
+        
+        <h6 class="mb-3">{% if action == 'add' %}Add Stock to Site{% else %}Adjust Stock Level{% endif %}</h6>
+        <form method="POST" action="" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="action" value="{% if action == 'adjust' %}set{% else %}{{ action }}{% endif %}"/>
+            <div class="row g-3 mb-3">
+                <div class="col-md-12">
+                    <label class="form-label text-muted small fw-bold">Site *</label>
+                    {% if site_id_arg %}
+                        <!-- Auto-selected site -->
+                        <input type="hidden" name="site_id" value="{{ site_id_arg }}">
+                        {% for site in sites %}
+                            {% if site_id_arg|string == site.id|string %}
+                                <input type="text" class="form-control bg-light" value="{{ site.name }}" readonly>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <select class="form-select" name="site_id" required>
+                            <option value="">-- Select a Site --</option>
+                            {% for site in sites %}
+                            <option value="{{ site.id }}">{{ site.name }}</option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Tanggal Masuk *</label>
+                    <input type="date" class="form-control" name="last_restock_date" value="{{ current_stock.last_restock_date.strftime('%Y-%m-%d') if current_stock and current_stock.last_restock_date else today_date }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Penanggung Jawab (Otomatis)</label>
+                    <input type="text" class="form-control bg-light" value="{{ current_user.name }}" readonly>
+                </div>
+            </div>
+            
+            {% if action != 'add' %}
+            <div class="row g-3 mb-3">
+                <div class="col-md-12">
+                    <label class="form-label text-muted small fw-bold">From (Source/Vendor)</label>
+                    <select class="form-select select2-tags" name="source_from">
+                        <option value=""></option>
+                        {% for src in source_list %}
+                        <option value="{{ src }}" {% if current_stock and current_stock.source_from == src %}selected{% endif %}>{{ src }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="row g-3 mb-3">
+                <div class="col-md-12">
+                    <div class="alert alert-info py-2 mb-3">
+                        <i class="bi bi-box-seam me-1"></i> <strong>Current Stock:</strong> <span class="fs-5 fw-bold">{{ current_stock.qty_on_hand if current_stock else 0 }}</span>
+                    </div>
+                    <label class="form-label text-muted small fw-bold">
+                        {% if action == 'add' %}Quantity *{% else %}New Stock Quantity (Update Stok Akhir) *{% endif %}
+                    </label>
+                    <input type="number" class="form-control" name="qty" value="{{ current_stock.qty_on_hand if current_stock else 0 }}" min="0" required>
+                    {% if action != 'add' %}
+                    <div class="form-text text-primary"><i class="bi bi-info-circle"></i> Masukkan jumlah stok akhir (final stock) yang sebenarnya.</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if action != 'add' %}
+            <div class="row g-3 mb-4">
+                <div class="col-md-12">
+                    <label class="form-label text-muted small fw-bold">Bukti Penambahan (Photo/PDF)</label>
+                    <input type="file" class="form-control" name="proof_attachment" accept="image/*,.pdf">
+                    <div class="form-text">Opsional: Melampirkan foto atau dokumen PDF sebagai bukti mutasi stok.</div>
+                    {% if current_stock and current_stock.attachment_path %}
+                        <div class="mt-2 small">
+                            <span class="text-success"><i class="bi bi-file-earmark-check"></i> File saat ini:</span>
+                            <a href="{{ url_for('static', filename='uploads/warehouse/' + current_stock.attachment_path) }}" target="_blank">{{ current_stock.attachment_path }}</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary px-4"><i class="bi bi-clipboard-check"></i> {% if action == 'add' %}Add Stock{% else %}Adjust Stock{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('.select2-tags').select2({
+        tags: true,
+        placeholder: "Type or select source...",
+        allowClear: true,
+        width: '100%'
+    });
+});
+</script>
+{% endblock %}

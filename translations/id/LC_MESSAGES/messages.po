@@ -1,0 +1,52 @@
+# Indonesian translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-03-27 09:53+0700\n"
+"PO-Revision-Date: 2026-03-27 09:53+0700\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: id\n"
+"Language-Team: id <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: templates/base.html:248
+msgid "Dashboard"
+msgstr "Dasbor"
+
+#: templates/base.html:249
+msgid "Maintenance"
+msgstr "Pemeliharaan"
+
+#: templates/base.html:252
+msgid "Assets"
+msgstr "Aset"
+
+#: templates/base.html:253
+msgid "Supplies"
+msgstr "Persediaan"
+
+#: templates/base.html:254
+msgid "Purchasing"
+msgstr "Pembelian"
+
+#: templates/base.html:255
+msgid "Reports"
+msgstr "Laporan"
+
+#: templates/base.html:259
+msgid "Settings"
+msgstr "Pengaturan"
+
+#: templates/base.html:263
+msgid "Log Off"
+msgstr "Keluar"
+

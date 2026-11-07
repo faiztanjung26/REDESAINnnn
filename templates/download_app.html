@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Download App - Portal Engineer</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon.png') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #f8fafc;
+            color: #1e293b;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .download-container {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            padding: 3rem;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .orb-1 { position: absolute; width: 300px; height: 300px; background: radial-gradient(circle, rgba(79,70,229,0.1) 0%, transparent 70%); top: -100px; left: -100px; border-radius: 50%; z-index: 0; }
+        .orb-2 { position: absolute; width: 250px; height: 250px; background: radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%); bottom: -100px; right: -50px; border-radius: 50%; z-index: 0; }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+        }
+
+        .app-icon {
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3);
+            color: white;
+            font-size: 2.5rem;
+        }
+
+        h2 {
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.5rem;
+            color: #0f172a;
+        }
+
+        p.text-muted {
+            font-size: 1.05rem;
+            margin-bottom: 2rem;
+            color: #64748b !important;
+        }
+
+        .btn-download {
+            background: #4f46e5;
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            padding: 16px 32px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.25);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            text-decoration: none;
+        }
+
+        .btn-download:hover {
+            background: #4338ca;
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(79, 70, 229, 0.35);
+            color: #ffffff;
+        }
+
+        .features-list {
+            text-align: left;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .feature-icon {
+            color: #10b981;
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        .brand-logo {
+            margin-bottom: 2.5rem;
+            height: 45px;
+        }
+        
+        .instructions-btn {
+            background: none;
+            border: none;
+            color: #4f46e5;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-top: 1.5rem;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        
+        .instructions-btn:hover {
+            color: #3730a3;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="download-container">
+        <div class="orb-1"></div>
+        <div class="orb-2"></div>
+        
+        <div class="content-wrapper">
+            <img src="{{ url_for('static', filename='images/Logo Jaya Teknik.png') }}" alt="PT Jaya Teknik Indonesia" class="brand-logo">
+            
+            <div class="app-icon">
+                <i class="bi bi-android2"></i>
+            </div>
+            
+            <h2>Portal Engineer App</h2>
+            <p class="text-muted">Stay connected and manage work orders efficiently on the go.</p>
+            
+            <a href="{{ url_for('static', filename='apps/CMMS_JTI.apk') }}" class="btn-download" download>
+                <i class="bi bi-download"></i>
+                Download APK
+            </a>
+            
+            <div class="text-center mt-3">
+                <small class="text-muted fw-medium">Version 1.0.0 &bull; Android 8.0+</small>
+            </div>
+
+            <div class="features-list">
+                <div class="feature-item">
+                    <i class="bi bi-check-circle-fill feature-icon"></i>
+                    <span>Real-time work order tracking</span>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-check-circle-fill feature-icon"></i>
+                    <span>Instant push notifications</span>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-check-circle-fill feature-icon"></i>
+                    <span>Barcode scanning for assets</span>
+                </div>
+                <div class="feature-item">
+                    <i class="bi bi-check-circle-fill feature-icon"></i>
+                    <span>Offline mode support</span>
+                </div>
+            </div>
+            
+            <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('auth.login') }}" class="text-decoration-none fw-bold" style="color: #64748b; font-size: 0.95rem;">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Login
+                </a>
+                
+                <!-- Instruction modal trigger -->
+                <button type="button" class="instructions-btn mt-0" data-bs-toggle="modal" data-bs-target="#installModal">
+                    How to install?
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for installation instructions -->
+    <div class="modal fade" id="installModal" tabindex="-1" aria-labelledby="installModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+          <div class="modal-header border-bottom-0 pb-0">
+            <h5 class="modal-title fw-bold" id="installModalLabel">How to Install APK</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body pb-4">
+            <ol class="text-start text-muted mb-0 ps-3" style="font-weight: 500; font-size: 0.95rem;">
+                <li class="mb-3">Tap the <strong>Download APK</strong> button.</li>
+                <li class="mb-3">If prompted, tap <strong>Download anyway</strong>.</li>
+                <li class="mb-3">Once downloaded, open the file.</li>
+                <li class="mb-3">If your phone blocks the installation, go to your phone's <strong>Settings > Security</strong> and enable <strong>Install unknown apps</strong> for your browser.</li>
+                <li>Tap <strong>Install</strong> and wait for it to finish.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

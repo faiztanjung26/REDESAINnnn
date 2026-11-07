@@ -1,0 +1,71 @@
+<!-- KPI Cards Widget: MTBF, MTTR, PM Compliance, Asset Availability -->
+<div class="row g-3">
+    <!-- MTBF -->
+    <div class="col-md-3 col-6" style="border: none !important;">
+        <div class="card h-100" style="background: linear-gradient(145deg, #ffffff, #f8fafc);" title="{{ mtbf_tooltip }}" data-bs-toggle="tooltip" data-bs-placement="bottom">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-secondary text-uppercase fw-bold mb-2" style="letter-spacing: 0.05em; font-size: 0.75rem;">MTBF (Hours)</h6>
+                        <h2 class="mb-0 fs-2 fw-bold text-dark" style="letter-spacing: -1px;">{{ mtbf_hours }}</h2>
+                        <small class="text-success fw-medium mt-1 d-block"><i class="bi bi-arrow-up-circle me-1"></i> Avg. uptime</small>
+                    </div>
+                    <div class="p-3 rounded-circle d-none d-md-flex align-items-center justify-content-center soft-badge-success" style="width: 54px; height: 54px;">
+                        <i class="bi bi-activity fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- MTTR -->
+    <div class="col-md-3 col-6" style="border: none !important;">
+        <div class="card h-100" style="background: linear-gradient(145deg, #ffffff, #f8fafc);" title="{{ mttr_tooltip }}" data-bs-toggle="tooltip" data-bs-placement="bottom">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-secondary text-uppercase fw-bold mb-2" style="letter-spacing: 0.05em; font-size: 0.75rem;">MTTR (Hours)</h6>
+                        <h2 class="mb-0 fs-2 fw-bold text-dark" style="letter-spacing: -1px;">{{ mttr_hours }}</h2>
+                        <small class="text-primary fw-medium mt-1 d-block"><i class="bi bi-tools me-1"></i> Avg. repair time</small>
+                    </div>
+                    <div class="p-3 rounded-circle d-none d-md-flex align-items-center justify-content-center soft-badge-info" style="width: 54px; height: 54px;">
+                        <i class="bi bi-wrench-adjustable fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- PM Compliance -->
+    <div class="col-md-3 col-6" style="border: none !important;">
+        <div class="card h-100" style="background: linear-gradient(145deg, #ffffff, #f8fafc);">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-secondary text-uppercase fw-bold mb-2" style="letter-spacing: 0.05em; font-size: 0.75rem;">PM Compliance</h6>
+                        <h2 class="mb-0 fs-2 fw-bold text-dark" style="letter-spacing: -1px;">{{ pm_compliance }}%</h2>
+                        <small class="text-info fw-medium mt-1 d-block" style="color: #0284c7 !important;"><i class="bi bi-calendar-check me-1"></i> On-time tasks</small>
+                    </div>
+                    <div class="p-3 rounded-circle d-none d-md-flex align-items-center justify-content-center soft-badge-info" style="width: 54px; height: 54px;">
+                        <i class="bi bi-check2-all fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Availability -->
+    <div class="col-md-3 col-6" style="border: none !important;">
+        <div class="card h-100" style="background: linear-gradient(145deg, #ffffff, #f8fafc);">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-secondary text-uppercase fw-bold mb-2" style="letter-spacing: 0.05em; font-size: 0.75rem;">Availability</h6>
+                        <h2 class="mb-0 fs-2 fw-bold text-dark" style="letter-spacing: -1px;">{{ asset_availability }}%</h2>
+                        <small class="text-warning fw-medium mt-1 d-block" style="color: #d97706 !important;"><i class="bi bi-hdd-network me-1"></i> Online / Total</small>
+                    </div>
+                    <div class="p-3 rounded-circle d-none d-md-flex align-items-center justify-content-center soft-badge-warning" style="width: 54px; height: 54px;">
+                        <i class="bi bi-server fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

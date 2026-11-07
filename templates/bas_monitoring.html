@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0 fw-bold">BAS Monitoring</h2>
+        {% if current_user.role == 'Admin' %}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFrameModal">
+            <i class="bi bi-plus-circle me-1"></i> Add Frame
+        </button>
+        {% endif %}
+    </div>
+
+    {% if current_user.role == 'Admin' %}
+    <!-- Modal Add Frame -->
+    <div class="modal fade" id="addFrameModal" tabindex="-1" aria-labelledby="addFrameModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ url_for('bas_monitoring.add_frame') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-content form-glass border-0 shadow-lg rounded-4">
+                    <div class="modal-header border-bottom pb-3">
+                        <h5 class="modal-title fw-bold" id="addFrameModalLabel">Add BAS Frame</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body bg-light">
+                        <div class="mb-3">
+                            <label for="name" class="form-label fw-semibold">Nama Frame</label>
+                            <input type="text" class="form-control" id="name" name="name" required placeholder="Contoh: Chiller 1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="url" class="form-label fw-semibold">URL Iframe</label>
+                            <input type="url" class="form-control" id="url" name="url" required placeholder="https://example.com/embed">
+                        </div>
+                        <div class="mb-3">
+                            <label for="site_id" class="form-label fw-semibold">Hubungkan ke Project/Site</label>
+                            <select class="form-select" id="site_id" name="site_id">
+                                <option value="">-- Semua Site (Global) --</option>
+                                {% for site in sites %}
+                                <option value="{{ site.id }}">{{ site.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Jika tidak dipilih, frame ini bisa dilihat oleh seluruh Site.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-top pt-3 rounded-bottom-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Display Frames -->
+    <div class="row g-4">
+        {% if frames %}
+            {% for frame in frames %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+                    <div class="card-body p-4 text-center">
+                        <i class="bi bi-display text-primary mb-3" style="font-size: 3rem;"></i>
+                        <h5 class="card-title mb-1 fw-bold">{{ frame.name }}</h5>
+                        {% if frame.site %}
+                        <span class="badge bg-info text-dark mb-3">{{ frame.site.name }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary mb-3">Global (Semua Site)</span>
+                        {% endif %}
+                        <p class="text-muted small text-truncate">{{ frame.url }}</p>
+                        
+                        <div class="d-flex justify-content-center align-items-center gap-2 mt-4">
+                            <a href="{{ url_for('bas_monitoring.view_frame', frame_id=frame.id) }}" class="btn btn-primary flex-grow-1 rounded-pill shadow-sm">
+                                <i class="bi bi-display me-1"></i> Buka Monitor
+                            </a>
+                            <a href="{{ frame.url }}" target="_blank" class="btn btn-outline-primary rounded-pill px-3 shadow-sm" title="Buka di Tab Baru">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                            {% if current_user.role == 'Admin' %}
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm" title="Edit Frame" data-bs-toggle="modal" data-bs-target="#editFrameModal{{ frame.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <form method="POST" action="{{ url_for('bas_monitoring.delete_frame', frame_id=frame.id) }}" onsubmit="return confirm('Apakah Anda yakin ingin menghapus frame ini?');" class="m-0">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-outline-danger rounded-pill px-3 shadow-sm" title="Hapus Frame">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if current_user.role == 'Admin' %}
+            <!-- Modal Edit Frame -->
+            <div class="modal fade text-start" id="editFrameModal{{ frame.id }}" tabindex="-1" aria-labelledby="editFrameModalLabel{{ frame.id }}" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form method="POST" action="{{ url_for('bas_monitoring.edit_frame', frame_id=frame.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="modal-content form-glass border-0 shadow-lg rounded-4">
+                            <div class="modal-header border-bottom pb-3">
+                                <h5 class="modal-title fw-bold" id="editFrameModalLabel{{ frame.id }}">Edit BAS Frame</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body bg-light">
+                                <div class="mb-3">
+                                    <label for="name{{ frame.id }}" class="form-label fw-semibold">Nama Frame</label>
+                                    <input type="text" class="form-control" id="name{{ frame.id }}" name="name" required value="{{ frame.name }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="url{{ frame.id }}" class="form-label fw-semibold">URL Iframe</label>
+                                    <input type="url" class="form-control" id="url{{ frame.id }}" name="url" required value="{{ frame.url }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="site_id{{ frame.id }}" class="form-label fw-semibold">Hubungkan ke Project/Site</label>
+                                    <select class="form-select" id="site_id{{ frame.id }}" name="site_id">
+                                        <option value="">-- Semua Site (Global) --</option>
+                                        {% for site in sites %}
+                                        <option value="{{ site.id }}" {% if frame.site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Jika tidak dipilih, frame ini bisa dilihat oleh seluruh Site.</div>
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light border-top pt-3 rounded-bottom-4">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info border-0 shadow-sm rounded-4 text-center py-5">
+                    <i class="bi bi-info-circle display-4 mb-3 d-block"></i>
+                    <h5>Belum ada frame BAS Monitoring</h5>
+                    {% if current_user.role == 'Admin' %}
+                    <p class="mb-0 text-muted">Klik tombol "Add Frame" di atas untuk menambahkan frame baru.</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

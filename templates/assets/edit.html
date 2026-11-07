@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('assets.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0 mx-auto" style="max-width: 800px;">
+    <div class="card-header bg-white">
+        <h4 class="mb-0">{% if asset %}Edit Asset: {{ asset.code }}{% else %}New Asset{% endif %}</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Asset Name *</label>
+                    <input type="text" class="form-control" name="name" value="{{ asset.name if asset else '' }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Asset Code *</label>
+                    <input type="text" class="form-control" name="code" value="{{ asset.code if asset else '' }}" required>
+                </div>
+                <div class="col-12">
+                    <label class="form-label text-muted small fw-bold">Description</label>
+                    <textarea class="form-control" name="description" rows="2">{{ asset.description if asset else '' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Site *</label>
+                    <select class="form-select" name="site_id" id="site_select" required>
+                        <option value="" data-project-code="">-- Select Site --</option>
+                        {% for site in sites %}
+                            <option value="{{ site.id }}" data-project-code="{{ site.project_code or '' }}" {% if asset and asset.site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Location</label>
+                    <select class="form-select" name="location_id" id="location_select">
+                        <option value="" data-site="">-- No Specific Location --</option>
+                        {% for loc in locations %}
+                            <option value="{{ loc.id }}" data-site="{{ loc.site_id }}" {% if asset and asset.location_id == loc.id %}selected{% endif %}>{{ loc.site.name }} - {{ loc.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Category *</label>
+                    <select class="form-select" name="category_id" id="category_select" required>
+                        <option value="">-- Select Category --</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if asset and asset.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Subcategory</label>
+                    <select class="form-select" name="subcategory_id" id="subcategory_select">
+                        <option value="" data-category="">-- Select Subcategory --</option>
+                        {% for subcat in subcategories %}
+                            <option value="{{ subcat.id }}" data-category="{{ subcat.category.id }}" {% if asset and asset.subcategory_id == subcat.id %}selected{% endif %}>{{ subcat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Project Code</label>
+                    <select class="form-select" name="project_code" id="project_code_select">
+                        <option value="">-- None --</option>
+                        {% for proj in project_codes %}
+                            <option value="{{ proj.code }}" {% if asset and asset.project_code == proj.code %}selected{% endif %}>{{ proj.code }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Status</label>
+                    <select class="form-select" name="status">
+                        <option value="Online" {% if asset and asset.status == 'Online' %}selected{% endif %}>Online</option>
+                        <option value="Offline" {% if asset and asset.status == 'Offline' %}selected{% endif %}>Offline</option>
+                        <option value="In Repair" {% if asset and asset.status == 'In Repair' %}selected{% endif %}>In Repair</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Criticality</label>
+                    <select class="form-select" name="criticality">
+                        <option value="Low" {% if asset and asset.criticality == 'Low' %}selected{% endif %}>Low</option>
+                        <option value="Medium" {% if not asset or asset.criticality == 'Medium' %}selected{% endif %}>Medium</option>
+                        <option value="High" {% if asset and asset.criticality == 'High' %}selected{% endif %}>High</option>
+                        <option value="Critical" {% if asset and asset.criticality == 'Critical' %}selected{% endif %}>Critical</option>
+                    </select>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">Equipment Details</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Make</label>
+                    <input type="text" class="form-control" name="make" value="{{ asset.make if asset else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Model</label>
+                    <input type="text" class="form-control" name="model" value="{{ asset.model if asset else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Serial Number</label>
+                    <input type="text" class="form-control" name="serial_number" value="{{ asset.serial_number if asset else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Barcode</label>
+                    <input type="text" class="form-control" name="barcode" value="{{ asset.barcode if asset else '' }}">
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">IoT Integration</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4 d-flex align-items-center">
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="is_chiller" name="is_chiller" value="1" {% if asset and asset.is_chiller %}checked{% endif %}>
+                        <label class="form-check-label fw-bold small text-muted" for="is_chiller">Apakah ini Chiller?</label>
+                    </div>
+                </div>
+                <div class="col-md-8" id="chiller_id_container" style="{% if not asset or not asset.is_chiller %}display: none;{% endif %}">
+                    <label class="form-label text-muted small fw-bold">Chiller ID (IoT Mapping)</label>
+                    <input type="text" class="form-control" name="api_chiller_id" placeholder="e.g., bxc2_sqc_1" value="{{ asset.api_chiller_id if asset else '' }}">
+                    <small class="text-muted" style="font-size: 0.7em;">ID ini digunakan untuk menyambungkan Asset ke Dashboard Monitoring IoT.</small>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">Storage Information</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Storage Aisle</label>
+                    <input type="text" class="form-control" name="storage_aisle" value="{{ asset.storage_aisle if asset else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Storage Row</label>
+                    <input type="text" class="form-control" name="storage_row" value="{{ asset.storage_row if asset else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Storage Bin</label>
+                    <input type="text" class="form-control" name="storage_bin" value="{{ asset.storage_bin if asset else '' }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label text-muted small fw-bold">Internal Notes</label>
+                    <textarea class="form-control" name="notes" rows="2">{{ asset.notes if asset else '' }}</textarea>
+                </div>
+            </div>
+            
+            <hr>
+            <div class="text-end">
+                <a href="{{ url_for('assets.index') }}" class="btn btn-light me-2">Cancel</a>
+                <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save"></i> Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const categorySelect = document.getElementById('category_select');
+        const subcategorySelect = document.getElementById('subcategory_select');
+        const subcategoryOptions = Array.from(subcategorySelect.querySelectorAll('option:not([value=""])'));
+
+        function filterSubcategories() {
+            const selectedCategoryId = categorySelect.value;
+            let firstValidOption = null;
+            let currentSelectedValid = false;
+            
+            subcategoryOptions.forEach(option => {
+                if (option.getAttribute('data-category') === selectedCategoryId) {
+                    option.style.display = '';
+                    if (!firstValidOption) firstValidOption = option;
+                    if (option.selected) currentSelectedValid = true;
+                } else {
+                    option.style.display = 'none';
+                    option.selected = false;
+                }
+            });
+
+            // If a category is selected but current subcategory becomes invalid, reset to empty
+            if (selectedCategoryId && !currentSelectedValid) {
+                subcategorySelect.value = '';
+            }
+            
+            // If no category selected, disable subcategory dropdown
+            if (!selectedCategoryId) {
+                subcategorySelect.value = '';
+                subcategorySelect.disabled = true;
+            } else {
+                subcategorySelect.disabled = false;
+            }
+        }
+
+        // Initialize on load
+        filterSubcategories();
+
+        // Listen for changes
+        categorySelect.addEventListener('change', filterSubcategories);
+
+        // Site Dropdown Logic
+        const siteSelect = document.getElementById('site_select');
+        const locationSelect = document.getElementById('location_select');
+        const projectCodeSelect = document.getElementById('project_code_select');
+        const locationOptions = Array.from(locationSelect.querySelectorAll('option:not([value=""])'));
+
+        function filterLocationsAndProject() {
+            const selectedSiteId = siteSelect.value;
+            let currentSelectedValid = false;
+            
+            // Filter Locations
+            locationOptions.forEach(option => {
+                if (option.getAttribute('data-site') === selectedSiteId) {
+                    option.style.display = '';
+                    if (option.selected) currentSelectedValid = true;
+                } else {
+                    option.style.display = 'none';
+                    option.selected = false;
+                }
+            });
+
+            if (selectedSiteId && !currentSelectedValid) {
+                locationSelect.value = '';
+            }
+
+            if (!selectedSiteId) {
+                locationSelect.value = '';
+                locationSelect.disabled = true;
+            } else {
+                locationSelect.disabled = false;
+            }
+
+            // Auto-select Project Code ONLY IF user is changing the site interactively (not on initial page load if already set)
+            if (projectCodeSelect && document.activeElement === siteSelect) {
+                const selectedOption = siteSelect.options[siteSelect.selectedIndex];
+                const siteProjectCode = selectedOption ? selectedOption.getAttribute('data-project-code') : '';
+                if (siteProjectCode) {
+                    projectCodeSelect.value = siteProjectCode;
+                }
+            }
+        }
+
+        // Initialize on load
+        filterLocationsAndProject();
+        siteSelect.addEventListener('change', filterLocationsAndProject);
+
+        // Chiller Toggle
+        const isChillerCheckbox = document.getElementById('is_chiller');
+        const chillerIdContainer = document.getElementById('chiller_id_container');
+        if(isChillerCheckbox && chillerIdContainer) {
+            isChillerCheckbox.addEventListener('change', function() {
+                chillerIdContainer.style.display = this.checked ? 'block' : 'none';
+            });
+        }
+    });
+</script>
+{% endblock %}

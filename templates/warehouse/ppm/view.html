@@ -1,0 +1,1126 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('ppm.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Kembali ke Daftar PPM
+    </a>
+{% endblock %}
+
+{% block content %}
+<style>
+:root {
+    --ppm-primary: #4f46e5;
+    --ppm-primary-hover: #4338ca;
+    --ppm-border: #e2e8f0;
+    --ppm-card-bg: #ffffff;
+    --ppm-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+}
+
+body {
+    background-color: #f8fafc;
+    font-family: 'Inter', sans-serif;
+}
+
+.view-card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: var(--ppm-shadow);
+    border: 1px solid var(--ppm-border);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+/* Stepper Progress Bar */
+.stepper-wrapper {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    margin: 1.5rem 0 0.5rem 0;
+}
+.stepper-wrapper::before {
+    content: "";
+    position: absolute;
+    top: 22px;
+    left: 50px;
+    right: 50px;
+    height: 4px;
+    background-color: #e2e8f0;
+    z-index: 1;
+}
+.stepper-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    z-index: 2;
+    text-align: center;
+}
+.step-counter {
+    width: 46px;
+    height: 46px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #cbd5e1;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+.step-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.stepper-item.completed .step-counter {
+    border-color: #10b981;
+    background-color: #10b981;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+}
+.stepper-item.completed .step-name {
+    color: #065f46;
+}
+.stepper-item.active .step-counter {
+    border-color: #4f46e5;
+    background-color: #4f46e5;
+    color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
+}
+.stepper-item.active .step-name {
+    color: #4f46e5;
+    font-weight: 700;
+}
+
+/* Signature Cards */
+.sig-card {
+    border: 1px solid var(--ppm-border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    background-color: #ffffff;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+.sig-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: var(--ppm-shadow);
+}
+.sig-img-container {
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    margin: 0.75rem 0;
+    border: 1px dashed #cbd5e1;
+}
+.sig-img {
+    max-height: 80px;
+    max-width: 90%;
+    object-fit: contain;
+}
+
+.signature-pad-canvas {
+    width: 100%;
+    height: 160px;
+    display: block;
+    border-radius: 10px;
+    border: 2px dashed #cbd5e1;
+    background-color: #ffffff;
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.btn-primary-gradient {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+.btn-primary-gradient:hover {
+    background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+    color: #ffffff;
+}
+
+.btn-success-gradient {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+.btn-success-gradient:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: #ffffff;
+}
+</style>
+
+<div class="container-fluid px-0" style="max-width: 1300px;">
+    {% if ppm.status == 'Draft' %}
+    <div class="alert border-0 rounded-4 shadow-sm p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background-color: #fffbeb; border-left: 5px solid #f59e0b !important;">
+        <div class="d-flex align-items-center gap-3">
+            <div class="p-2 rounded-circle bg-warning text-dark fs-4 flex-shrink-0">
+                <i class="bi bi-file-earmark-lock-fill"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-1 text-dark">Status Dokumen: DRAFT (Privat)</h6>
+                <p class="small text-muted mb-0">Dokumen PPM ini berstatus draft dan hanya dapat dilihat oleh Anda (pembuat). Dokumen belum diajukan ke Supervisor.</p>
+            </div>
+        </div>
+        {% if ppm.requester_id == current_user.id or current_user.role == 'Admin' %}
+        <button type="button" class="btn btn-primary-gradient rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#submitDraftModal">
+            <i class="bi bi-send-check me-1"></i> Tanda Tangani & Ajukan ke SPV
+        </button>
+        {% endif %}
+    </div>
+    {% elif ppm.status == 'On_Hold' %}
+    <div class="alert border-0 rounded-4 shadow-sm p-4 mb-4" style="background-color: #fffbeb; border-left: 5px solid #f59e0b !important;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="p-3 rounded-circle bg-warning text-dark fs-3 flex-shrink-0">
+                    <i class="bi bi-pause-circle-fill"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-1 text-dark">Dokumen PPM Ini Sedang Ditahan (ON HOLD)</h5>
+                    <div class="text-dark small mb-1">
+                        <strong>Alasan Penahanan:</strong> <span class="badge bg-warning-subtle text-dark border border-warning-subtle fs-6 fw-normal px-2 py-1">{{ ppm.hold_reason or '-' }}</span>
+                    </div>
+                    <div class="text-muted small">
+                        Ditahan oleh: <strong>{{ ppm.held_by.name if ppm.held_by else 'Admin' }}</strong> • Pada: {{ ppm.held_at|to_jakarta('%d %b %Y %H:%M') if ppm.held_at else '-' }} WIB
+                    </div>
+                </div>
+            </div>
+            {% if current_user.role == 'Admin' %}
+            <div>
+                <button type="button" class="btn btn-warning text-dark rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#unholdModal">
+                    <i class="bi bi-play-fill me-1"></i> Lanjutkan Proses (Resume)
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Top Action Bar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h3 class="fw-bold text-dark mb-0 font-monospace">{{ ppm.requisition_no }}</h3>
+                <span class="badge px-3 py-1 rounded-pill" style="background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; font-weight: 700;">
+                    {{ ppm.category_division }}
+                </span>
+                {% if ppm.status == 'Draft' %}
+                    <span class="badge bg-secondary px-3 py-1 rounded-pill"><i class="bi bi-lock-fill me-1"></i>Draft (Privat)</span>
+                {% elif ppm.status == 'Submitted' %}
+                    <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-1 rounded-pill">Menunggu SPV</span>
+                {% elif ppm.status == 'Approved' %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1 rounded-pill">Disetujui SPV</span>
+                {% elif ppm.status == 'Purchasing' %}
+                    <span class="badge bg-purple-subtle text-primary border px-3 py-1 rounded-pill">Proses Purchasing</span>
+                {% elif ppm.status == 'Arrived_JTI' %}
+                    <span class="badge bg-warning-subtle text-danger border px-3 py-1 rounded-pill">Tiba di JTI (QC)</span>
+                {% elif ppm.status == 'Shipped_to_Site' %}
+                    <span class="badge bg-orange-subtle text-warning-emphasis border px-3 py-1 rounded-pill">Dalam Pengiriman</span>
+                {% elif ppm.status == 'Received_Site' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill"><i class="bi bi-check2-all me-1"></i>Diterima di Site</span>
+                {% elif ppm.status == 'On_Hold' %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1 rounded-pill"><i class="bi bi-pause-circle-fill me-1"></i>On Hold (Ditahan)</span>
+                {% elif ppm.status == 'Rejected' %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">Ditolak</span>
+                {% endif %}
+            </div>
+            <p class="text-muted mb-0" style="font-size: 0.9rem;">
+                Proyek: <strong>{{ ppm.site.name }}</strong> (Kode: <span class="font-monospace">{{ ppm.project_code or ppm.site.project_code or '-' }}</span>) • 
+                Diajukan pada: <strong>{{ ppm.request_date.strftime('%d %B %Y') }}</strong>
+            </p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('ppm.print_doc', id=ppm.id) }}" target="_blank" class="btn btn-light border rounded-pill px-3 shadow-sm fw-semibold text-dark">
+                <i class="bi bi-printer me-1 text-primary"></i> Cetak RP-JT-115
+            </a>
+
+            <!-- Admin Hold Action -->
+            {% if current_user.role == 'Admin' %}
+                {% if ppm.status == 'On_Hold' %}
+                    <button type="button" class="btn btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#unholdModal">
+                        <i class="bi bi-play-fill me-1"></i> Resume (Lanjutkan)
+                    </button>
+                {% elif ppm.status not in ['Draft', 'Received_Site', 'Rejected', 'Cancelled'] %}
+                    <button type="button" class="btn btn-outline-warning text-dark rounded-pill px-3 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#holdModal" title="Tahan proses pengadaan ini">
+                        <i class="bi bi-pause-circle me-1 text-warning"></i> Hold Proses
+                    </button>
+                {% endif %}
+            {% endif %}
+
+            <!-- Draft Submit Action -->
+            {% if ppm.status == 'Draft' and (ppm.requester_id == current_user.id or current_user.role == 'Admin') %}
+                <button type="button" class="btn btn-primary-gradient rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#submitDraftModal">
+                    <i class="bi bi-send-check me-1"></i> Ajukan ke SPV
+                </button>
+            {% endif %}
+
+            <!-- SPV / Admin Actions (when not on hold) -->
+            {% if ppm.status != 'On_Hold' and current_user.role in ['Admin', 'Supervisor'] %}
+                {% if ppm.status == 'Submitted' %}
+                    <button type="button" class="btn btn-primary-gradient rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#approveModal">
+                        <i class="bi bi-patch-check me-1"></i> Approve PPM
+                    </button>
+                    <button type="button" class="btn btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                        <i class="bi bi-x-circle me-1"></i> Tolak
+                    </button>
+                {% endif %}
+
+                {% if ppm.status in ['Approved', 'Purchasing'] %}
+                    <button type="button" class="btn btn-primary-gradient rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#purchasingModal">
+                        <i class="bi bi-cart3 me-1"></i> Update Info Purchasing
+                    </button>
+                {% endif %}
+            {% endif %}
+
+            <!-- JTI Receiving & Dispatch Action (for VIA_JTI when not on hold) -->
+            {% if ppm.status != 'On_Hold' and ppm.delivery_type == 'VIA_JTI' %}
+                {% if ppm.status in ['Approved', 'Purchasing'] %}
+                    <button type="button" class="btn btn-warning text-dark shadow-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#receiveJtiModal">
+                        <i class="bi bi-box-arrow-in-down me-1"></i> Konfirmasi Tiba di JTI (QC)
+                    </button>
+                {% elif ppm.status == 'Arrived_JTI' %}
+                    <form method="POST" action="{{ url_for('ppm.dispatch_site', id=ppm.id) }}" onsubmit="return confirm('Kirim material ini menuju site {{ ppm.site.name }}?');" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-primary-gradient rounded-pill px-4 fw-bold">
+                            <i class="bi bi-truck me-1"></i> Kirim ke Site {{ ppm.site.name }}
+                        </button>
+                    </form>
+                {% endif %}
+            {% endif %}
+
+            <!-- Final Receiving at Site (when not on hold) -->
+            {% if ppm.status != 'On_Hold' and (ppm.status in ['Approved', 'Purchasing', 'Shipped_to_Site'] or (ppm.delivery_type == 'DIRECT_SITE' and ppm.status in ['Approved', 'Purchasing'])) %}
+                <button type="button" class="btn btn-primary-gradient rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#receiveSiteModal">
+                    <i class="bi bi-box-seam me-1"></i> Konfirmasi Terima di Site
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stepper Progress Tracker -->
+    <div class="view-card p-4">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="p-1 rounded-2" style="background-color: #eef2ff; color: #4f46e5;">
+                <i class="bi bi-diagram-3-fill"></i>
+            </span>
+            <h6 class="fw-bold text-dark mb-0">Alur Pelacakan Lifecycle Pengadaan</h6>
+        </div>
+        
+        {% if ppm.delivery_type == 'DIRECT_SITE' %}
+            <!-- Stepper 4 Steps -->
+            <div class="stepper-wrapper">
+                <div class="stepper-item {% if ppm.status in ['Submitted', 'Approved', 'Purchasing', 'Received_Site'] %}completed{% else %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-file-earmark-check"></i></div>
+                    <div class="step-name">1. Diajukan</div>
+                </div>
+                <div class="stepper-item {% if ppm.status in ['Approved', 'Purchasing', 'Received_Site'] %}completed{% elif ppm.status == 'Submitted' %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-patch-check"></i></div>
+                    <div class="step-name">2. Approval SPV</div>
+                </div>
+                <div class="stepper-item {% if ppm.status in ['Purchasing', 'Received_Site'] %}completed{% elif ppm.status == 'Approved' %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-cart3"></i></div>
+                    <div class="step-name">3. Purchasing (PO)</div>
+                </div>
+                <div class="stepper-item {% if ppm.status == 'Received_Site' %}completed{% elif ppm.status == 'Purchasing' %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-geo-alt"></i></div>
+                    <div class="step-name">4. Diterima di Site</div>
+                </div>
+            </div>
+        {% else %}
+            <!-- Stepper 6 Steps (VIA_JTI) -->
+            <div class="stepper-wrapper">
+                <div class="stepper-item {% if ppm.status in ['Submitted', 'Approved', 'Purchasing', 'Arrived_JTI', 'Shipped_to_Site', 'Received_Site'] %}completed{% else %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-file-earmark-check"></i></div>
+                    <div class="step-name">1. Diajukan</div>
+                </div>
+                <div class="stepper-item {% if ppm.status in ['Approved', 'Purchasing', 'Arrived_JTI', 'Shipped_to_Site', 'Received_Site'] %}completed{% elif ppm.status == 'Submitted' %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-patch-check"></i></div>
+                    <div class="step-name">2. Approval SPV</div>
+                </div>
+                <div class="stepper-item {% if ppm.status in ['Purchasing', 'Arrived_JTI', 'Shipped_to_Site', 'Received_Site'] %}completed{% elif ppm.status == 'Approved' %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-cart3"></i></div>
+                    <div class="step-name">3. Purchasing</div>
+                </div>
+                <div class="stepper-item {% if ppm.status in ['Arrived_JTI', 'Shipped_to_Site', 'Received_Site'] %}completed{% elif ppm.status == 'Purchasing' %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-building"></i></div>
+                    <div class="step-name">4. Masuk JTI (QC)</div>
+                </div>
+                <div class="stepper-item {% if ppm.status in ['Shipped_to_Site', 'Received_Site'] %}completed{% elif ppm.status == 'Arrived_JTI' %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-truck"></i></div>
+                    <div class="step-name">5. Kirim ke Site</div>
+                </div>
+                <div class="stepper-item {% if ppm.status == 'Received_Site' %}completed{% elif ppm.status == 'Shipped_to_Site' %}active{% endif %}">
+                    <div class="step-counter"><i class="bi bi-check2-all"></i></div>
+                    <div class="step-name">6. Diterima di Site</div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Document Info & Route Summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="view-card p-4 h-100">
+                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Detail Dokumen</h6>
+                <div class="row g-2 small">
+                    <div class="col-sm-5 text-muted">No. Dokumen Standar:</div>
+                    <div class="col-sm-7 fw-bold">RP - JT - 115 (Rev. 01)</div>
+
+                    <div class="col-sm-5 text-muted">Nomor Permintaan:</div>
+                    <div class="col-sm-7 fw-bold font-monospace" style="color: #4f46e5;">{{ ppm.requisition_no }}</div>
+
+                    <div class="col-sm-5 text-muted">Proyek & Kode:</div>
+                    <div class="col-sm-7 fw-semibold">{{ ppm.site.name }} • <span class="font-monospace">{{ ppm.project_code or '-' }}</span></div>
+
+                    <div class="col-sm-5 text-muted">Kategori Divisi:</div>
+                    <div class="col-sm-7"><span class="badge bg-light text-dark border">{{ ppm.category_division }}</span></div>
+
+                    <div class="col-sm-5 text-muted">Referensi Drawing:</div>
+                    <div class="col-sm-7">{{ ppm.drawing_ref or '-' }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="view-card p-4 h-100">
+                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-truck text-primary me-2"></i>Jalur Logistik & PO</h6>
+                {% if ppm.delivery_type == 'DIRECT_SITE' %}
+                    <div class="p-3 bg-light border rounded-3 mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-geo-alt-fill fs-4 text-primary"></i>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">Langsung ke Site</h6>
+                                <p class="small text-muted mb-0">Vendor langsung mengirimkan pesanan material ke lokasi proyek {{ ppm.site.name }}.</p>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="p-3 bg-light border rounded-3 mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-building fs-4 text-primary"></i>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0">Transit Gudang JTI Dulu</h6>
+                                <p class="small text-muted mb-0">Material diperiksa dan di-staging di Workshop/Gudang JTI Pusat sebelum dikirim ke Site.</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if ppm.po_number %}
+                <div class="mt-2 small bg-light p-2 rounded border">
+                    <span class="text-muted">Nomor PO Purchasing:</span> <strong class="text-primary font-monospace">{{ ppm.po_number }}</strong>
+                    {% if ppm.purchasing_notes %}<div class="text-muted mt-1">Catatan: {{ ppm.purchasing_notes }}</div>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="view-card mb-4">
+        <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-box-seam-fill text-primary me-2"></i>Rincian Material PPM</h5>
+            <span class="badge px-3 py-2 rounded-pill font-monospace" style="background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe;">
+                {{ ppm.items.count() }} Item Material
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="small text-uppercase text-muted" style="letter-spacing: 0.05em; font-size: 0.72rem;">
+                        <th class="text-center" style="width: 40px;">No</th>
+                        <th>Nama Material</th>
+                        <th>Ukuran & Kapasitas</th>
+                        <th>Spesifikasi & Merk</th>
+                        <th class="text-center">Qty Diminta</th>
+                        <th class="text-center">Satuan</th>
+                        <th>Target Datang</th>
+                        <th class="text-center">Stok Gudang</th>
+                        <th>Status Pengadaan</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in ppm.items %}
+                    <tr>
+                        <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ item.item_name }}</div>
+                            {% if item.part %}
+                                <div class="small font-monospace text-muted">{{ item.part.code }}</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.size_capacity or '-' }}</td>
+                        <td style="white-space: pre-line;">{{ item.spec_brand or '-' }}</td>
+                        <td class="text-center fw-bold fs-6 text-primary">{{ item.quantity }}</td>
+                        <td class="text-center"><span class="badge bg-light text-dark border">{{ item.unit }}</span></td>
+                        <td>
+                            {% if item.target_date %}
+                                <span class="badge bg-light text-dark border"><i class="bi bi-calendar-event me-1 text-primary"></i>{{ item.target_date.strftime('%d/%m/%Y') }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge {% if item.warehouse_stock > 0 %}bg-success-subtle text-success border-success-subtle{% else %}bg-light text-muted{% endif %} border px-2 py-1">
+                                {{ item.warehouse_stock }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-secondary border">{{ item.purchase_status or 'Pending' }}</span>
+                        </td>
+                        <td class="small text-muted">{{ item.notes or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Official Signatures Card -->
+    <div class="view-card p-4 mb-5">
+        <h6 class="fw-bold text-dark border-bottom pb-2 mb-4">
+            <i class="bi bi-shield-lock text-primary me-2"></i>Verifikasi & Pertanggungjawaban (Digital Signatures)
+        </h6>
+
+        <div class="row g-3">
+            <!-- 1. Requester / Pemohon -->
+            <div class="col-md-4">
+                <div class="sig-card">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-primary-subtle text-primary fw-bold">Pemohon / Teknisi</span>
+                            <span class="text-muted small">Diajukan</span>
+                        </div>
+                        <div class="fw-bold text-dark mt-2">{{ ppm.requester.name }}</div>
+                        <div class="small text-muted font-monospace">NRP: {{ ppm.requester.nrp }}</div>
+                    </div>
+
+                    <div class="sig-img-container">
+                        {% if ppm.requester_signature %}
+                            <img src="{{ ppm.requester_signature }}" alt="Tanda Tangan Pemohon" class="sig-img">
+                        {% else %}
+                            <span class="text-muted small fst-italic">Belum ditandatangani</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="small text-muted text-center">
+                        {% if ppm.requester_signed_at %}
+                            <i class="bi bi-clock me-1"></i>{{ ppm.requester_signed_at|to_jakarta('%d %b %Y %H:%M') }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Supervisor / Approver -->
+            <div class="col-md-4">
+                <div class="sig-card">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-light text-dark border fw-bold">Disetujui (Supervisor)</span>
+                            <span class="text-muted small">Approval</span>
+                        </div>
+                        <div class="fw-bold text-dark mt-2">{{ ppm.supervisor.name if ppm.supervisor else '-' }}</div>
+                        <div class="small text-muted font-monospace">NRP: {{ ppm.supervisor.nrp if ppm.supervisor else '-' }}</div>
+                    </div>
+
+                    <div class="sig-img-container">
+                        {% if ppm.supervisor_signature %}
+                            <img src="{{ ppm.supervisor_signature }}" alt="Tanda Tangan Supervisor" class="sig-img">
+                        {% else %}
+                            <span class="text-muted small fst-italic">Menunggu persetujuan SPV</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="small text-muted text-center">
+                        {% if ppm.supervisor_signed_at %}
+                            <i class="bi bi-clock me-1"></i>{{ ppm.supervisor_signed_at|to_jakarta('%d %b %Y %H:%M') }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Site Receiver / Penerima Gudang -->
+            <div class="col-md-4">
+                <div class="sig-card">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge bg-light text-dark border fw-bold">Penerima di Site</span>
+                            <span class="text-muted small">Restock Gudang</span>
+                        </div>
+                        <div class="fw-bold text-dark mt-2">{{ ppm.site_receiver.name if ppm.site_receiver else '-' }}</div>
+                        <div class="small text-muted font-monospace">NRP: {{ ppm.site_receiver.nrp if ppm.site_receiver else '-' }}</div>
+                    </div>
+
+                    <div class="sig-img-container">
+                        {% if ppm.site_receiver_signature %}
+                            <img src="{{ ppm.site_receiver_signature }}" alt="Tanda Tangan Penerima" class="sig-img">
+                        {% else %}
+                            <span class="text-muted small fst-italic">Belum diterima di site</span>
+                        {% endif %}
+                    </div>
+
+                    {% if ppm.site_receiver_photo %}
+                        <div class="mt-2 text-center">
+                            <a href="{{ url_for('static', filename='uploads/warehouse/ppm/' + ppm.site_receiver_photo) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
+                                <i class="bi bi-camera me-1"></i> Lihat Foto Penerimaan Fisik
+                            </a>
+                        </div>
+                    {% endif %}
+
+                    {% if ppm.jti_receiver_photo %}
+                        <div class="mt-2 text-center">
+                            <a href="{{ url_for('static', filename='uploads/warehouse/ppm/' + ppm.jti_receiver_photo) }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
+                                <i class="bi bi-camera me-1"></i> Foto Gudang JTI (QC)
+                            </a>
+                        </div>
+                    {% endif %}
+
+                    <div class="small text-muted text-center mt-2">
+                        {% if ppm.site_received_at %}
+                            <i class="bi bi-clock me-1"></i>{{ ppm.site_received_at|to_jakarta('%d %b %Y %H:%M') }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 4. ACTIVITY LOG & AUDIT TRAIL ================= -->
+    <div class="view-card p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="p-1 rounded-2" style="background-color: #eef2ff; color: #4f46e5;">
+                    <i class="bi bi-clock-history"></i>
+                </span>
+                <h6 class="fw-bold text-dark mb-0">Riwayat Aktivitas & Jejak Audit (Log)</h6>
+            </div>
+            <span class="badge bg-light text-muted border font-monospace">{{ ppm.logs.count() }} Catatan Aktivitas</span>
+        </div>
+
+        {% if ppm.logs.all() %}
+            <div class="timeline-container px-2 pt-2">
+                {% for log in ppm.logs.all() %}
+                <div class="d-flex gap-3 position-relative pb-3 {% if not loop.last %}border-start border-2 ms-2 ps-3{% else %}ms-2 ps-3{% endif %}" style="border-color: #e2e8f0 !important;">
+                    <div class="position-absolute" style="left: -9px; top: 2px;">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 16px; height: 16px; background-color: #4f46e5; border: 3px solid #e0e7ff;"></span>
+                    </div>
+                    <div class="w-100">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge px-2 py-1 rounded" style="background-color: #f1f5f9; color: #1e293b; font-weight: 700; font-size: 0.75rem;">{{ log.action }}</span>
+                                <span class="fw-semibold small text-dark">{{ log.user.name if log.user else 'Sistem' }}</span>
+                                {% if log.user and log.user.role %}
+                                    <span class="badge bg-secondary-subtle text-secondary font-monospace" style="font-size: 0.68rem;">{{ log.user.role }}</span>
+                                {% endif %}
+                            </div>
+                            <span class="text-muted small" style="font-size: 0.78rem;">
+                                <i class="bi bi-clock me-1 text-primary"></i>{{ log.created_at|to_jakarta('%d %b %Y %H:%M') }} WIB
+                            </span>
+                        </div>
+                        {% if log.notes %}
+                            <div class="small text-muted p-2 rounded-3 bg-light border-0" style="font-size: 0.82rem; background-color: #f8fafc !important;">
+                                {{ log.notes }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-3 text-muted small">
+                <i class="bi bi-journal-text fs-4 d-block mb-1 text-secondary opacity-50"></i>
+                Belum ada catatan aktivitas pada dokumen ini.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ================= ENHANCED MODALS ================= -->
+
+<!-- Hold Modal (Admin Only) -->
+<div class="modal fade" id="holdModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <form method="POST" action="{{ url_for('ppm.hold', id=ppm.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pause-circle me-2" style="color: #f59e0b;"></i>Tahan (Hold) Proses PPM</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert bg-warning-subtle border border-warning-subtle d-flex align-items-center gap-2 p-3 rounded-3 mb-3 text-dark small">
+                        <i class="bi bi-exclamation-triangle-fill text-warning fs-4 flex-shrink-0"></i>
+                        <div>Menahan proses PPM akan menghentikan seluruh alur pengadaan sementara sampai Admin melanjutkan proses kembali.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1">Alasan Penahanan (Wajib Disertakan) *</label>
+                        <textarea class="form-control" name="hold_reason" rows="3" required placeholder="Jelaskan alasan penahanan proses (misal: klarifikasi spec, review budget, perubahan kebutuhan site)..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning text-dark rounded-pill px-4 fw-bold">
+                        <i class="bi bi-pause-fill me-1"></i> Tahan Proses (Hold)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Unhold / Resume Modal (Admin Only) -->
+<div class="modal fade" id="unholdModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <form method="POST" action="{{ url_for('ppm.unhold', id=ppm.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-play-circle me-2" style="color: #10b981;"></i>Lanjutkan Proses PPM (Resume)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert bg-success-subtle border border-success-subtle small text-dark p-3 rounded-3 mb-3">
+                        <i class="bi bi-info-circle me-1 text-success"></i>Penahanan akan dicabut dan dokumen PPM dikembalikan ke status aktif sebelumnya (<strong>{{ ppm.previous_status or 'Submitted' }}</strong>).
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1">Catatan Lanjutan (Opsional)</label>
+                        <textarea class="form-control form-control-sm" name="resume_notes" rows="2" placeholder="Catatan instruksi lanjutan atau klarifikasi yang telah diselesaikan..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary-gradient rounded-pill px-4 fw-bold">
+                        <i class="bi bi-play-fill me-1"></i> Lanjutkan Proses
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 0. Submit Draft Modal with Signature Canvas (For Requester) -->
+<div class="modal fade" id="submitDraftModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <form method="POST" action="{{ url_for('ppm.submit_draft', id=ppm.id) }}" id="submitDraftForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="requester_signature" id="draft_sig_input"/>
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-send-check me-2" style="color: #60a5fa;"></i>Tanda Tangan & Ajukan PPM</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Dengan menandatangani dokumen ini, Anda bertanggung jawab atas kebenaran spesifikasi & kuantitas material. Dokumen akan diteruskan ke Supervisor untuk proses persetujuan.</p>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold text-dark mb-0">Tanda Tangan Digital Pemohon *</label>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onclick="clearDraftSig()" style="font-size: 0.75rem;">Clear</button>
+                        </div>
+                        <canvas id="draftSigCanvas" class="signature-pad-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary-gradient rounded-pill px-4 fw-bold" onclick="submitDraftAction()">
+                        <i class="bi bi-send-check me-1"></i> Bubuhkan TTD & Ajukan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 1. SPV Approval Modal with Signature Canvas -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <form method="POST" action="{{ url_for('ppm.approve', id=ppm.id) }}" id="approveForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="supervisor_signature" id="spv_sig_input"/>
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-patch-check me-2" style="color: #60a5fa;"></i>Persetujuan PPM (Supervisor)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Dengan menyetujui dokumen ini, pengajuan PPM akan diteruskan ke tim Pengadaan (Purchasing) untuk diproses penerbitan PO.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1">Catatan Supervisor (Opsional)</label>
+                        <textarea class="form-control form-control-sm" name="supervisor_notes" rows="2" placeholder="Catatan persetujuan..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold text-dark mb-0">Tanda Tangan Digital Supervisor *</label>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onclick="clearSpvSig()" style="font-size: 0.75rem;">Clear</button>
+                        </div>
+                        <canvas id="spvSigCanvas" class="signature-pad-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary-gradient rounded-pill px-4 fw-bold" onclick="submitSpvApprove()">
+                        <i class="bi bi-check-lg me-1"></i> Setujui & Teruskan ke Purchasing
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. SPV Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <form method="POST" action="{{ url_for('ppm.reject', id=ppm.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-x-circle me-2" style="color: #f87171;"></i>Tolak Pengajuan PPM</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1">Alasan Penolakan / Revisi *</label>
+                        <textarea class="form-control" name="reject_reason" rows="3" required placeholder="Jelaskan alasan dokumen ditolak..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Tolak Dokumen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Purchasing Info Modal -->
+<div class="modal fade" id="purchasingModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <form method="POST" action="{{ url_for('ppm.update_purchasing', id=ppm.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-cart3 me-2" style="color: #60a5fa;"></i>Update Info Pengadaan / PO</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-dark mb-1">Nomor Purchase Order (PO)</label>
+                            <input type="text" class="form-control font-monospace" name="po_number" value="{{ ppm.po_number or '' }}" placeholder="PO-JTI/2026/09/...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-dark mb-1">Catatan Purchasing</label>
+                            <input type="text" class="form-control" name="purchasing_notes" value="{{ ppm.purchasing_notes or '' }}" placeholder="Status vendor, estimasi pengiriman...">
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-dark mb-2 small">Update Status Per Item:</h6>
+                    <div class="table-responsive border rounded-3">
+                        <table class="table table-sm table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item Material</th>
+                                    <th>Qty Diminta</th>
+                                    <th>Status Item</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in ppm.items %}
+                                <tr>
+                                    <td class="fw-semibold">{{ item.item_name }}</td>
+                                    <td>{{ item.quantity }} {{ item.unit }}</td>
+                                    <td>
+                                        <select class="form-select form-select-sm" name="item_status_{{ item.id }}">
+                                            <option value="Approved for PO" {% if item.purchase_status == 'Approved for PO' %}selected{% endif %}>Approved for PO</option>
+                                            <option value="PO Issued" {% if item.purchase_status == 'PO Issued' %}selected{% endif %}>PO Issued / Dipesan</option>
+                                            <option value="Shipped from Vendor" {% if item.purchase_status == 'Shipped from Vendor' %}selected{% endif %}>Dikirim Vendor</option>
+                                            <option value="Out of Stock" {% if item.purchase_status == 'Out of Stock' %}selected{% endif %}>Barang Kosong</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary-gradient rounded-pill px-4 fw-bold">Simpan Info Purchasing</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 4. JTI Central Receiving Modal (for VIA_JTI) -->
+<div class="modal fade" id="receiveJtiModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <form method="POST" action="{{ url_for('ppm.receive_jti', id=ppm.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-building me-2" style="color: #60a5fa;"></i>Konfirmasi Tiba di Gudang / Workshop JTI</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Catat kedatangan material di Workshop/Gudang JTI Pusat untuk proses Quality Control (QC) & persiapan pengiriman ke Site.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1"><i class="bi bi-camera me-1 text-primary"></i>Foto Bukti Barang di JTI / QC (Opsional)</label>
+                        <input type="file" name="jti_photo" class="form-control form-control-sm" accept="image/*" capture="environment" onchange="previewImg(this, 'jtiPreview', 'jtiPreviewContainer')">
+                        <div id="jtiPreviewContainer" class="d-none mt-2">
+                            <img id="jtiPreview" src="#" alt="Preview Foto" class="img-thumbnail rounded" style="max-height: 120px;">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1">Catatan Pemeriksaan QC / Gudang JTI</label>
+                        <textarea class="form-control" name="jti_notes" rows="2" placeholder="Kondisi barang, kelengkapan, dll..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary-gradient rounded-pill px-4 fw-bold">Konfirmasi Tiba di JTI</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 5. Site Physical Receive & Restock Modal -->
+<div class="modal fade" id="receiveSiteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <form method="POST" action="{{ url_for('ppm.receive_site', id=ppm.id) }}" id="receiveSiteForm" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="site_receiver_signature" id="site_sig_input"/>
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-box-seam me-2" style="color: #60a5fa;"></i>Konfirmasi Penerimaan Fisik di Site</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert d-flex align-items-center gap-3 p-3 rounded-3 mb-3" style="background-color: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1;">
+                        <i class="bi bi-info-circle-fill fs-4 flex-shrink-0" style="color: #0284c7;"></i>
+                        <div class="small">
+                            Material telah sampai di lokasi site <strong>{{ ppm.site.name }}</strong>. Konfirmasi ini akan otomatis menambahkan kuantitas barang ke inventori gudang (*StockLevel*).
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="auto_restock" value="1" id="autoRestockSwitch" checked>
+                        <label class="form-check-label fw-bold text-dark small" for="autoRestockSwitch">
+                            Otomatis tambahkan kuantitas ke stok gudang (*Auto-Restock*)
+                        </label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1">
+                            <i class="bi bi-camera-fill me-1 text-primary"></i>Sertakan Foto Bukti Penerimaan Fisik / Surat Jalan (Opsional)
+                        </label>
+                        <input type="file" name="receiver_photo" class="form-control form-control-sm" accept="image/*" capture="environment" onchange="previewImg(this, 'sitePreview', 'sitePreviewContainer')">
+                        <div id="sitePreviewContainer" class="d-none mt-2">
+                            <img id="sitePreview" src="#" alt="Preview Foto" class="img-thumbnail rounded" style="max-height: 120px;">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold text-dark mb-0">Tanda Tangan Digital Penerima di Site *</label>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onclick="clearSiteSig()" style="font-size: 0.75rem;">Clear</button>
+                        </div>
+                        <canvas id="siteSigCanvas" class="signature-pad-canvas"></canvas>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1">Catatan Penerimaan</label>
+                        <textarea class="form-control form-control-sm" name="site_notes" rows="2" placeholder="Catatan kondisi fisik material saat diterima..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary-gradient rounded-pill px-4 fw-bold" onclick="submitSiteReceive()">
+                        <i class="bi bi-check2-all me-1"></i> Konfirmasi Terima & Update Stok
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let draftCanvas, draftCtx, draftSigned = false;
+let spvCanvas, spvCtx, spvSigned = false;
+let siteCanvas, siteCtx, siteSigned = false;
+
+document.addEventListener("DOMContentLoaded", function() {
+    const draftModalEl = document.getElementById('submitDraftModal');
+    if (draftModalEl) {
+        draftModalEl.addEventListener('shown.bs.modal', function () {
+            draftCanvas = document.getElementById('draftSigCanvas');
+            draftCtx = setupCanvas(draftCanvas, () => { draftSigned = true; });
+        });
+    }
+
+    const approveModalEl = document.getElementById('approveModal');
+    if (approveModalEl) {
+        approveModalEl.addEventListener('shown.bs.modal', function () {
+            spvCanvas = document.getElementById('spvSigCanvas');
+            spvCtx = setupCanvas(spvCanvas, () => { spvSigned = true; });
+        });
+    }
+
+    const receiveModalEl = document.getElementById('receiveSiteModal');
+    if (receiveModalEl) {
+        receiveModalEl.addEventListener('shown.bs.modal', function () {
+            siteCanvas = document.getElementById('siteSigCanvas');
+            siteCtx = setupCanvas(siteCanvas, () => { siteSigned = true; });
+        });
+    }
+});
+
+function setupCanvas(canvasEl, onDrawCallback) {
+    if (!canvasEl) return null;
+    const ctx = canvasEl.getContext('2d');
+    const rect = canvasEl.getBoundingClientRect();
+    canvasEl.width = rect.width;
+    canvasEl.height = rect.height;
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    let drawing = false;
+
+    function getP(e) {
+        const r = canvasEl.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+    function getTP(e) {
+        const r = canvasEl.getBoundingClientRect();
+        return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+    }
+
+    canvasEl.addEventListener('mousedown', (e) => {
+        drawing = true;
+        onDrawCallback();
+        const p = getP(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+    });
+    canvasEl.addEventListener('mousemove', (e) => {
+        if (!drawing) return;
+        const p = getP(e);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+    });
+    window.addEventListener('mouseup', () => { drawing = false; });
+
+    canvasEl.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        drawing = true;
+        onDrawCallback();
+        const p = getTP(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+    }, { passive: false });
+
+    canvasEl.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!drawing) return;
+        const p = getTP(e);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+    }, { passive: false });
+
+    window.addEventListener('touchend', () => { drawing = false; });
+
+    return ctx;
+}
+
+function clearDraftSig() {
+    if (draftCtx && draftCanvas) {
+        draftCtx.clearRect(0, 0, draftCanvas.width, draftCanvas.height);
+        draftSigned = false;
+        document.getElementById('draft_sig_input').value = '';
+    }
+}
+
+function submitDraftAction() {
+    if (!draftSigned) {
+        alert("Tanda tangan pemohon wajib diisi!");
+        return;
+    }
+    document.getElementById('draft_sig_input').value = draftCanvas.toDataURL('image/png');
+    document.getElementById('submitDraftForm').submit();
+}
+
+function clearSpvSig() {
+    if (spvCtx && spvCanvas) {
+        spvCtx.clearRect(0, 0, spvCanvas.width, spvCanvas.height);
+        spvSigned = false;
+        document.getElementById('spv_sig_input').value = '';
+    }
+}
+
+function clearSiteSig() {
+    if (siteCtx && siteCanvas) {
+        siteCtx.clearRect(0, 0, siteCanvas.width, siteCanvas.height);
+        siteSigned = false;
+        document.getElementById('site_sig_input').value = '';
+    }
+}
+
+function submitSpvApprove() {
+    if (!spvSigned) {
+        alert("Tanda tangan Supervisor wajib diisi!");
+        return;
+    }
+    document.getElementById('spv_sig_input').value = spvCanvas.toDataURL('image/png');
+    document.getElementById('approveForm').submit();
+}
+
+function submitSiteReceive() {
+    if (!siteSigned) {
+        alert("Tanda tangan Penerima di Site wajib diisi!");
+        return;
+    }
+    document.getElementById('site_sig_input').value = siteCanvas.toDataURL('image/png');
+    document.getElementById('receiveSiteForm').submit();
+}
+
+function previewImg(input, imgId, containerId) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById(imgId).src = e.target.result;
+            document.getElementById(containerId).classList.remove('d-none');
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %}

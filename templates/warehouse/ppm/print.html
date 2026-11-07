@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPM - {{ ppm.requisition_no }} - RP-JT-115</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+            color: #000;
+            background-color: #f1f5f9;
+            font-size: 11px;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .sheet-container {
+            max-width: 1050px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 1px solid #cbd5e1;
+        }
+
+        /* Official Excel Border Table Styles */
+        .table-official {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .table-official th, .table-official td {
+            border: 1px solid #000;
+            padding: 5px 6px;
+            vertical-align: middle;
+            font-size: 10.5px;
+        }
+        .table-official thead th {
+            background-color: #f8fafc;
+            text-align: center;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .header-meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+        }
+        .header-meta-table td {
+            padding: 2px 4px;
+            font-size: 11px;
+        }
+
+        .doc-meta-box {
+            border: 1px solid #000;
+            padding: 6px 10px;
+            font-size: 10px;
+            width: 200px;
+        }
+
+        .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .signature-table td {
+            border: 1px solid #000;
+            width: 33.33%;
+            padding: 6px;
+            text-align: center;
+            vertical-align: bottom;
+            height: 110px;
+        }
+        .sig-preview-img {
+            max-height: 55px;
+            max-width: 160px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 5px auto;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+                font-size: 10px;
+            }
+            .sheet-container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+            .no-print {
+                display: none !important;
+            }
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Floating Action Bar for Web View -->
+<div class="sheet-container no-print mb-3 py-2 bg-light border-0 d-flex justify-content-between align-items-center rounded-3">
+    <div>
+        <a href="{{ url_for('ppm.view', id=ppm.id) }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Kembali ke Detail
+        </a>
+    </div>
+    <div class="d-flex gap-2">
+        <button onclick="window.print()" class="btn btn-sm btn-primary px-4 fw-bold shadow-sm">
+            <i class="bi bi-printer me-1"></i> Cetak / Simpan PDF
+        </button>
+    </div>
+</div>
+
+<div class="sheet-container">
+    <!-- Top Header: Logo, Title, Document Number Box -->
+    <table style="width: 100%; margin-bottom: 10px;">
+        <tr>
+            <td style="width: 25%; vertical-align: middle;">
+                <div class="d-flex align-items-center gap-2">
+                    <img src="{{ url_for('static', filename='images/Logo Jaya Teknik.png') }}" alt="Jaya Teknik" style="height: 48px; max-width: 160px; object-fit: contain;">
+                </div>
+            </td>
+            <td style="width: 50%; text-align: center; vertical-align: middle;">
+                <h4 style="font-weight: 800; letter-spacing: 0.5px; margin: 0; font-size: 16px;">
+                    PERMINTAAN PENGADAAN MATERIAL ( PPM )
+                </h4>
+                <div style="font-weight: bold; font-size: 11px; margin-top: 2px;">
+                    DIVISI: {{ ppm.category_division }}
+                </div>
+            </td>
+            <td style="width: 25%; text-align: right; vertical-align: top;">
+                <div class="doc-meta-box d-inline-block text-start">
+                    <div><strong>No. Dok.</strong> : RP - JT - 115</div>
+                    <div><strong>Revisi</strong> &nbsp;&nbsp;: 01</div>
+                    <div><strong>Tanggal</strong> : 26 Maret 2018</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Header Metadata (Form fields) -->
+    <table class="header-meta-table">
+        <tr>
+            <td style="width: 15%; font-weight: bold;">Permintaan Nomor</td>
+            <td style="width: 40%;">: <strong>{{ ppm.requisition_no }}</strong></td>
+            <td style="width: 15%; font-weight: bold;">Tujuan Pengiriman</td>
+            <td style="width: 30%;">: 
+                {% if ppm.delivery_type == 'DIRECT_SITE' %}
+                    <strong>[ X ] Langsung ke Site</strong> &nbsp;&nbsp; [ &nbsp; ] Via JTI
+                {% else %}
+                    [ &nbsp; ] Langsung ke Site &nbsp;&nbsp; <strong>[ X ] Transit via JTI</strong>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold;">Tanggal</td>
+            <td>: {{ ppm.request_date.strftime('%d %B %Y') }}</td>
+            <td style="font-weight: bold;">Status PO / Pembelian</td>
+            <td>: {{ ppm.po_number or 'Dalam Proses' }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold;">Nama Proyek</td>
+            <td>: <strong>{{ ppm.site.name }}</strong></td>
+            <td style="font-weight: bold;">Referensi Drawing</td>
+            <td>: {{ ppm.drawing_ref or '-' }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold;">Kode Proyek</td>
+            <td>: <strong>{{ ppm.project_code or ppm.site.project_code or '-' }}</strong></td>
+            <td style="font-weight: bold;">Kategori Sheet</td>
+            <td>: {{ ppm.category_division }}</td>
+        </tr>
+    </table>
+
+    <!-- Material Items Table -->
+    <table class="table-official">
+        <thead>
+            <tr>
+                <th style="width: 30px;">No.</th>
+                <th style="width: 200px;">Nama Material</th>
+                <th style="width: 110px;">Ukuran &<br>Kapasitas</th>
+                <th style="width: 220px;">Spesifikasi & Merk</th>
+                <th style="width: 55px;">Quantity</th>
+                <th style="width: 55px;">Satuan</th>
+                <th style="width: 80px;">Target<br>Datang</th>
+                <th style="width: 60px;">Stock<br>Gudang</th>
+                <th style="width: 85px;">Proses<br>Pembelian</th>
+                <th>Keterangan</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in ppm.items %}
+            <tr>
+                <td style="text-align: center; font-weight: bold;">{{ loop.index }}</td>
+                <td>
+                    <strong>{{ item.item_name }}</strong>
+                    {% if item.part %}
+                        <div style="font-size: 9px; color: #555;">{{ item.part.code }}</div>
+                    {% endif %}
+                </td>
+                <td style="text-align: center;">{{ item.size_capacity or '-' }}</td>
+                <td style="white-space: pre-line;">{{ item.spec_brand or '-' }}</td>
+                <td style="text-align: center; font-weight: bold;">{{ item.quantity }}</td>
+                <td style="text-align: center;">{{ item.unit }}</td>
+                <td style="text-align: center;">
+                    {{ item.target_date.strftime('%d/%m/%Y') if item.target_date else '-' }}
+                </td>
+                <td style="text-align: center;">{{ item.warehouse_stock }}</td>
+                <td style="text-align: center; font-size: 9.5px;">{{ item.purchase_status or '-' }}</td>
+                <td style="font-size: 9.5px;">{{ item.notes or '-' }}</td>
+            </tr>
+            {% endfor %}
+
+            <!-- Extra empty rows if items < 6 for clean A4 printing layout -->
+            {% set empty_rows = 6 - ppm.items.count() %}
+            {% if empty_rows > 0 %}
+                {% for i in range(empty_rows) %}
+                <tr>
+                    <td style="text-align: center; color: #ccc;">{{ ppm.items.count() + loop.index }}</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+
+    <!-- Official Signatures Table (Replicating Standard RP-JT-115) -->
+    <table class="signature-table">
+        <thead>
+            <tr>
+                <th style="border: 1px solid #000; padding: 4px; text-align: center; background-color: #f8fafc; font-weight: bold;">
+                    Yang Mengajukan (Pemohon)
+                </th>
+                <th style="border: 1px solid #000; padding: 4px; text-align: center; background-color: #f8fafc; font-weight: bold;">
+                    Disetujui Oleh (Supervisor / SM)
+                </th>
+                <th style="border: 1px solid #000; padding: 4px; text-align: center; background-color: #f8fafc; font-weight: bold;">
+                    Diterima Oleh (Gudang / Site)
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    {% if ppm.requester_signature %}
+                        <img src="{{ ppm.requester_signature }}" alt="TTD Pemohon" class="sig-preview-img">
+                    {% endif %}
+                    <div style="font-weight: bold; text-decoration: underline;">{{ ppm.requester.name }}</div>
+                    <div style="font-size: 9.5px;">NRP: {{ ppm.requester.nrp }}</div>
+                    <div style="font-size: 9px; color: #555;">Tgl: {{ ppm.requester_signed_at|to_jakarta('%d/%m/%Y') if ppm.requester_signed_at else '-' }}</div>
+                </td>
+                <td>
+                    {% if ppm.supervisor_signature %}
+                        <img src="{{ ppm.supervisor_signature }}" alt="TTD Supervisor" class="sig-preview-img">
+                    {% endif %}
+                    <div style="font-weight: bold; text-decoration: underline;">{{ ppm.supervisor.name if ppm.supervisor else '( ................................... )' }}</div>
+                    <div style="font-size: 9.5px;">NRP: {{ ppm.supervisor.nrp if ppm.supervisor else '-' }}</div>
+                    <div style="font-size: 9px; color: #555;">Tgl: {{ ppm.supervisor_signed_at|to_jakarta('%d/%m/%Y') if ppm.supervisor_signed_at else '-' }}</div>
+                </td>
+                <td>
+                    {% if ppm.site_receiver_signature %}
+                        <img src="{{ ppm.site_receiver_signature }}" alt="TTD Penerima" class="sig-preview-img">
+                    {% endif %}
+                    <div style="font-weight: bold; text-decoration: underline;">{{ ppm.site_receiver.name if ppm.site_receiver else '( ................................... )' }}</div>
+                    <div style="font-size: 9.5px;">NRP: {{ ppm.site_receiver.nrp if ppm.site_receiver else '-' }}</div>
+                    <div style="font-size: 9px; color: #555;">Tgl: {{ ppm.site_received_at|to_jakarta('%d/%m/%Y') if ppm.site_received_at else '-' }}</div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>

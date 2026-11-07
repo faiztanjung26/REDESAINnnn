@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    container_name: cmms_app
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    volumes:
+      # Mounting cmms.db as a volume so data doesn't get lost when container restarts.
+      - ./cmms.db:/app/cmms.db
+      # If you have an upload/static files directory that changes, mount it too:
+      # - ./static/uploads:/app/static/uploads
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=app.py

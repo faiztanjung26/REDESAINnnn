@@ -1,0 +1,60 @@
+# PANDUAN OPERASIONAL ADMIN CMMS
+(Membuat Work Order, Barang Masuk, dan Adjust Barang)
+
+Dokumen ini berisi langkah-langkah praktis (step-by-step) untuk Admin dalam menjalankan 3 fungsi krusial: Membuat Work Order, Memasukkan Barang ke Gudang (Stock In), dan Melakukan Penyesuaian Stok (Stock Adjustment).
+
+================================================================================
+1. PANDUAN MEMBUAT WORK ORDER (SPK) BARU
+================================================================================
+Gunakan fitur ini jika ada mesin/fasilitas yang rusak dan Anda perlu menugaskan teknisi untuk memperbaikinya secara manual (bukan dari Helpdesk).
+
+Langkah-langkah:
+1. Buka menu [Work Orders] di navigasi utama.
+2. Klik tombol [Create New] atau [Buat Baru] di bagian atas halaman.
+3. Anda akan melihat formulir pembuatan Work Order. Isi field wajib berikut:
+   - Title: Tuliskan secara singkat masalahnya (Contoh: "Pompa Air Gedung Utama Bocor").
+   - Description: Tulis detail kerusakannya.
+   - Asset: Pilih aset yang bermasalah dari daftar drop-down (Contoh: PMP-001).
+   - Priority: Pilih tingkat prioritas (Low / Medium / High / Critical).
+   - Assignee: Pilih Teknisi atau Tim yang akan ditugaskan mengerjakan ini.
+   - Planned Start Date & End Date: Tentukan rentang waktu pengerjaan (Kapan harus dimulai dan kapan target selesai).
+4. (Opsional) Anda bisa melampirkan foto kerusakan jika ada di bagian lampiran.
+5. Klik tombol [Save] atau [Simpan]. 
+6. Work Order berhasil dibuat dengan status "Open" dan Teknisi yang ditugaskan akan langsung menerima notifikasi.
+
+
+================================================================================
+2. PANDUAN MEMASUKKAN BARANG KE WAREHOUSE (STOCK IN)
+================================================================================
+Gunakan fitur ini ketika ada pembelian suku cadang baru (Parts) yang baru tiba dan perlu dimasukkan ke dalam stok sistem.
+
+Langkah-langkah:
+1. Buka menu [Warehouse] atau [Parts].
+2. Cari barang (Part) yang stoknya ingin ditambah. Gunakan fitur pencarian (Search) atau Barcode jika perlu.
+   - Catatan: Jika ini adalah barang yang benar-benar baru dan belum pernah ada di sistem, klik [Add New Part] terlebih dahulu untuk mendaftarkan profil barang tersebut.
+3. Setelah menemukan Part tersebut, klik nama barang untuk membuka halaman detailnya, atau klik tombol aksi (titik tiga) di sebelahnya.
+4. Pilih opsi [Stock In] atau [Receive Stock] (Terima Barang Masuk).
+5. Isi formulir penerimaan barang:
+   - Quantity: Masukkan jumlah barang yang masuk (Contoh: 10).
+   - Unit Cost/Price: (Opsional) Masukkan harga beli per satuan jika Anda melacak biaya.
+   - Notes/Catatan: Tuliskan referensi (Contoh: "Pembelian dari Toko ABC - Nota #123").
+6. Klik [Save] atau [Submit].
+7. Stok barang akan otomatis bertambah (Misal: Stok lama 5 + masuk 10 = Stok baru 15).
+
+
+================================================================================
+3. PANDUAN ADJUST BARANG (STOCK ADJUSTMENT)
+================================================================================
+Gunakan fitur ini JIKA TERJADI SELISIH antara jumlah stok di sistem (komputer) dengan fisik asli di gudang (Misal: saat Stock Opname, ada barang hilang, atau barang rusak di gudang).
+
+Langkah-langkah:
+1. Buka menu [Warehouse] atau [Parts].
+2. Cari barang (Part) yang ingin Anda perbaiki jumlah stoknya.
+3. Buka detail barang tersebut atau klik tombol aksi.
+4. Pilih opsi [Adjust Stock] atau [Penyesuaian Stok].
+5. Isi formulir penyesuaian:
+   - Tipe Adjustment: Tergantung pada sistem, Anda bisa memasukkan jumlah stok fisik saat ini (New Quantity), ATAU memasukkan selisihnya (Tambah/Kurangi). 
+     > Contoh: Di sistem tercatat ada 15, tapi fisik aslinya sisa 13. Masukkan angka fisik sebenarnya (13).
+   - Reason / Alasan (Wajib diisi!): Pilih atau tuliskan alasannya agar terekam di Audit Log. (Contoh: "Stock Opname Akhir Bulan - Barang Rusak 2 Pcs").
+6. Klik [Save] atau [Submit].
+7. Sistem akan memperbarui jumlah stok sesuai fisik (menjadi 13) dan mencatat aktivitas ini di riwayat gudang sebagai "Adjustment" bukan barang terpakai oleh teknisi.

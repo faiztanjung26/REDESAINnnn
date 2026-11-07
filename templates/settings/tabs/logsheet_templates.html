@@ -1,0 +1,226 @@
+                <div class="row align-items-start">
+                    <div class="col-md-12">
+                        <div class="card shadow-sm border-0 rounded-4 mb-4">
+                            <div class="card-header bg-white pb-0 border-0 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+                                <h5 class="fw-bold mb-0">Logsheet Templates (Operasional)</h5>
+                                <div class="d-flex flex-wrap gap-1 w-100 w-md-auto">
+                                    <button class="btn btn-sm btn-primary flex-grow-1 flex-md-grow-0 text-nowrap" onclick="openAddLogsheetTemplateModal()"><i class="bi bi-plus text-white"></i> Add Template</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush border rounded">
+                                    {% for lt in logsheet_templates %}
+                                    <li class="list-group-item px-3 py-3 border-bottom bg-white">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <button class="btn btn-link text-decoration-none text-start p-0 m-0 flex-grow-1 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLogsheetTemplate{{ lt.id }}" aria-expanded="false" style="color: inherit;">
+                                                <span class="fw-bold text-dark fs-6">
+                                                    <i class="bi bi-journal-text text-primary me-2"></i> {{ lt.name }} 
+                                                    <i class="bi bi-chevron-down ms-2 toggle-icon text-muted" style="transition: transform 0.2s; font-size: 0.8rem;"></i>
+                                                </span>
+                                            </button>
+                                            <div class="d-inline-flex ms-3 align-items-center">
+                                                <button type="button" class="btn btn-sm text-primary border-0 bg-transparent p-0 me-3" onclick='openEditLogsheetTemplateModal({{ lt.id }}, {{ lt.name|tojson }}, {{ (lt.cached_parameters if lt.cached_parameters is not none else lt.parameters.all())|map(attribute="__dict__")|list|tojson|replace("\"_sa_instance_state\"", "") }})'><i class="bi bi-pencil fs-5"></i></button>
+                                                <form action="{{ url_for('settings.delete_logsheet_template', id=lt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this Template and ALL its parameters?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="btn btn-sm text-danger border-0 bg-transparent p-0"><i class="bi bi-trash fs-5"></i></button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Template Parameters Branch -->
+                                        <div class="collapse" id="collapseLogsheetTemplate{{ lt.id }}">
+                                        <div class="ms-4 mt-2 mb-1 fw-bold small text-muted"><i class="bi bi-input-cursor"></i> Parameters</div>
+                                        {% set lt_params = lt.cached_parameters if lt.cached_parameters is not none else lt.parameters %}
+                                        <ul class="list-group list-group-flush ms-4 border-start border-2 border-primary rounded-0 pl-3">
+                                            {% for param in lt_params %}
+                                            <li class="list-group-item bg-transparent border-0 py-1 pe-0 ps-3">
+                                                <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded border shadow-sm" style="transition: all 0.2sease;">
+                                                    <span class="text-secondary small fw-semibold">
+                                                        <i class="bi bi-record-circle text-primary"></i> {{ param.name }}
+                                                        <span class="badge bg-light text-dark border ms-2" style="font-size:0.65rem;">Type: {{ param.entry_type }}</span>
+                                                        {% if param.unit %}<span class="badge bg-light text-dark border ms-1" style="font-size:0.65rem;">Unit: {{ param.unit }}</span>{% endif %}
+                                                        {% if param.standard_min is not none %}<span class="badge bg-light text-dark border ms-1" style="font-size:0.65rem;">Min: {{ param.standard_min }}</span>{% endif %}
+                                                        {% if param.standard_max is not none %}<span class="badge bg-light text-dark border ms-1" style="font-size:0.65rem;">Max: {{ param.standard_max }}</span>{% endif %}
+                                                    </span>
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                            {% if not (lt_params|length if lt.cached_parameters is not none else lt.parameters.count()) %}
+                                            <li class="list-group-item bg-transparent border-0 py-1 ps-3 text-muted small fst-italic">No parameters defined.</li>
+                                            {% endif %}
+                                        </ul>
+                                        </div>
+                                    </li>
+                                    {% else %}
+                                    <li class="list-group-item text-center text-muted py-4">No Logsheet Templates configured.</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+<!-- Edit Logsheet Template Modal -->
+<div class="modal fade" id="editLogsheetTemplateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content form-glass">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="bi bi-journal-check text-primary me-2"></i>Edit Logsheet Template</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editLogsheetTemplateForm" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-12 mb-2">
+                  <label class="form-label small fw-bold">Template Name *</label>
+                  <input type="text" name="name" id="editLogsheetTemplateName" class="form-control form-control-sm" required>
+              </div>
+            </div>
+            
+            <hr class="text-muted">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label small fw-bold mb-0">Parameters</label>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="addLTParameterBtn"><i class="bi bi-plus"></i> Add Parameter</button>
+            </div>
+            <p class="text-muted small mb-2"><i class="bi bi-info-circle"></i> Drag and drop the handles (<i class="bi bi-grip-vertical"></i>) to reorder parameters.</p>
+            <ul id="editLogsheetTemplateParameters" class="list-group list-group-flush mb-2 border rounded p-1 bg-light" style="min-height: 50px;"></ul>
+            <input type="hidden" name="parameters_json" id="editLogsheetTemplateParametersJson">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary text-white fw-bold">Save Changes</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+var ltParameters = [];
+
+function openAddLogsheetTemplateModal() {
+    document.getElementById('editLogsheetTemplateForm').action = "{{ url_for('settings.add_logsheet_template') }}";
+    document.getElementById('editLogsheetTemplateName').value = '';
+    
+    ltParameters = [];
+    renderLTParameters();
+    
+    const titleEl = document.querySelector('#editLogsheetTemplateModal .modal-title');
+    if (titleEl) titleEl.innerHTML = '<i class="bi bi-journal-check text-primary me-2"></i>Add New Logsheet Template';
+    
+    new bootstrap.Modal(document.getElementById('editLogsheetTemplateModal')).show();
+}
+
+function openEditLogsheetTemplateModal(id, name, paramsJson) {
+    document.getElementById('editLogsheetTemplateForm').action = "{{ url_for('settings.edit_logsheet_template', id=0) }}".replace('0', id);
+    document.getElementById('editLogsheetTemplateName').value = name;
+    
+    const titleEl = document.querySelector('#editLogsheetTemplateModal .modal-title');
+    if (titleEl) titleEl.innerHTML = '<i class="bi bi-journal-check text-primary me-2"></i>Edit Logsheet Template';
+    
+    document.getElementById('editLogsheetTemplateParameters').innerHTML = '<li class="list-group-item text-center text-muted border-0 bg-transparent py-2"><div class="spinner-border spinner-border-sm text-primary"></div> Loading...</li>';
+    
+    fetch('/settings/api/logsheet_template/' + id + '/parameters')
+    .then(r => r.json())
+    .then(data => {
+        ltParameters = data || [];
+        renderLTParameters();
+    });
+    
+    new bootstrap.Modal(document.getElementById('editLogsheetTemplateModal')).show();
+}
+
+document.getElementById('addLTParameterBtn')?.addEventListener('click', function() {
+    ltParameters.push({ name: '', entry_type: 'reading', unit: '', min: '', max: '' });
+    renderLTParameters();
+});
+
+function renderLTParameters() {
+    const list = document.getElementById('editLogsheetTemplateParameters');
+    if (!list) return;
+    list.innerHTML = '';
+    if (ltParameters.length === 0) {
+        list.innerHTML = '<li class="list-group-item text-center text-muted border-0 bg-transparent py-3 small">No parameters added yet.</li>';
+    }
+    
+    ltParameters.forEach((param, index) => {
+        const isReading = param.entry_type === 'reading';
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex align-items-start border-0 bg-white shadow-sm mb-1 rounded';
+        li.innerHTML = `
+            <i class="bi bi-grip-vertical text-muted me-2 mt-2" style="cursor: grab;"></i>
+            <div class="flex-grow-1">
+                <div class="row g-2 mb-2">
+                    <div class="col-8">
+                        <input type="text" class="form-control form-control-sm" placeholder="Parameter Name" value="${param.name || ''}" onchange="updateLTParam(${index}, 'name', this.value)" required>
+                    </div>
+                    <div class="col-4">
+                        <select class="form-select form-select-sm" onchange="updateLTParam(${index}, 'entry_type', this.value)">
+                            <option value="reading" ${param.entry_type === 'reading' ? 'selected' : ''}>Reading</option>
+                            <option value="task" ${param.entry_type === 'task' ? 'selected' : ''}>Task</option>
+                            <option value="observation" ${param.entry_type === 'observation' ? 'selected' : ''}>Observation</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-2 param-bounds" style="display: ${isReading ? 'flex' : 'none'};">
+                    <div class="col-4">
+                        <input type="text" class="form-control form-control-sm" placeholder="Unit" value="${param.unit || ''}" onchange="updateLTParam(${index}, 'unit', this.value)">
+                    </div>
+                    <div class="col-4">
+                        <input type="number" step="any" class="form-control form-control-sm" placeholder="Min" value="${param.min || ''}" onchange="updateLTParam(${index}, 'min', this.value)">
+                    </div>
+                    <div class="col-4">
+                        <input type="number" step="any" class="form-control form-control-sm" placeholder="Max" value="${param.max || ''}" onchange="updateLTParam(${index}, 'max', this.value)">
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-link text-danger ms-2 p-0 mt-1" onclick="removeLTParam(${index})"><i class="bi bi-trash"></i></button>
+        `;
+        list.appendChild(li);
+    });
+    updateLTParametersJson();
+}
+
+window.updateLTParam = function(index, field, value) {
+    ltParameters[index][field] = value;
+    if (field === 'entry_type') {
+        renderLTParameters();
+    } else {
+        updateLTParametersJson();
+    }
+};
+
+window.removeLTParam = function(index) {
+    ltParameters.splice(index, 1);
+    renderLTParameters();
+};
+
+function updateLTParametersJson() {
+    const hidden = document.getElementById('editLogsheetTemplateParametersJson');
+    if (hidden) hidden.value = JSON.stringify(ltParameters);
+}
+
+if (typeof Sortable !== 'undefined') {
+    const ltParamList = document.getElementById('editLogsheetTemplateParameters');
+    if (ltParamList) {
+        new Sortable(ltParamList, {
+            animation: 150,
+            handle: '.bi-grip-vertical',
+            onEnd: function() {
+                const newOrder = [];
+                ltParamList.querySelectorAll('li').forEach(li => {
+                    const nameInput = li.querySelector('input[placeholder="Parameter Name"]');
+                    if (nameInput) {
+                        const name = nameInput.value;
+                        const param = ltParameters.find(p => p.name === name);
+                        if (param) newOrder.push(param);
+                    }
+                });
+                ltParameters = newOrder;
+                updateLTParametersJson();
+            }
+        });
+    }
+}
+</script>

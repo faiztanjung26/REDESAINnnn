@@ -1,0 +1,75 @@
+<div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+    <h5 class="fw-bold text-primary mb-0">Bill of Materials (BOM)</h5>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addBOMModal"><i class="bi bi-plus"></i> Add Part</button>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Part Name</th>
+                <th>Part Code</th>
+                <th>Default Quantity</th>
+                <th>Notes</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bom in asset.bom_parts %}
+            <tr>
+                <td class="fw-bold">{{ bom.part.name }}</td>
+                <td>{{ bom.part.code }}</td>
+                <td>{{ bom.quantity }}</td>
+                <td>{{ bom.note or '-' }}</td>
+                <td class="text-end">
+                    <form action="{{ url_for('assets.remove_bom', id=bom.id) }}" method="POST" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove part from BOM?');"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center text-muted py-4">No parts are currently linked to this asset's BOM.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="addBOMModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('assets.add_bom', asset_id=asset.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Link Part to BOM</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Part</label>
+                        <select name="part_id" class="form-select" required>
+                            <!-- Options will be populated or handled in backend via a parts list passed into view -->
+                            {% for part in parts %}
+                            <option value="{{ part.id }}">{{ part.name }} ({{ part.code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" step="0.01" name="quantity" class="form-control" value="1.0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes (Optional)</label>
+                        <input type="text" name="note" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Link Part</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .page-title {
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 2rem;
+        font-size: 1.75rem;
+        letter-spacing: -0.02em;
+    }
+    .table-premium {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+    .table-premium thead th {
+        background-color: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        padding: 1rem 1.25rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    .table-premium tbody td {
+        padding: 1rem 1.25rem;
+        vertical-align: middle;
+        color: #334155;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .table-premium tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .table-premium tbody tr:hover td { background-color: #f8fafc; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ url_for('schedule.index') }}" class="btn btn-sm btn-outline-secondary mb-2"><i class="bi bi-arrow-left"></i> Back to Schedules</a>
+            <h2 class="page-title mb-0"><i class="bi bi-person-lines-fill me-2 text-primary"></i>Attendance Recap</h2>
+        </div>
+            <button type="button" class="btn btn-primary me-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#syncOdooModal">
+                <i class="bi bi-cloud-arrow-down me-1"></i> Sync from Odoo
+            </button>
+            <a href="{{ url_for('settings.index') }}#system" class="btn btn-warning me-2 shadow-sm text-dark fw-semibold">
+                <i class="bi bi-person-check-fill me-1"></i> Cek User vs Odoo
+            </a>
+            <a href="{{ url_for('schedule.attendance_recap', site_id=current_site_id, start_date=start_date, end_date=end_date, export='excel') }}" class="btn btn-success me-2">
+                <i class="bi bi-file-earmark-excel"></i> Export Excel
+            </a>
+            <a href="{{ url_for('schedule.attendance_recap', site_id=current_site_id, start_date=start_date, end_date=end_date, export='pdf') }}" class="btn btn-danger me-2">
+                <i class="bi bi-file-earmark-pdf"></i> Export PDF
+            </a>
+            <a href="{{ url_for('schedule.attendance_recap', site_id=current_site_id, start_date=start_date, end_date=end_date, export='detail_excel') }}" class="btn btn-secondary">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export Detail
+            </a>
+        </div>
+    </div>
+    
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="GET" action="{{ url_for('schedule.attendance_recap') }}" class="row g-3 align-items-end">
+                {% if not current_user.site_id %}
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">Site Filter</label>
+                    <select name="site_id" class="form-select">
+                        <option value="">All Sites</option>
+                        {% for site in sites %}
+                        <option value="{{ site.id }}" {% if current_site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Start Date</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date or '' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">End Date</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date or '' }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i> Apply Filter</button>
+                </div>
+                <div class="col-md-2">
+                    <a href="{{ url_for('schedule.attendance_recap') }}" class="btn btn-light w-100 border">Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-premium mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>NRP</th>
+                            <th>Name</th>
+                            <th>Site</th>
+                            <th>Expected Shift</th>
+                            <th>Clock In</th>
+                            <th>Cepat Masuk</th>
+                            <th>Telat Masuk</th>
+                            <th>Clock Out</th>
+                            <th>Cepat Pulang</th>
+                            <th>Telat Pulang</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rec in records %}
+                        <tr>
+                            <td class="fw-bold">{{ rec.date }}</td>
+                            <td>{{ rec.nrp }}</td>
+                            <td class="fw-bold">{{ rec.nama }}</td>
+                            <td>{{ rec.site_name }}</td>
+                            <td>
+                                {% if rec.shift_name != '-' %}
+                                    <div class="fw-bold small text-primary">{{ rec.shift_name }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;"><i class="bi bi-clock"></i> {{ rec.shift_time }}</div>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rec.jam_masuk != '-' %}
+                                    <span class="badge bg-light text-dark border"><i class="bi bi-box-arrow-in-right"></i> {{ rec.jam_masuk }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rec.cepat_masuk != '-' %}<span class="text-success small fw-bold">{{ rec.cepat_masuk }}</span>{% else %}-{% endif %}
+                            </td>
+                            <td>
+                                {% if rec.telat_masuk != '-' %}<span class="text-danger small fw-bold">{{ rec.telat_masuk }}</span>{% else %}-{% endif %}
+                            </td>
+                            <td>
+                                {% if rec.jam_pulang != '-' %}
+                                    <span class="badge bg-light text-dark border"><i class="bi bi-box-arrow-left"></i> {{ rec.jam_pulang }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rec.cepat_pulang != '-' %}<span class="text-danger small fw-bold">{{ rec.cepat_pulang }}</span>{% else %}-{% endif %}
+                            </td>
+                            <td>
+                                {% if rec.telat_pulang != '-' %}<span class="text-success small fw-bold">{{ rec.telat_pulang }}</span>{% else %}-{% endif %}
+                            </td>
+                            <td>
+                                {% if rec.status == 'Sesuai Jadwal' %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Sesuai Jadwal</span>
+                                {% elif 'Terlambat' in rec.status or 'Pulang Cepat' in rec.status %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> {{ rec.status }}</span>
+                                {% elif rec.status == 'Tidak Ada Jadwal' %}
+                                    <span class="badge bg-secondary"><i class="bi bi-slash-circle"></i> Tidak Ada Jadwal</span>
+                                {% else %}
+                                    <span class="badge bg-dark">{{ rec.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="12" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                                No attendance records found for the selected filters.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sync from Odoo Modal -->
+<div class="modal fade" id="syncOdooModal" tabindex="-1" aria-labelledby="syncOdooModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" id="syncOdooModalLabel">
+                    <i class="bi bi-cloud-arrow-down text-primary me-2"></i>Sync Absensi dari Odoo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <p class="text-muted small">
+                    Tarik data log absensi (Clock In / Clock Out) dari API HR Odoo dan sinkronkan secara otomatis dengan jadwal shift teknisi di CMMS.
+                </p>
+                <form id="formSyncOdoo">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Dari Tanggal (Date From)</label>
+                            <input type="date" id="syncDateFrom" class="form-control" value="{{ start_date or '' }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Sampai Tanggal (Date To)</label>
+                            <input type="date" id="syncDateTo" class="form-control" value="{{ end_date or '' }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Filter NRP Karyawan <span class="text-muted fw-normal">(Opsional)</span></label>
+                        <input type="text" id="syncNrp" class="form-control" placeholder="Kosongkan untuk menarik semua karyawan">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="autoDownloadRawExcel" checked>
+                        <label class="form-check-label small" for="autoDownloadRawExcel">
+                            <i class="bi bi-file-earmark-excel-fill text-success me-1"></i> <strong>Download file Excel data mentah Odoo</strong> otomatis setelah ditarik
+                        </label>
+                    </div>
+                    <div id="syncOdooResult" class="d-none"></div>
+                </form>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 d-flex justify-content-between flex-wrap gap-2">
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="downloadRawOdooExcel()">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Download Excel Mentah
+                    </button>
+                    <button type="button" class="btn btn-outline-dark btn-sm" onclick="viewRawOdooJson('syncDateFrom', 'syncDateTo', 'syncNrp')">
+                        <i class="bi bi-filetype-json me-1"></i> Lihat Raw JSON
+                    </button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light border btn-sm" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btnDoSyncOdoo" onclick="submitSyncOdoo()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Mulai Sinkronisasi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Raw JSON API Viewer -->
+<div class="modal fade" id="modalRawJsonViewer" tabindex="-1" aria-labelledby="modalRawJsonViewerLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white py-2">
+                <h6 class="modal-title d-flex align-items-center gap-2 mb-0" id="modalRawJsonViewerLabel">
+                    <i class="bi bi-filetype-json fs-5 text-warning"></i>
+                    <span>Raw JSON Response dari API Odoo</span>
+                    <span id="rawJsonBadgeCount" class="badge bg-primary ms-2">- Record</span>
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 bg-light">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div class="small text-muted" id="rawJsonMetaInfo">
+                        Memuat data...
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyRawJsonToClipboard()" id="btnCopyJson">
+                            <i class="bi bi-clipboard me-1"></i> Salin JSON
+                        </button>
+                        <a href="#" target="_blank" class="btn btn-sm btn-outline-primary" id="btnOpenJsonNewTab">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Buka di Tab Baru
+                        </a>
+                    </div>
+                </div>
+                <div id="rawJsonLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2 small">Menghubungi API Odoo & mengunduh payload JSON...</p>
+                </div>
+                <div id="rawJsonError" class="alert alert-danger small d-none"></div>
+                <pre id="rawJsonCodeWrapper" class="bg-dark text-light p-3 rounded d-none shadow-sm mb-0" style="max-height: 520px; overflow: auto; font-size: 0.85rem; line-height: 1.4;"><code id="rawJsonContent"></code></pre>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const today = new Date().toISOString().split('T')[0];
+        const df = document.getElementById('syncDateFrom');
+        const dt = document.getElementById('syncDateTo');
+        if (df && !df.value) df.value = today;
+        if (dt && !dt.value) dt.value = today;
+    });
+
+    function submitSyncOdoo() {
+        const btn = document.getElementById('btnDoSyncOdoo');
+        const resDiv = document.getElementById('syncOdooResult');
+        const dateFrom = document.getElementById('syncDateFrom').value;
+        const dateTo = document.getElementById('syncDateTo').value;
+        const nrp = document.getElementById('syncNrp').value.trim();
+
+        if (!dateFrom || !dateTo) {
+            alert('Silakan pilih rentang tanggal.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menarik data...';
+        resDiv.className = 'alert alert-light border py-2 px-3 small my-2';
+        resDiv.innerHTML = '<i class="bi bi-hourglass-split"></i> Mengambil data dari Odoo & memproses jadwal shift...';
+        resDiv.classList.remove('d-none');
+
+        fetch("/api/attendance/pull", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': "{{ csrf_token() }}"
+            },
+            body: JSON.stringify({
+                date_from: dateFrom,
+                date_to: dateTo,
+                nrp: nrp || null
+            })
+        })
+        .then(async res => {
+            const isJson = res.headers.get('content-type')?.includes('application/json');
+            const data = isJson ? await res.json() : null;
+            if (!res.ok) {
+                const msg = data?.message || (data ? JSON.stringify(data) : `Server error (HTTP ${res.status})`);
+                throw new Error(msg);
+            }
+            if (!data) {
+                throw new Error("Respons server tidak valid (bukan JSON).");
+            }
+            return data;
+        })
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Mulai Sinkronisasi';
+            if (data.status === 'success') {
+                resDiv.className = 'alert alert-success py-2 px-3 small my-2';
+                const rawUrl = `/api/attendance/export_raw_odoo?date_from=${dateFrom}&date_to=${dateTo}${nrp ? `&nrp=${encodeURIComponent(nrp)}` : ''}`;
+                resDiv.innerHTML = `
+                    <strong><i class="bi bi-check-circle-fill me-1"></i> Sukses!</strong> ${data.message}
+                    <div class="mt-2 pt-2 border-top">
+                        <a href="${rawUrl}" class="btn btn-sm btn-success fw-bold text-white shadow-xs" target="_blank">
+                            <i class="bi bi-file-earmark-excel-fill me-1"></i> Download File Excel Data Mentah (${data.total_fetched || 0} Log Ditarik)
+                        </a>
+                    </div>
+                    <small class="text-muted d-block mt-2">Halaman akan dimuat ulang dalam 3 detik...</small>
+                `;
+
+                if (document.getElementById('autoDownloadRawExcel')?.checked) {
+                    window.location.href = rawUrl;
+                }
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3500);
+            } else {
+                resDiv.className = 'alert alert-danger py-2 px-3 small my-2';
+                resDiv.innerHTML = `<strong><i class="bi bi-x-circle-fill me-1"></i> Gagal:</strong> ${data.message}`;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Mulai Sinkronisasi';
+            resDiv.className = 'alert alert-danger py-2 px-3 small my-2';
+            resDiv.innerHTML = `<strong>Error:</strong> ${err.message}`;
+        });
+    }
+
+    function downloadRawOdooExcel() {
+        const dateFrom = document.getElementById('syncDateFrom').value;
+        const dateTo = document.getElementById('syncDateTo').value;
+        const nrp = document.getElementById('syncNrp').value.trim();
+        if (!dateFrom || !dateTo) {
+            alert('Silakan pilih rentang tanggal.');
+            return;
+        }
+        let url = `/api/attendance/export_raw_odoo?date_from=${dateFrom}&date_to=${dateTo}`;
+        if (nrp) url += `&nrp=${encodeURIComponent(nrp)}`;
+        window.location.href = url;
+    }
+
+    function viewRawOdooJson(dfId, dtId, nrpId) {
+        const df = document.getElementById(dfId).value;
+        const dt = document.getElementById(dtId).value;
+        const nrp = nrpId ? document.getElementById(nrpId).value.trim() : '';
+
+        if (!df || !dt) {
+            alert('Silakan pilih rentang tanggal.');
+            return;
+        }
+
+        let url = `/api/attendance/raw_json?date_from=${encodeURIComponent(df)}&date_to=${encodeURIComponent(dt)}`;
+        if (nrp) url += `&nrp=${encodeURIComponent(nrp)}`;
+
+        const modalEl = document.getElementById('modalRawJsonViewer');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+
+        document.getElementById('rawJsonLoading').classList.remove('d-none');
+        document.getElementById('rawJsonError').classList.add('d-none');
+        document.getElementById('rawJsonCodeWrapper').classList.add('d-none');
+        document.getElementById('rawJsonContent').textContent = '';
+        document.getElementById('btnOpenJsonNewTab').href = url;
+        document.getElementById('rawJsonBadgeCount').innerText = 'Memuat...';
+        document.getElementById('rawJsonMetaInfo').innerHTML = `<i class="bi bi-calendar3 me-1"></i> Periode: <strong>${df}</strong> s/d <strong>${dt}</strong> ${nrp ? `| NRP: <strong>${nrp}</strong>` : ''}`;
+
+        modal.show();
+
+        fetch(url)
+            .then(async res => {
+                const isJson = res.headers.get('content-type')?.includes('application/json');
+                const data = isJson ? await res.json() : null;
+                if (!res.ok) {
+                    const msg = data?.message || `HTTP ${res.status}: Gagal memuat JSON`;
+                    throw new Error(msg);
+                }
+                return data;
+            })
+            .then(data => {
+                document.getElementById('rawJsonLoading').classList.add('d-none');
+                document.getElementById('rawJsonCodeWrapper').classList.remove('d-none');
+
+                const count = data.count !== undefined ? data.count : (Array.isArray(data.results) ? data.results.length : 0);
+                document.getElementById('rawJsonBadgeCount').innerText = `${count} Record`;
+                document.getElementById('rawJsonContent').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(err => {
+                document.getElementById('rawJsonLoading').classList.add('d-none');
+                const errDiv = document.getElementById('rawJsonError');
+                errDiv.classList.remove('d-none');
+                errDiv.innerHTML = `<strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Error:</strong> ${err.message}`;
+                document.getElementById('rawJsonBadgeCount').innerText = 'Gagal';
+            });
+    }
+
+    function copyRawJsonToClipboard() {
+        const code = document.getElementById('rawJsonContent').textContent;
+        if (!code) return;
+        navigator.clipboard.writeText(code).then(() => {
+            const btn = document.getElementById('btnCopyJson');
+            const oldHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check2 text-success me-1"></i> Tersalin!';
+            setTimeout(() => { btn.innerHTML = oldHtml; }, 2000);
+        }).catch(err => {
+            alert('Gagal menyalin: ' + err);
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,1269 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<style>
+    /* Styling for TomSelect to match Bootstrap form-control bg-light */
+    .ts-wrapper.form-select.bg-light {
+        background-color: #f8f9fa !important;
+        border: none !important;
+        padding: 0;
+    }
+    .ts-wrapper.form-select.bg-light .ts-control {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+        min-height: calc(1.5em + 0.75rem + 2px);
+    }
+
+    
+    /* Premium Input Styling */
+    .form-control.bg-light, .ts-wrapper.form-select.bg-light {
+        background-color: #f1f5f9 !important;
+        border: 2px solid transparent !important;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    .form-control.bg-light:focus {
+        background-color: #ffffff !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important;
+    }
+    .ts-wrapper.form-select.bg-light.focus .ts-control {
+        background-color: transparent !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
+    }
+    .ts-wrapper.form-select.bg-light.focus {
+        background-color: #ffffff !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important;
+    }
+    
+    /* Vibrant Button Gradient */
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        border: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+    }
+    
+    /* Cards smooth hover */
+    .card {
+        transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .card:hover {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01) !important;
+        border-color: #e2e8f0 !important;
+    }
+    
+    /* Chat Bubble Styles */
+    .chat-container { display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem 0; }
+    .chat-message { display: flex; gap: 1rem; max-width: 90%; }
+    .chat-message.tech { align-self: flex-end; flex-direction: row-reverse; }
+    .chat-message.client { align-self: flex-start; }
+    
+    .chat-avatar { width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #3b82f6); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); border: 2px solid white; }
+    .chat-message.client .chat-avatar { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
+    
+    .chat-bubble { padding: 1rem 1.5rem; border-radius: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; border: 1px solid rgba(0,0,0,0.02); }
+    .chat-message.tech .chat-bubble { background: linear-gradient(135deg, #4f46e5, #3b82f6); color: white; border-bottom-right-radius: 0.25rem; }
+    .chat-message.client .chat-bubble { background: #ffffff; color: #1e293b; border-bottom-left-radius: 0.25rem; border: 1px solid #e2e8f0; }
+    
+    .chat-bubble .meta { font-size: 0.75rem; margin-bottom: 0.5rem; font-weight: 600; opacity: 0.8; display: flex; justify-content: space-between; gap: 1rem; }
+    .chat-bubble .content { font-size: 0.95rem; line-height: 1.5; margin-bottom: 0; }
+
+</style>
+{% endblock %}
+
+{% block toolbar_left %}
+<div class="d-flex flex-wrap align-items-center gap-2">
+    <a href="{{ url_for('helpdesk.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-sm d-flex align-items-center"><i class="bi bi-arrow-left me-1"></i> <span class="d-none d-md-inline">Back</span></a>
+    <h5 class="mb-0 d-flex align-items-center fw-bold text-dark fs-6 fs-md-5">Helpdesk <span class="text-muted ms-1 ms-md-2 fw-light d-none d-md-inline">/ {{ ticket.ticket_code }}</span></h5>
+    <span class="text-muted fw-bold small d-none d-lg-inline"><i class="bi bi-ticket-detailed"></i> {{ ticket.ticket_code }}</span>
+    <a href="#" data-bs-toggle="modal" data-bs-target="#qrModal" class="btn btn-sm btn-light border-0 rounded-pill text-primary fw-bold px-2 shadow-sm"><i class="bi bi-qr-code"></i> <span class="d-none d-sm-inline">QR</span></a>
+    <span class="badge rounded-pill shadow-sm
+        {% if ticket.status in ['New', 'Initial respon', 'Action Plan'] %}bg-primary
+        {% elif ticket.status in ['Closed', 'Done'] %}bg-success
+        {% elif ticket.status == 'Cancelled' %}bg-danger
+        {% else %}bg-warning text-dark{% endif %}">
+        <i class="bi bi-circle-fill" style="font-size: 0.4rem; vertical-align: middle;"></i> {{ ticket.status }}
+    </span>
+</div>
+{% endblock %}
+
+{% block toolbar_right %}
+<div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mt-2 mt-md-0 w-100 w-md-auto">
+    {% if current_user.role != 'Technician' %}
+    <form action="{{ url_for('helpdesk.delete', id=ticket.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this ticket?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="btn btn-sm btn-outline-danger fw-bold px-3 rounded-pill shadow-sm" title="Delete Ticket"><i class="bi bi-trash"></i> <span class="d-none d-md-inline">Delete</span></button>
+    </form>
+    {% endif %}
+    <button type="button" class="btn btn-sm btn-primary fw-bold px-3 px-md-4 rounded-pill shadow-sm" onclick="document.getElementById('hdForm').submit();"><i class="bi bi-save me-1"></i> <span class="d-none d-sm-inline">Save</span></button>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Status Workflow Control Bar -->
+{% if current_user.role != 'Technician' %}
+<div class="card shadow-sm border-0 mb-4 rounded-4 bg-light overflow-hidden">
+    <div class="card-body p-2 d-flex flex-nowrap gap-2 align-items-center" style="overflow-x: auto; white-space: nowrap;">
+        <span class="text-muted fw-bold small ms-2 me-2 text-uppercase" style="letter-spacing: 1px;"><i class="bi bi-diagram-3-fill text-primary"></i> Lifecycle</span>
+        {% for s in statuses %}
+            <form action="{{ url_for('helpdesk.edit', id=ticket.id) }}" method="POST" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="update_status" value="1">
+                <input type="hidden" name="status" value="{{ s }}">
+                <button type="submit" class="btn btn-sm rounded-pill px-3 {% if ticket.status == s %}btn-dark fw-bold border-dark shadow-sm{% else %}btn-outline-secondary bg-white border-0{% endif %}">
+                    {{ s }}
+                </button>
+            </form>
+            {% if not loop.last %}
+            <i class="bi bi-chevron-right text-black-50" style="font-size: 0.8rem;"></i>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="card shadow-sm border-0 mb-4 rounded-4 bg-light overflow-hidden">
+    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+        <div>
+            <span class="text-muted fw-bold small ms-2 me-2 text-uppercase" style="letter-spacing: 1px;"><i class="bi bi-diagram-3-fill text-primary"></i> Lifecycle:</span>
+            <span class="badge bg-primary fs-6">{{ ticket.status }}</span>
+        </div>
+        {% if ticket.status == 'In Progress' %}
+        <form action="{{ url_for('helpdesk.edit', id=ticket.id) }}" method="POST" class="d-inline m-0 p-0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="update_status" value="1">
+            <input type="hidden" name="status" value="Done">
+            <button type="submit" class="btn btn-sm btn-success fw-bold px-4 rounded-pill shadow-sm" onclick="return confirm('Tandai tiket ini sudah selesai (Done)? Pastikan semua progress pengerjaan sudah Anda unggah terlebih dahulu.');">
+                <i class="bi bi-check-circle-fill me-1"></i> Mark as Done
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<form method="POST" action="" id="hdForm" class="pb-5" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    
+    <!-- Header fields (Subject & Description) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-4 bg-white">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-card-heading text-primary me-1"></i> Subject</label>
+                        <input type="text" name="subject" value="{{ ticket.subject }}" class="form-control form-control-lg fw-bold border-0 bg-light" placeholder="Subject" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-text-paragraph text-primary me-1"></i> Description</label>
+                        <textarea class="form-control border-0 bg-light" name="description" placeholder="Description" style="height: 100px; resize: none;" required>{{ ticket.description }}</textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-camera text-primary me-1"></i> Attachment</label>
+                            {% if ticket.damage_photo %}
+                                <div class="mb-2">
+                                    <a href="{{ url_for('static', filename=ticket.damage_photo) }}" target="_blank">
+                                        <img src="{{ url_for('static', filename=ticket.damage_photo) }}" alt="Damage Photo" class="img-thumbnail" style="max-height: 100px;">
+                                    </a>
+                                </div>
+                                <input type="file" name="damage_photo" class="form-control border-0 bg-light" accept="image/*" onchange="autoCompressFileInput(this)">
+                            {% else %}
+                                <input type="file" name="damage_photo" class="form-control border-0 bg-light" accept="image/*" onchange="autoCompressFileInput(this)">
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-journal-text text-primary me-1"></i> Photo Note / Additional Note</label>
+                            <input type="text" name="damage_note" value="{{ ticket.damage_note or '' }}" class="form-control border-0 bg-light" placeholder="Note about damage...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column -->
+        <div class="col-md-6 d-flex flex-column gap-4">
+            
+            <!-- INFORMATION -->
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="z-index: 10;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-info-circle-fill text-info me-2"></i> Ticket Information</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold mb-1">Complain Type</label>
+                            <input type="text" name="complain_type" value="{{ ticket.complain_type or '' }}" class="form-control bg-light border-0" placeholder="Complain Type">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Divisi Tujuan (Site)</label>
+                            <select name="divisi_tujuan" class="form-select bg-light border-0" id="divisiInput">
+                                <option value="">-- Select Divisi / Site --</option>
+                                {% for site in sites %}
+                                    <option value="{{ site.name }}" {% if ticket.divisi_tujuan == site.name %}selected{% endif %}>{{ site.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Asset Category</label>
+                            <select name="modul" class="form-select bg-light border-0" id="modulInput">
+                                <option value="">-- Select Asset Category --</option>
+                                {% for mod in hd_modules %}
+                                    <option value="{{ mod.name }}" {% if ticket.modul == mod.name %}selected{% endif %}>{{ mod.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Location</label>
+                            <select name="location_subject" class="form-select bg-light border-0" id="locInput">
+                                <option value="">-- Select Location --</option>
+                                {% for loc in hd_locations %}
+                                    <option value="{{ loc.name }}" {% if ticket.location_subject == loc.name %}selected{% endif %}>{{ loc.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Asset (Optional)</label>
+                            <select name="asset" class="form-select bg-light border-0" id="assetInput">
+                                <option value="">-- Select Asset --</option>
+                                {% if ticket.asset %}
+                                    <option value="{{ ticket.asset }}" selected>{{ ticket.asset }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Material Type</label>
+                            <select name="ticket_type" class="form-select bg-light border-0" id="typeInput">
+                                <option value="">-- Select Type --</option>
+                                <option value="Material By JTI" {% if ticket.ticket_type == 'Material By JTI' %}selected{% endif %}>Material By JTI</option>
+                                <option value="Material By BM" {% if ticket.ticket_type == 'Material By BM' %}selected{% endif %}>Material By BM</option>
+                                <option value="Material By Customer" {% if ticket.ticket_type == 'Material By Customer' %}selected{% endif %}>Material By Customer</option>
+                                <option value="No Material" {% if ticket.ticket_type == 'No Material' %}selected{% endif %}>No Material</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Priority Level</label>
+                            <select name="priority" class="form-select bg-light border-0 text-dark fw-bold">
+                                <option value="Safety" {% if ticket.priority == 'Safety' %}selected{% endif %} class="text-danger">Safety (Critical)</option>
+                                <option value="High" {% if ticket.priority == 'High' %}selected{% endif %} class="text-warning">High</option>
+                                <option value="Medium" {% if ticket.priority == 'Medium' %}selected{% endif %} class="text-info">Medium</option>
+                                <option value="Low" {% if ticket.priority == 'Low' %}selected{% endif %} class="text-secondary">Low</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- RESPONSIBLE -->
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="z-index: 9;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-person-badge-fill text-warning me-2"></i> Assigned Personnel</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12 mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Team</label>
+                            <select name="team" class="form-select bg-light border-0">
+                                <option value="">-- Select Team --</option>
+                                {% for team in teams %}
+                                <option value="{{ team.name }}" {% if ticket.team == team.name %}selected{% endif %}>{{ team.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Primary Technician</label>
+                            <select name="primary_technician_id" class="form-select bg-light border-0" id="primaryAssigneeSelect">
+                                <option value="">-- Select Primary Technician --</option>
+                                {% if ticket.assigned_user %}
+                                    <option value="{{ ticket.assigned_user.id }}" selected>{{ ticket.assigned_user.name }} ({{ ticket.assigned_user.role }})</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small fw-bold mb-1">Technician(s)</label>
+                            <select name="technician_ids" class="form-select bg-light border-0" id="assigneeSelect" multiple>
+                                {% for user in ticket.technicians %}
+                                    <option value="{{ user.id }}" selected>{{ user.name }} ({{ user.role }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- PROCEDURES & CHECKLISTS -->
+            <div class="card border-0 shadow-sm rounded-4 h-100 mt-4" style="z-index: 8;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-list-check text-primary me-2"></i> Procedures & Checklists</h6>
+                </div>
+                <div class="card-body p-4">
+                    {% if ticket.status in ['New', 'Initial respon'] %}
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold text-primary"><i class="bi bi-ui-checks"></i> Standard Tasklist</label>
+                        <select class="form-select border-primary" name="tasklist_id" onchange="fetchTasklistTemplate(this.value)">
+                            <option value="">-- No Tasklist --</option>
+                            {% set grouped_tasklists = tasklists|groupby('project_code_group') %}
+                            {% for group in grouped_tasklists %}
+                                <optgroup label="{{ group.grouper if group.grouper else 'General (No Project Code)' }}">
+                                    {% for tl in group.list %}
+                                    <option value="{{ tl.id }}" {% if ticket.tasklist_id == tl.id %}selected{% endif %}>{{ tl.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                        
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <button class="btn btn-sm btn-light border text-primary fw-bold shadow-sm d-flex align-items-center flex-grow-1 me-2 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProcContainer" aria-expanded="false" style="justify-content: space-between;">
+                                    <span><i class="bi bi-list-task me-1"></i> Task Procedures</span> 
+                                    <i class="bi bi-chevron-down toggle-icon" style="transition: transform 0.2s;"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary shadow-sm bg-white" style="font-size: 0.70rem;" data-bs-toggle="modal" data-bs-target="#addCustomProcModal"><i class="bi bi-plus-lg text-primary fw-bold"></i> Add</button>
+                            </div>
+                            <div class="collapse" id="collapseProcContainer">
+                                <div class="mb-1" id="procListContainer">
+                                    <div class="text-center py-3 text-muted" style="font-size: 0.75rem;" id="emptyProcMsg">
+                                        Select a template or add custom tasks.
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="custom_procedures_json" id="custom_procedures_json" value="[]">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="form-label text-muted small fw-bold text-warning"><i class="bi bi-list-check"></i> Standard Checklist</label>
+                        <select class="form-select border-warning" name="checklist_id" onchange="fetchChecklistTemplate(this.value)">
+                            <option value="">-- No Checklist --</option>
+                            {% set grouped_checklists = checklists|groupby('project_code_group') %}
+                            {% for group in grouped_checklists %}
+                                <optgroup label="{{ group.grouper if group.grouper else 'General (No Project Code)' }}">
+                                    {% for cl in group.list %}
+                                    <option value="{{ cl.id }}" {% if ticket.checklist_id == cl.id %}selected{% endif %}>{{ cl.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                        
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <button class="btn btn-sm btn-light border text-warning text-dark fw-bold shadow-sm d-flex align-items-center flex-grow-1 me-2 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChkContainer" aria-expanded="false" style="justify-content: space-between;">
+                                    <span><i class="bi bi-ui-checks me-1"></i> Checklist Parameters</span> 
+                                    <i class="bi bi-chevron-down toggle-icon" style="transition: transform 0.2s;"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning text-dark shadow-sm bg-white" style="font-size: 0.70rem;" data-bs-toggle="modal" data-bs-target="#addCustomChkModal"><i class="bi bi-plus-lg text-dark fw-bold"></i> Add</button>
+                            </div>
+                            <div class="collapse" id="collapseChkContainer">
+                                <div class="table-responsive mb-1">
+                                    <table class="table table-hover align-middle mb-0" style="font-size: 0.8rem;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 45%">Parameter</th>
+                                                <th style="width: 35%">Standard</th>
+                                                <th style="width: 20%" class="text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="chkListContainer">
+                                            <tr id="emptyChkMsg">
+                                                <td colspan="3" class="text-center py-3 text-muted">Select a template or add parameters.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <input type="hidden" name="custom_checklists_json" id="custom_checklists_json" value="[]">
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- NEW EXECUTION UI -->
+                    {% if ticket.procedures.count() > 0 or ticket.checklists.count() > 0 %}
+                        <!-- PROCEDURES -->
+                        {% if ticket.procedures.count() > 0 %}
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-bold text-primary"><i class="bi bi-list-task"></i> Task Procedures</label>
+                            <div class="border rounded-3 overflow-hidden">
+                                {% for proc in ticket.procedures %}
+                                <div class="d-flex align-items-start justify-content-between p-3 border-bottom {% if proc.is_completed %}bg-light{% endif %}">
+                                    <div class="d-flex flex-column flex-grow-1 me-3">
+                                        <div class="fw-bold {% if proc.is_completed %}text-decoration-line-through text-muted{% else %}text-dark{% endif %}">
+                                            {{ loop.index }}. {{ proc.name }}
+                                        </div>
+                                        <div class="mt-1">
+                                            {% if proc.requires_attachment %}
+                                                <span class="badge bg-info text-dark" style="font-size:0.65rem;"><i class="bi bi-camera"></i> Photo Required</span>
+                                            {% endif %}
+                                            {% if proc.estimated_minutes > 0 %}
+                                                <span class="badge bg-light border text-dark ms-1" style="font-size:0.65rem;"><i class="bi bi-clock"></i> {{ proc.estimated_minutes }} m</span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <!-- Execution Form for Procedure -->
+                                        {% if ticket.status == 'In Progress' %}
+                                        <form action="{{ url_for('helpdesk.complete_hd_procedure', id=ticket.id, proc_id=proc.id) }}" method="POST" enctype="multipart/form-data" class="mt-2">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            {% if proc.is_completed %}
+                                                <input type="hidden" name="action" value="uncomplete">
+                                            {% endif %}
+                                            
+                                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                {% if not proc.is_completed %}
+                                                    {% if proc.requires_attachment %}
+                                                        <input type="file" name="proc_attachment" class="form-control form-control-sm" accept="image/*" required style="max-width: 200px;" onchange="autoCompressFileInput(this)">
+                                                    {% endif %}
+                                                    <input type="text" name="note" class="form-control form-control-sm" placeholder="Optional note..." style="max-width: 250px;" value="{{ proc.notes or '' }}">
+                                                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Complete</button>
+                                                {% else %}
+                                                    <span class="text-success small fw-bold"><i class="bi bi-check-circle-fill"></i> Completed</span>
+                                                    {% if proc.notes %}
+                                                        <span class="text-muted small ms-2 fst-italic">Note: {{ proc.notes }}</span>
+                                                    {% endif %}
+                                                    {% if proc.attachment_path %}
+                                                        <a href="{{ url_for('static', filename=proc.attachment_path) }}" target="_blank" class="btn btn-sm btn-outline-primary ms-2"><i class="bi bi-image"></i> View Photo</a>
+                                                    {% endif %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger ms-2" onclick="return confirm('Undo completion?')"><i class="bi bi-arrow-counterclockwise"></i> Undo</button>
+                                                {% endif %}
+                                            </div>
+                                        </form>
+                                        {% else %}
+                                            <!-- Read Only mode for Done / Closed tickets -->
+                                            <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+                                                {% if proc.is_completed %}
+                                                    <span class="text-success small fw-bold"><i class="bi bi-check-circle-fill"></i> Completed</span>
+                                                    {% if proc.notes %}
+                                                        <span class="text-muted small ms-2 fst-italic">Note: {{ proc.notes }}</span>
+                                                    {% endif %}
+                                                    {% if proc.attachment_path %}
+                                                        <a href="{{ url_for('static', filename=proc.attachment_path) }}" target="_blank" class="btn btn-sm btn-outline-primary ms-2"><i class="bi bi-image"></i> View Photo</a>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted small"><i class="bi bi-circle"></i> Pending</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- CHECKLISTS -->
+                        {% if ticket.checklists.count() > 0 %}
+                        <div>
+                            <label class="form-label text-muted small fw-bold text-warning"><i class="bi bi-ui-checks"></i> Checklist Parameters</label>
+                            <div class="table-responsive border rounded-3">
+                                <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 35%">Parameter</th>
+                                            <th style="width: 25%">Standard</th>
+                                            <th style="width: 40%">Actual Value / Note</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for chk in ticket.checklists %}
+                                        <tr>
+                                            <td class="fw-bold text-dark">{{ chk.parameter }}</td>
+                                            <td class="text-muted">{{ chk.standard }}</td>
+                                            <td>
+                                                {% if ticket.status == 'In Progress' %}
+                                                <form action="{{ url_for('helpdesk.update_hd_checklist', id=ticket.id, chk_id=chk.id) }}" method="POST" class="d-flex gap-2">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <input type="text" name="value" class="form-control form-control-sm" placeholder="Actual Value" value="{{ chk.value or '' }}">
+                                                    <input type="text" name="note" class="form-control form-control-sm" placeholder="Note (opt)" value="{{ chk.note or '' }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-save"></i></button>
+                                                </form>
+                                                {% else %}
+                                                    <div class="d-flex flex-column">
+                                                        {% if chk.value %}
+                                                            <span class="text-dark fw-bold">Actual: {{ chk.value }}</span>
+                                                        {% else %}
+                                                            <span class="text-muted fst-italic">No value</span>
+                                                        {% endif %}
+                                                        {% if chk.note %}
+                                                            <span class="text-muted small">Note: {{ chk.note }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-inboxes display-4 text-light mb-3"></i>
+                            <p class="mb-0">No procedures or checklists defined for this ticket.</p>
+                        </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        <!-- PARTS USED -->
+        <div class="card border-0 shadow-sm rounded-4 mt-4 mb-4" style="z-index: 7;">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold text-dark mb-0"><i class="bi bi-box text-primary me-2"></i> Parts Used</h6>
+                {% if ticket.status not in ['Closed', 'Done'] %}
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#addPartModal">
+                    <i class="bi bi-plus-lg"></i> Add Part
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body p-4">
+                <div class="table-responsive border rounded">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Part Code</th>
+                                <th>Part Name</th>
+                                <th>Qty Used</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hp in ticket.used_parts %}
+                            <tr>
+                                <td class="fw-bold">{{ hp.part.code }}</td>
+                                <td>{{ hp.part.name }}</td>
+                                <td>{{ hp.quantity_used }}</td>
+                                <td class="text-end">
+                                    {% if ticket.status not in ['Closed', 'Done'] %}
+                                    <form action="{{ url_for('helpdesk.remove_part', id=ticket.id, part_id=hp.id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="btn btn-sm text-danger border-0 bg-transparent p-0"><i class="bi bi-x-circle fs-5"></i></button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted fst-italic">No parts added to this ticket yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-md-6 d-flex flex-column gap-4">
+            
+            <!-- CUSTOMER -->
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="z-index: 10;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-people-fill text-success me-2"></i> Customer Details</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label text-muted small fw-bold mb-1">Select from Master Customer</label>
+                            <select id="masterCustomerSelect" class="form-select bg-light border-0">
+                                <option value="">-- Custom / Manual Entry --</option>
+                                {% for customer in customers %}
+                                <option value="{{ customer.id }}" data-org="{{ customer.partner_organization }}" data-contact="{{ customer.point_of_contact or '' }}" data-email="{{ customer.email or '' }}" data-mobile="{{ customer.mobile_number or '' }}">{{ customer.partner_organization }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold mb-1">Partner Organization</label>
+                            <input type="text" name="partner" id="inputPartnerOrg" value="{{ ticket.partner or '' }}" class="form-control bg-light border-0" placeholder="Partner Organization">
+                        </div>
+                        
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-person text-secondary"></i> Point of Contact (Name)</label>
+                            <input type="text" name="person_name" id="inputPartnerContact" value="{{ ticket.person_name or '' }}" class="form-control bg-light border-0" placeholder="Person Name">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-envelope text-secondary"></i> Email Address</label>
+                            <input type="email" name="email" id="inputPartnerEmail" value="{{ ticket.email or '' }}" class="form-control bg-light border-0" placeholder="Email Address">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-telephone text-secondary"></i> Mobile Number</label>
+                            <input type="text" name="mobile" id="inputPartnerMobile" value="{{ ticket.mobile or '' }}" class="form-control bg-light border-0" placeholder="Mobile Number">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- MISCELLANEOUS -->
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="z-index: 9;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-calendar-check-fill text-primary me-2"></i> Scheduling & Tags</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-tags text-secondary"></i> Tags (comma separated)</label>
+                            <input type="text" name="tags" value="{{ ticket.tags or '' }}" class="form-control bg-light border-0" placeholder="Tags">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Scheduled Start</label>
+                            <input type="datetime-local" name="scheduled_start_date" value="{{ ticket.scheduled_start_date.strftime('%Y-%m-%dT%H:%M') if ticket.scheduled_start_date else '' }}" class="form-control bg-light border-0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Scheduled End</label>
+                            <input type="datetime-local" name="scheduled_end_date" value="{{ ticket.scheduled_end_date.strftime('%Y-%m-%dT%H:%M') if ticket.scheduled_end_date else '' }}" class="form-control bg-light border-0">
+                        </div>
+                        
+                        <div class="col-12 mt-4">
+                            <label class="form-label text-muted small fw-bold mb-1">Actual End Date</label>
+                            <input type="datetime-local" name="actual_end_date" value="{{ ticket.actual_end_date.strftime('%Y-%m-%dT%H:%M') if ticket.actual_end_date else '' }}" class="form-control bg-light border-0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</form>
+
+<!-- PROGRESS TRACKING SECTION -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="z-index: 8;">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                <h6 class="fw-bold text-dark mb-0"><i class="bi bi-clock-history text-secondary me-2"></i> Progress & Photo Logs</h6>
+            </div>
+            <div class="card-body p-4 bg-light">
+                <!-- Historic Logs (Chat Bubbles) -->
+                {% if ticket.progress_logs.count() > 0 %}
+                    <div class="chat-container mb-4">
+                        {% for log in ticket.progress_logs %}
+                            {% set is_tech = (log.user.role == 'Technician' or log.user.role == 'Admin') %}
+                            <div class="chat-message {% if is_tech %}tech{% else %}client{% endif %}">
+                                <div class="chat-avatar" title="{{ log.user.name }}">
+                                    {{ log.user.name[0]|upper }}
+                                </div>
+                                <div class="chat-bubble">
+                                    <div class="meta">
+                                        <span>{{ log.user.name }}</span>
+                                        <span>{{ log.created_at.strftime('%d %b %Y %H:%M') }}</span>
+                                    </div>
+                                    <p class="content">{{ log.description }}</p>
+                                    {% if log.files.count() > 0 %}
+                                        <div class="d-flex flex-wrap gap-2 mt-3 p-2 bg-white bg-opacity-25 rounded-3 border border-light border-opacity-25">
+                                            {% for file in log.files %}
+                                                <a href="{{ url_for('static', filename=file.file_path) }}" target="_blank">
+                                                    <img src="{{ url_for('static', filename=file.file_path) }}" alt="Attachment" class="shadow-sm rounded-3 hover-zoom" style="height: 80px; width: 80px; object-fit: cover; border: 2px solid white;">
+                                                </a>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 mb-4">
+                        <i class="bi bi-chat-dots fs-1 text-muted opacity-25"></i>
+                        <p class="text-muted small mt-2">No progress updates have been posted yet.</p>
+                    </div>
+                {% endif %}
+
+                <!-- Add New Log (If In Progress) -->
+                {% if ticket.status == 'In Progress' %}
+                    <div class="card border border-primary border-opacity-25 shadow-sm mt-2">
+                        <div class="card-body p-4 bg-white rounded">
+                            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-cloud-arrow-up-fill me-1 text-primary"></i> Add Progress Update</h6>
+                            <form action="{{ url_for('helpdesk.add_progress', id=ticket.id) }}" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Remarks / Description</label>
+                                    <textarea class="form-control bg-light border-0" name="progress_desc" rows="3" placeholder="Explain what was done..." required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Upload Photos (Multiple Allowed)</label>
+                                    <input type="file" name="photos" class="form-control bg-light border-0" multiple accept="image/*">
+                                </div>
+                                <div class="text-end mt-4">
+                                    <button type="submit" class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm"><i class="bi bi-send-fill me-1"></i> Submit Progress</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ACTIVITY LOGS SECTION -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white" style="z-index: 7;">
+            <div class="card-header bg-white border-bottom pt-4 pb-3 px-4">
+                <h6 class="fw-bold text-dark mb-0"><i class="bi bi-list-columns-reverse text-info me-2"></i> Activity Logs</h6>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% if ticket.activity_logs.count() > 0 %}
+                        {% for tlog in ticket.activity_logs %}
+                            <li class="list-group-item px-4 py-3 border-bottom-0 border-top bg-transparent">
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-light text-primary rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 40px; height: 40px;">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 fw-bold">{{ tlog.user.name }}</h6>
+                                            <small class="text-muted">{{ tlog.log_text }}</small>
+                                        </div>
+                                    </div>
+                                    <small class="text-secondary fw-bold" style="font-size: 0.8rem;">{{ tlog.created_at.strftime('%d %b %Y %H:%M') }}</small>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="list-group-item px-4 py-4 text-center text-muted border-0">No activities have been recorded yet.</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Delete Modal -->
+    <div class="modal fade" id="deleteTicketModal" tabindex="-1" aria-labelledby="deleteTicketModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+                <div class="modal-header border-bottom border-light">
+                    <h5 class="modal-title fw-bold" id="deleteTicketModalLabel">Delete Ticket</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this ticket? This action cannot be undone.
+                </div>
+                <div class="modal-footer border-top border-light">
+                    <button type="button" class="btn btn-secondary fw-bold rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <form action="{{ url_for('helpdesk.delete', id=ticket.id) }}" method="POST" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-danger fw-bold rounded-pill px-4">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Custom Procedure Modal -->
+    <div class="modal fade" id="addCustomProcModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Custom Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Task Name / Step *</label>
+                        <input type="text" class="form-control" id="custom_proc_name" placeholder="Ex: Clean the filter">
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">Duration (Minutes)</label>
+                            <input type="number" step="1" min="0" class="form-control" id="custom_proc_duration" placeholder="0">
+                        </div>
+                        <div class="col-6 mb-3 d-flex align-items-end pb-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="custom_proc_req_photo">
+                                <label class="form-check-label text-muted small fw-bold ms-1" for="custom_proc_req_photo">Require Photo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="pushCustomProcedure()">Add Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Custom Checklist Modal -->
+    <div class="modal fade" id="addCustomChkModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Custom Parameter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Parameter Name (Unit check) *</label>
+                        <input type="text" class="form-control" id="custom_chk_parameter" placeholder="Ex: Oil Pressure">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Standard Range / Expected Value *</label>
+                        <input type="text" class="form-control" id="custom_chk_standard" placeholder="Ex: 40-60 psi / OK">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-warning fw-bold px-4 text-dark" onclick="pushCustomChecklist()">Add Parameter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          <div class="modal-header border-0 pb-0 justify-content-center pt-4">
+            <h5 class="modal-title fw-bold text-dark"><i class="bi bi-qr-code text-primary me-2"></i> Ticket QR Code</h5>
+            <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center pb-5 pt-3">
+            <div class="bg-white p-3 rounded-4 shadow-sm d-inline-block mb-3 border">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ url_for('helpdesk.edit', id=ticket.id, _external=True)|urlencode }}" alt="QR Code" class="img-fluid rounded">
+            </div>
+            <p class="mb-0 text-muted small fw-bold text-break" style="letter-spacing: 1px;">{{ ticket.ticket_code }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<!-- Add Part Modal -->
+<div class="modal fade" id="addPartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-box text-primary me-2"></i>Add Part from Stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <form action="{{ url_for('helpdesk.add_part', id=ticket.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Select Part (Available at {{ ticket.company }}) *</label>
+                        <select class="form-select" name="part_id" required>
+                            <option value="">-- Choose Part --</option>
+                            {% for stock in available_stock %}
+                            {% if stock.qty_on_hand > 0 %}
+                            <option value="{{ stock.part.id }}">{{ stock.part.code }} - {{ stock.part.name }} ({{ stock.qty_on_hand }} in stock)</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                        {% if not available_stock %}
+                        <div class="form-text text-danger fst-italic"><i class="bi bi-exclamation-triangle"></i> No local stock is currently mapped or available at this site.</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold">Quantity Used *</label>
+                        <input type="number" class="form-control" name="qty" min="0.5" step="0.5" value="1" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary fw-bold pt-2 pb-2"><i class="bi bi-plus-circle me-1"></i> Confirm & Deduct</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const allTasklists = {{ tasklists_json|safe }};
+    const allChecklists = {{ checklists_json|safe }};
+    let customProcedures = [
+        {% for p in ticket.procedures %}
+        {
+            name: {{ p.name | tojson }},
+            estimated_minutes: {{ p.estimated_minutes | default(0) }},
+            requires_attachment: {{ 'true' if p.requires_attachment else 'false' }},
+            min_photos: {{ p.min_photos | default(0) }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    let customChecklists = [
+        {% for c in ticket.checklists %}
+        {
+            parameter: {{ c.parameter | tojson }},
+            standard: {{ c.standard | tojson }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    function fetchTasklistTemplate(id) {
+        if (!id) {
+            customProcedures = [];
+            renderCustomProcedures();
+            return;
+        }
+        let tasklist = allTasklists.find(t => t.id == id);
+        if (tasklist) {
+            customProcedures = tasklist.procedures;
+            renderCustomProcedures();
+            let collapseEl = document.getElementById('collapseProcContainer');
+            if (collapseEl) {
+                let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+                bsCollapse.show();
+            }
+        }
+    }
+
+    function fetchChecklistTemplate(id) {
+        if (!id) {
+            customChecklists = [];
+            renderCustomChecklists();
+            return;
+        }
+        let checklist = allChecklists.find(c => c.id == id);
+        if (checklist) {
+            customChecklists = checklist.parameters;
+            renderCustomChecklists();
+            let collapseEl = document.getElementById('collapseChkContainer');
+            if (collapseEl) {
+                let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+                bsCollapse.show();
+            }
+        }
+    }
+
+    function renderCustomProcedures() {
+        const container = document.getElementById('procListContainer');
+        const jsonInput = document.getElementById('custom_procedures_json');
+        if (!container || !jsonInput) return;
+        
+        jsonInput.value = JSON.stringify(customProcedures);
+        
+        if (customProcedures.length === 0) {
+            container.innerHTML = '<div class="text-center py-4 text-muted small" id="emptyProcMsg">No custom tasks added yet. Standard templates will still applying automatically.</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        customProcedures.forEach((proc, index) => {
+            const reqLabel = proc.requires_attachment ? '<span class="badge bg-info text-dark ms-2" style="font-size:0.65rem;"><i class="bi bi-camera"></i> Photo Required</span>' : '';
+            const minLabel = proc.estimated_minutes > 0 ? `<span class="badge bg-light text-dark border ms-1" style="font-size:0.65rem;"><i class="bi bi-clock"></i> ${proc.estimated_minutes} m</span>` : '';
+            
+            let html = `
+                <div class="d-flex align-items-center justify-content-between p-2 border-bottom hover-bg-light">
+                    <div>
+                        <div class="fw-bold text-dark" style="font-size:0.85rem;">${index + 1}. ${proc.name}</div>
+                        <div class="mt-1">${reqLabel}${minLabel}</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeCustomProcedure(${index})"><i class="bi bi-x-circle-fill"></i></button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    function renderCustomChecklists() {
+        const container = document.getElementById('chkListContainer');
+        const jsonInput = document.getElementById('custom_checklists_json');
+        if (!container || !jsonInput) return;
+        
+        jsonInput.value = JSON.stringify(customChecklists);
+        
+        if (customChecklists.length === 0) {
+            container.innerHTML = '<tr id="emptyChkMsg"><td colspan="3" class="text-center py-4 text-muted small">No custom parameters added yet.</td></tr>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        customChecklists.forEach((chk, index) => {
+            let html = `
+                <tr>
+                    <td class="fw-bold text-dark">${chk.parameter}</td>
+                    <td class="text-muted">${chk.standard}</td>
+                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeCustomChecklist(${index})"><i class="bi bi-trash-fill"></i></button></td>
+                </tr>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    function pushCustomProcedure() {
+        const name = document.getElementById('custom_proc_name').value;
+        const duration = document.getElementById('custom_proc_duration').value;
+        const reqPhoto = document.getElementById('custom_proc_req_photo').checked;
+        
+        if (!name) {
+            alert('Task name is required.');
+            return;
+        }
+        
+        customProcedures.push({
+            name: name,
+            estimated_minutes: parseInt(duration) || 0,
+            requires_attachment: reqPhoto,
+            min_photos: reqPhoto ? 1 : 0
+        });
+        
+        renderCustomProcedures();
+        
+        document.getElementById('custom_proc_name').value = '';
+        document.getElementById('custom_proc_duration').value = '';
+        document.getElementById('custom_proc_req_photo').checked = false;
+        
+        let modal = bootstrap.Modal.getInstance(document.getElementById('addCustomProcModal'));
+        if (modal) modal.hide();
+        
+        let collapseEl = document.getElementById('collapseProcContainer');
+        if (collapseEl) {
+            let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+            bsCollapse.show();
+        }
+    }
+
+    function pushCustomChecklist() {
+        const param = document.getElementById('custom_chk_parameter').value;
+        const std = document.getElementById('custom_chk_standard').value;
+        
+        if (!param || !std) {
+            alert('Parameter and Standard are required.');
+            return;
+        }
+        
+        customChecklists.push({
+            parameter: param,
+            standard: std
+        });
+        
+        renderCustomChecklists();
+        
+        document.getElementById('custom_chk_parameter').value = '';
+        document.getElementById('custom_chk_standard').value = '';
+        
+        let modal = bootstrap.Modal.getInstance(document.getElementById('addCustomChkModal'));
+        if (modal) modal.hide();
+        
+        let collapseEl = document.getElementById('collapseChkContainer');
+        if (collapseEl) {
+            let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+            bsCollapse.show();
+        }
+    }
+
+    function removeCustomProcedure(index) {
+        customProcedures.splice(index, 1);
+        renderCustomProcedures();
+    }
+
+    function removeCustomChecklist(index) {
+        customChecklists.splice(index, 1);
+        renderCustomChecklists();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renderCustomProcedures();
+        renderCustomChecklists();
+        const tsConfig = {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        };
+        
+        const divisiTs = new TomSelect("#divisiInput", tsConfig);
+        
+        const modulTs = new TomSelect("#modulInput", {
+            create: function(input, callback) {
+                const siteName = divisiTs.getValue();
+                if (!siteName) {
+                    alert("Please select a Site first!");
+                    return callback(false);
+                }
+                fetch('/helpdesk/api/create_module', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ name: input, site_name: siteName })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) callback({value: data.name, text: data.name});
+                    else callback(false);
+                })
+                .catch(() => callback(false));
+            },
+            sortField: { field: "text", direction: "asc" }
+        });
+
+        const locTs = new TomSelect("#locInput", {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        });
+        const assetTs = new TomSelect("#assetInput", {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        });
+        new TomSelect("#typeInput", {create: false});
+
+        function updateAssets(siteName, locName, currentAsset = null) {
+            if (!siteName && !locName) {
+                assetTs.clearOptions();
+                return;
+            }
+            let url = `/helpdesk/api/assets?site_name=${encodeURIComponent(siteName||'')}`;
+            if(locName) url += `&location_name=${encodeURIComponent(locName)}`;
+            
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    const oldAsset = currentAsset || assetTs.getValue();
+                    assetTs.clear();
+                    assetTs.clearOptions();
+                    data.assets.forEach(a => {
+                        assetTs.addOption({value: a.name, text: `${a.code} - ${a.name}`});
+                    });
+                    if (oldAsset) {
+                        // Keep current if missing from list (edge case)
+                        if (!assetTs.options[oldAsset]) {
+                            assetTs.addOption({value: oldAsset, text: oldAsset});
+                        }
+                        assetTs.setValue(oldAsset);
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        locTs.on('change', function(value) {
+            updateAssets(divisiTs.getValue(), value);
+        });
+        const assigneeTs = new TomSelect("#assigneeSelect", {
+            plugins: ['remove_button'],
+            maxItems: null,
+            sortField: { field: "text", direction: "asc" }
+        });
+        const primaryAssigneeTs = new TomSelect("#primaryAssigneeSelect", {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        });
+
+        function updateMasterData(siteName, currentModul = null, currentLocation = null) {
+            if (!siteName) {
+                modulTs.clearOptions();
+                locTs.clearOptions();
+                assigneeTs.clearOptions();
+                return;
+            }
+
+            fetch(`/helpdesk/api/master_data?site_name=${encodeURIComponent(siteName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update Modules
+                    const oldModul = currentModul || modulTs.getValue();
+                    modulTs.clear();
+                    modulTs.clearOptions();
+                    data.modules.forEach(m => {
+                        modulTs.addOption({value: m.name, text: m.name});
+                    });
+                    if (oldModul) modulTs.setValue(oldModul);
+
+                    // Update Locations
+                    const oldLoc = currentLocation || locTs.getValue();
+                    locTs.clear();
+                    locTs.clearOptions();
+                    data.locations.forEach(l => {
+                        locTs.addOption({value: l.name, text: l.name});
+                    });
+                    if (oldLoc) locTs.setValue(oldLoc);
+                    
+                    // Update Users for Technicians
+                    const oldTechs = assigneeTs.getValue(); // capture existing selected ids
+                    const oldPrimaryTech = primaryAssigneeTs.getValue(); // capture existing primary id
+                    
+                    assigneeTs.clearOptions(); // we do NOT clear() to prevent removing selections momentarily, TomSelect handles the merge gracefully
+                    primaryAssigneeTs.clearOptions();
+                    
+                    data.technicians.forEach(u => {
+                        assigneeTs.addOption({value: String(u.id), text: `${u.name} (${u.role})`});
+                        primaryAssigneeTs.addOption({value: String(u.id), text: `${u.name} (${u.role})`});
+                    });
+
+                    // re-apply old values in case they were cleared
+
+                    if(oldTechs && oldTechs.length > 0) {
+                        assigneeTs.setValue(oldTechs);
+                    }
+                    if(oldPrimaryTech) {
+                        primaryAssigneeTs.setValue(oldPrimaryTech);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching master data:', err);
+                    alert("Failed to fetch master data. Check console for details.");
+                });
+        }
+
+        divisiTs.on('change', function(value) {
+            // When manually changing site, we don't pass currentModul/currentLocation to force re-selection
+            updateMasterData(value);
+            updateAssets(value, locTs.getValue());
+        });
+        
+        // Initial load: fetch options matching current site to ensure dropdown is populated correctly
+        if (divisiTs.getValue()) {
+            const initialModul = "{{ ticket.modul or '' }}";
+            const initialLoc = "{{ ticket.location_subject or '' }}";
+            const initialAsset = "{{ ticket.asset or '' }}";
+            updateMasterData(divisiTs.getValue(), initialModul, initialLoc);
+            updateAssets(divisiTs.getValue(), initialLoc, initialAsset);
+        }
+        
+        // Customer Select Logic
+        document.getElementById('masterCustomerSelect').addEventListener('change', function() {
+            var selectedOption = this.options[this.selectedIndex];
+            if (this.value) {
+                document.getElementById('inputPartnerOrg').value = selectedOption.getAttribute('data-org') || "";
+                document.getElementById('inputPartnerContact').value = selectedOption.getAttribute('data-contact') || "";
+                document.getElementById('inputPartnerEmail').value = selectedOption.getAttribute('data-email') || "";
+                document.getElementById('inputPartnerMobile').value = selectedOption.getAttribute('data-mobile') || "";
+            } else {
+                document.getElementById('inputPartnerOrg').value = "";
+                document.getElementById('inputPartnerContact').value = "";
+                document.getElementById('inputPartnerEmail').value = "";
+                document.getElementById('inputPartnerMobile').value = "";
+            }
+        });
+
+        {% if current_user.role == 'Technician' or ticket.status not in ['New', 'Initial respon', 'Action Plan'] %}
+            // Lock out form fields
+            document.querySelectorAll('#hdForm input, #hdForm select, #hdForm textarea').forEach(el => {
+                el.setAttribute('disabled', 'disabled');
+                el.classList.add('bg-light'); // Pastikan background memudar
+            });
+            
+            {% if current_user.role == 'Technician' and ticket.status in ['New', 'Initial respon', 'Action Plan'] %}
+            // Mengembalikan akses edit untuk Description HANYA untuk technician di tahap awal
+            const desc = document.querySelector('textarea[name="description"]');
+            if (desc) {
+                desc.removeAttribute('disabled');
+                desc.classList.remove('bg-light');
+            }
+            {% endif %}
+            
+            // Kunci semua komponen TomSelect
+            if (typeof divisiTs !== 'undefined' && divisiTs) divisiTs.lock();
+            if (typeof modulTs !== 'undefined' && modulTs) modulTs.lock();
+            if (typeof locTs !== 'undefined' && locTs) locTs.lock();
+            if (typeof assigneeTs !== 'undefined' && assigneeTs) assigneeTs.lock();
+            if (typeof primaryAssigneeTs !== 'undefined' && primaryAssigneeTs) primaryAssigneeTs.lock();
+            if (typeof assetTs !== 'undefined' && assetTs) assetTs.lock();
+        {% endif %}
+    });
+</script>
+{% endblock %}

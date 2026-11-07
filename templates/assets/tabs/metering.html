@@ -1,0 +1,1306 @@
+<style>
+/* ── Meter Visual Cards ───────────────────────────────────────────── */
+.meter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+.meter-vcard {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 18px 16px;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+}
+.meter-vcard::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    border-radius: 16px 16px 0 0;
+    opacity: 0.8;
+}
+.meter-vcard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1), 0 4px 6px -2px rgba(59, 130, 246, 0.05);
+    border-color: #3b82f6;
+}
+.meter-vcard.mqtt-live::before {
+    background: linear-gradient(90deg, #10b981, #3b82f6);
+    opacity: 1;
+}
+.meter-vcard .mv-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.meter-vcard .mv-label .live-dot {
+    width: 7px; height: 7px;
+    background: #10b981;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: pulse-dot 1.8s infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.75); }
+}
+.meter-vcard .mv-value {
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: color 0.4s ease;
+}
+.meter-vcard .mv-value.updated { color: #10b981; }
+.meter-vcard .mv-unit {
+    font-size: 0.75rem;
+    color: #475569;
+    margin-top: 4px;
+    font-weight: 500;
+}
+.meter-vcard .mv-time {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    margin-top: 10px;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 8px;
+}
+.meter-vcard .mv-icon {
+    position: absolute;
+    top: 14px; right: 14px;
+    font-size: 1.3rem;
+    opacity: 0.1;
+    color: #3b82f6;
+}
+
+/* ── Edit Layout & Drag & Drop Styles ────────────────────────────── */
+.meter-grid.edit-mode .meter-vcard {
+    cursor: move;
+    border-style: dashed !important;
+    border-color: #cbd5e1 !important;
+    animation: shake 0.35s ease infinite alternate;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
+}
+@keyframes shake {
+    0% { transform: rotate(-0.5deg); }
+    100% { transform: rotate(0.5deg); }
+}
+.meter-grid.edit-mode .meter-vcard:hover {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 8px 16px rgba(59, 130, 246, 0.15) !important;
+}
+.btn-delete-meter {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 20;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.btn-delete-meter:hover {
+    background: #dc2626;
+    transform: scale(1.15);
+    color: white;
+}
+.meter-grid.edit-mode .btn-delete-meter {
+    opacity: 1;
+    pointer-events: auto;
+}
+.meter-grid.edit-mode .mv-icon {
+    display: none;
+}
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+    <div class="d-flex align-items-center">
+        <h5 class="fw-bold text-primary mb-0 me-3">Metering &amp; Events</h5>
+        {% if iot_api_cf and iot_api_cf.field_value and asset.meters %}
+        <select id="meteringViewToggle" class="form-select form-select-sm border-primary text-primary" style="width: auto; border-radius: 20px; font-weight: 500;" onchange="toggleMeteringView()">
+            <option value="iot">Live IoT Data</option>
+            <option value="logsheet">Logsheet History</option>
+        </select>
+        {% endif %}
+    </div>
+    <div>
+        {% if asset.meters %}
+        <button class="btn btn-sm btn-outline-secondary me-2" id="btnEditLayout">
+            <i class="bi bi-arrows-move"></i> Edit Layout
+        </button>
+        <button class="btn btn-sm btn-danger me-2" data-bs-toggle="modal" data-bs-target="#deleteAllMeterModal"><i class="bi bi-trash"></i> Hapus Semua</button>
+        {% endif %}
+        <button class="btn btn-sm btn-success me-2" data-bs-toggle="modal" data-bs-target="#importMeterModal"><i class="bi bi-box-arrow-in-down"></i> Import Parameter</button>
+        <button class="btn btn-sm btn-info text-white me-2" data-bs-toggle="modal" data-bs-target="#syncIotModal"><i class="bi bi-link-45deg"></i> Link IoT Device</button>
+        <button class="btn btn-sm btn-warning text-dark fw-bold me-2" data-bs-toggle="modal" data-bs-target="#aiAnalysisModal"><i class="bi bi-stars"></i> Analisis AI</button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addMeterModal"><i class="bi bi-plus"></i> New Meter</button>
+    </div>
+</div>
+
+{% set iot_api_cf_list = asset.custom_fields|selectattr("field_name", "equalto", "IoT API URL")|list %}
+{% set iot_api_cf = iot_api_cf_list[0] if iot_api_cf_list else None %}
+
+<!-- Modal Import Parameter Checklist -->
+<div class="modal fade" id="importMeterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('assets.import_meters_from_checklist', asset_id=asset.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Import Parameter Checklist</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Pilih checklist standar untuk diimport sebagai parameter metering pada asset ini. Parameter akan dibuat dalam bentuk checklist (OK/Not OK).</p>
+                    <div class="mb-3">
+                        <label class="form-label">Pilih Checklist</label>
+                        <select name="checklist_id" class="form-select" required>
+                            <option value="">-- Pilih Checklist --</option>
+                            {% for chk in checklists %}
+                            <option value="{{ chk.id }}" {% if asset.subcategory and asset.subcategory.name|lower in chk.name|lower %}selected{% endif %}>{{ chk.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if asset.subcategory %}
+                    <div class="form-check mt-3 mb-2">
+                        <input class="form-check-input" type="checkbox" name="apply_to_all_subcategory" id="applyToAllSubcategory" value="1">
+                        <label class="form-check-label text-dark small" for="applyToAllSubcategory">
+                            Terapkan juga ke semua Asset dengan Sub Kategori <strong>{{ asset.subcategory.name }}</strong> di Site ini
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success text-white">Import Parameter</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Delete All Meters -->
+<div class="modal fade" id="deleteAllMeterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('assets.delete_all_meters', asset_id=asset.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Hapus Semua Parameter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger mb-3">Anda yakin ingin menghapus <strong>semua parameter</strong> dari asset ini?</p>
+                    {% if asset.subcategory %}
+                    <div class="form-check mt-3 mb-2">
+                        <input class="form-check-input" type="checkbox" name="apply_to_all_subcategory" id="deleteAllApplyToAllSubcategory" value="1">
+                        <label class="form-check-label text-dark small" for="deleteAllApplyToAllSubcategory">
+                            Hapus juga parameter untuk semua Asset dengan Sub Kategori <strong>{{ asset.subcategory.name }}</strong> di Site ini
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger">Hapus Semua</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Sync IoT -->
+<div class="modal fade" id="syncIotModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('assets.sync_iot_api', asset_id=asset.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Link ke IoT API</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Tautkan asset ini ke API IoT untuk menampilkan data secara live tanpa menyimpan histori ke database aplikasi.</p>
+                    <div class="mb-3">
+                        <label class="form-label">URL API Device</label>
+                        <input type="url" class="form-control" name="api_url" required placeholder="http://127.0.0.1:5000/api/device/..." value="{{ iot_api_cf.field_value if iot_api_cf else '' }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-info text-white">Simpan Tautan</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal IoT History -->
+<div class="modal fade" id="iotHistModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="iotHistModalTitle">IoT Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Reading</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody id="iotHistModalBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if iot_api_cf and iot_api_cf.field_value %}
+<div id="iotSection" class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold text-info mb-0 d-flex align-items-center">
+            <i class="bi bi-broadcast me-1"></i> Live IoT Data 
+            <span class="spinner-grow spinner-grow-sm ms-2 text-info" id="iot-loading" role="status"></span>
+            <span class="badge bg-secondary ms-2" id="iot-last-update" style="font-size: 0.7em;">Menunggu data...</span>
+        </h6>
+        <div class="d-flex gap-2">
+            <input type="datetime-local" id="iot-start" class="form-control form-control-sm" title="Start Date">
+            <input type="datetime-local" id="iot-end" class="form-control form-control-sm" title="End Date">
+            <button class="btn btn-sm btn-info text-white" id="iot-btn-filter">Filter</button>
+            <button class="btn btn-sm btn-secondary" id="iot-btn-reset">Reset</button>
+        </div>
+    </div>
+    <div id="iot-live-container" class="meter-grid"></div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const originalUrl = "{{ iot_api_cf.field_value }}";
+    
+    let iotFetchController = null;
+    let isLivePolling = true;
+    
+    function fetchIoTData(isFullReplace = false) {
+        if (iotFetchController) {
+            iotFetchController.abort();
+        }
+        iotFetchController = new AbortController();
+        
+        document.getElementById('iot-loading').style.display = 'inline-block';
+        
+        if (isLivePolling) {
+            let now = new Date();
+            let past = new Date(now.getTime() - 60 * 60 * 1000);
+            const pad = (n) => String(n).padStart(2, '0');
+            const formatDT = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            
+            document.getElementById('iot-start').value = formatDT(past);
+            document.getElementById('iot-end').value = formatDT(now);
+        }
+        
+        let targetUrl = originalUrl;
+        const start = document.getElementById('iot-start').value;
+        const end = document.getElementById('iot-end').value;
+        
+        const hasCharts = Object.keys(iotCharts || {}).length > 0;
+        
+        if (start && end && (hasCharts || !isLivePolling)) {
+            const sym = targetUrl.includes('?') ? '&' : '?';
+            let startFormatted = start.length === 16 ? start.replace('T', ' ') + ':00' : start.replace('T', ' ');
+            let endFormatted = end.length === 16 ? end.replace('T', ' ') + ':00' : end.replace('T', ' ');
+            targetUrl += sym + 'start=' + startFormatted + '&end=' + endFormatted;
+        }
+        
+        const apiUrl = "{{ url_for('assets.api_proxy') }}?url=" + encodeURIComponent(targetUrl);
+        
+        fetch(apiUrl, { signal: iotFetchController.signal })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('iot-loading').style.display = 'none';
+            const now = new Date();
+            document.getElementById('iot-last-update').innerText = "Last Update: " + now.toLocaleTimeString();
+            renderIoTData(data, isFullReplace);
+        })
+        .catch(err => {
+            if (err.name === 'AbortError') return;
+            console.error("IoT fetch error:", err);
+            document.getElementById('iot-loading').classList.remove('spinner-grow');
+            document.getElementById('iot-loading').innerHTML = '<i class="bi bi-exclamation-triangle text-danger"> Error</i>';
+        });
+    }
+    
+    function extractMetrics(d, prefix='') {
+        let m = {};
+        if (typeof d === 'object' && d !== null && !Array.isArray(d)) {
+            for (let [k, v] of Object.entries(d)) {
+                if (Array.isArray(v)) continue;
+                let newPrefix = prefix ? prefix + '.' + k : k;
+                if (typeof v === 'number') m[newPrefix] = v;
+                else if (typeof v === 'object') Object.assign(m, extractMetrics(v, newPrefix));
+            }
+        }
+        return m;
+    }
+    
+    function findHistory(d) {
+        if (Array.isArray(d)) return d;
+        if (typeof d === 'object' && d !== null) {
+            for (let v of Object.values(d)) {
+                if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'object') return v;
+            }
+        }
+        return [];
+    }
+    
+    function formatDateTime(d) {
+        let year = d.getFullYear();
+        let month = String(d.getMonth() + 1).padStart(2, '0');
+        let day = String(d.getDate()).padStart(2, '0');
+        let hours = String(d.getHours()).padStart(2, '0');
+        let minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
+    
+    let iotCharts = {};
+    let iotHistoryData = {};
+    
+    function renderIoTData(data, isFullReplace = false) {
+        const container = document.getElementById('iot-live-container');
+        let metrics = {};
+        if (data.parsed_data) {
+            metrics = extractMetrics(data.parsed_data);
+        } else if (data.data && !Array.isArray(data.data)) {
+            metrics = extractMetrics(data.data);
+        } else if (!Array.isArray(data)) {
+            metrics = extractMetrics(data);
+            // filter out obvious metadata
+            delete metrics['server_time'];
+            delete metrics['meta.site_id'];
+            delete metrics['meta.type'];
+        }
+        
+        const history = findHistory(data);
+        
+        let processedHistory = [];
+        if (history.length > 0) {
+            const timeFields = ['timestamp','time','date','created_at','server_time','datetime','ts'];
+            history.forEach(row => {
+                let flatRow = extractMetrics(row);
+                let ts = null;
+                timeFields.forEach(t => { if (row[t]) ts = row[t]; });
+                if (ts !== null) {
+                    let tsMs = ts;
+                    if (typeof ts === 'number' && ts < 10000000000) tsMs = ts * 1000;
+                    flatRow['_time_'] = tsMs;
+                    processedHistory.push(flatRow);
+                }
+            });
+        }
+        
+        if (Object.keys(metrics).length === 0 && history.length > 0) {
+            // If main response is just history array, derive metrics from latest record
+            metrics = extractMetrics(history[history.length - 1]);
+        }
+        
+        for (let [key, val] of Object.entries(metrics)) {
+            const name = key.split('.').pop().replace(/_/g, ' ').toUpperCase();
+            const meterId = 'iot_' + key.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            let card = document.getElementById('card-' + meterId);
+            if (!card) {
+                card = document.createElement('div');
+                card.id = 'card-' + meterId;
+                card.className = 'meter-vcard mqtt-live';
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="mv-label"><div class="live-dot"></div>${name}</div>
+                    </div>
+                    <div class="mv-value-container d-flex justify-content-between align-items-end">
+                        <div class="mv-value" id="val-${meterId}">${val.toFixed(2)}</div>
+                    </div>
+                    <div class="mt-3">
+                        <div id="chart-${meterId}"></div>
+                    </div>
+                `;
+                card.style.cursor = 'pointer';
+                card.onclick = function() {
+                    document.getElementById('iotHistModalTitle').innerText = name;
+                    const tbody = document.getElementById('iotHistModalBody');
+                    let html = '';
+                    const dataPoints = iotHistoryData[meterId] || [];
+                    if (dataPoints.length > 0) {
+                        [...dataPoints].reverse().forEach(dp => {
+                            html += `
+                            <tr>
+                                <td>${dp.time}</td>
+                                <td class="fw-bold text-primary">${dp.value}</td>
+                                <td>IoT API</td>
+                            </tr>
+                            `;
+                        });
+                    } else {
+                        html = '<tr><td colspan="3" class="text-center text-muted py-3">No history available.</td></tr>';
+                    }
+                    tbody.innerHTML = html;
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('iotHistModal')).show();
+                };
+                container.appendChild(card);
+                
+                // Init chart
+                let chartData = [];
+                let tableData = [];
+                if (processedHistory.length > 0) {
+                    let shortKey = key.split('.').pop();
+                    processedHistory.forEach(flatRow => {
+                        let hVal = flatRow[key] !== undefined ? flatRow[key] : (flatRow[shortKey] !== undefined ? flatRow[shortKey] : undefined);
+                        if (hVal === undefined) {
+                            for (let fk of Object.keys(flatRow)) {
+                                if (fk.endsWith('.' + shortKey) || fk === shortKey) {
+                                    hVal = flatRow[fk];
+                                    break;
+                                }
+                            }
+                        }
+                        if(hVal !== undefined) {
+                            let d = new Date(flatRow['_time_']);
+                            chartData.push([d.getTime(), parseFloat(hVal)]);
+                            tableData.push({ time: formatDateTime(d), value: parseFloat(hVal) });
+                        }
+                    });
+                    // Sort by time
+                    chartData.sort((a,b) => a[0] - b[0]);
+                    tableData.sort((a,b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+                } else {
+                    // Populate with current value if no history array
+                    let now = new Date();
+                    chartData.push([now.getTime(), parseFloat(val)]);
+                    tableData.push({ time: formatDateTime(now), value: parseFloat(val) });
+                }
+                iotHistoryData[meterId] = tableData;
+                
+                let opt = {
+                    series: [{ name: 'Value', data: chartData }],
+                    chart: { type: 'area', height: 60, sparkline: { enabled: true }, animations: { enabled: false } },
+                    stroke: { curve: 'smooth', width: 2 },
+                    fill: { opacity: 0.2 },
+                    colors: ['#10b981'],
+                    tooltip: { fixed: { enabled: false }, x: { show: false }, y: { title: { formatter: function(){return ''} } }, marker: { show: false } },
+                    xaxis: { type: 'datetime' }
+                };
+                let chart = new ApexCharts(document.querySelector("#chart-" + meterId), opt);
+                chart.render();
+                iotCharts[meterId] = { chart: chart, data: chartData };
+            } else {
+                // Update existing
+                document.getElementById('val-' + meterId).innerText = val.toFixed(2);
+                let cInfo = iotCharts[meterId];
+                if (cInfo) {
+                    if (isFullReplace) {
+                        // Re-calculate chartData from history
+                        let chartData = [];
+                        let tableData = [];
+                        if (processedHistory.length > 0) {
+                            let shortKey = key.split('.').pop();
+                            processedHistory.forEach(flatRow => {
+                                let hVal = flatRow[key] !== undefined ? flatRow[key] : (flatRow[shortKey] !== undefined ? flatRow[shortKey] : undefined);
+                                if (hVal === undefined) {
+                                    for (let fk of Object.keys(flatRow)) {
+                                        if (fk.endsWith('.' + shortKey) || fk === shortKey) {
+                                            hVal = flatRow[fk];
+                                            break;
+                                        }
+                                    }
+                                }
+                                if(hVal !== undefined) {
+                                    let d = new Date(flatRow['_time_']);
+                                    chartData.push([d.getTime(), parseFloat(hVal)]);
+                                    tableData.push({ time: formatDateTime(d), value: parseFloat(hVal) });
+                                }
+                            });
+                            chartData.sort((a,b) => a[0] - b[0]);
+                            tableData.sort((a,b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+                        } else {
+                            let now = new Date();
+                            chartData.push([now.getTime(), parseFloat(val)]);
+                            tableData.push({ time: formatDateTime(now), value: parseFloat(val) });
+                        }
+                        cInfo.data = chartData;
+                        iotHistoryData[meterId] = tableData;
+                        cInfo.chart.updateSeries([{ data: cInfo.data }]);
+                    } else {
+                        let now = new Date();
+                        cInfo.data.push([now.getTime(), parseFloat(val)]);
+                        if (!iotHistoryData[meterId]) iotHistoryData[meterId] = [];
+                        iotHistoryData[meterId].push({ time: formatDateTime(now), value: parseFloat(val) });
+                        
+                        if (cInfo.data.length > 60) cInfo.data.shift();
+                        if (iotHistoryData[meterId].length > 60) iotHistoryData[meterId].shift();
+                        
+                        cInfo.chart.updateSeries([{ data: cInfo.data }]);
+                    }
+                }
+            }
+        }
+    }
+    
+    fetchIoTData();
+    let pollInterval = setInterval(() => fetchIoTData(false), 5000);
+    
+    document.getElementById('iot-btn-filter').addEventListener('click', function() {
+        // Stop live polling when looking at history
+        clearInterval(pollInterval);
+        isLivePolling = false;
+        fetchIoTData(true);
+    });
+    
+    document.getElementById('iot-btn-reset').addEventListener('click', function() {
+        document.getElementById('iot-start').value = '';
+        document.getElementById('iot-end').value = '';
+        clearInterval(pollInterval);
+        isLivePolling = true;
+        fetchIoTData(true);
+        // Restart polling
+        pollInterval = setInterval(() => fetchIoTData(false), 5000);
+    });
+});
+</script>
+{% endif %}
+
+{% if asset.meters %}
+
+{% set start_date_filter = request.args.get('start_date', '') %}
+{% set end_date_filter = request.args.get('end_date', '') %}
+{% set meter_readings_map = {} %}
+
+{% for m in asset.meters %}
+    {% set filtered_readings = [] %}
+    {% for r in m.readings %}
+        {% set include = true %}
+        {% if start_date_filter and r.reading_date.strftime('%Y-%m-%d') < start_date_filter %}
+            {% set include = false %}
+        {% endif %}
+        {% if end_date_filter and r.reading_date.strftime('%Y-%m-%d') > end_date_filter %}
+            {% set include = false %}
+        {% endif %}
+        {% if include %}
+            {% set _ = filtered_readings.append(r) %}
+        {% endif %}
+    {% endfor %}
+    {% set _ = meter_readings_map.update({m.id: filtered_readings}) %}
+{% endfor %}
+
+<div class="mb-3 d-flex justify-content-end">
+    <form method="GET" action="{{ url_for('assets.view', id=asset.id) }}" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="tab" value="metering">
+        <div class="input-group input-group-sm shadow-sm" style="max-width: 400px;">
+            <span class="input-group-text bg-white text-primary"><i class="bi bi-calendar-range"></i></span>
+            <input type="date" name="start_date" class="form-control" value="{{ start_date_filter }}" title="Start Date">
+            <span class="input-group-text bg-light text-muted">-</span>
+            <input type="date" name="end_date" class="form-control" value="{{ end_date_filter }}" title="End Date">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel-fill me-1"></i> Filter</button>
+            {% if start_date_filter or end_date_filter %}
+            <a href="{{ url_for('assets.view', id=asset.id, tab='metering') }}" class="btn btn-outline-secondary" title="Reset Filter"><i class="bi bi-x-lg"></i></a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<div id="logsheetSection" class="meter-grid mb-4" style="{% if iot_api_cf and iot_api_cf.field_value %}display: none;{% endif %}">
+{% for meter in asset.meters %}
+{%- set sorted_readings = meter_readings_map[meter.id]|sort(attribute='reading_date', reverse=True) %}
+{%- set latest = sorted_readings[0] if sorted_readings else none %}
+<div class="meter-vcard {% if meter.api_url %}api-live{% endif %}"
+     data-id="{{ meter.id }}"
+     onclick="{% if not meter.api_url %}bootstrap.Modal.getOrCreateInstance(document.getElementById('histModal{{ meter.id }}')).show(){% endif %}"
+     title="{% if meter.api_url %}Live API Data{% else %}Click to view history{% endif %}">
+    
+    <!-- Delete button (visible only when editing layout) -->
+    <form action="{{ url_for('assets.delete_meter', meter_id=meter.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the meter \'{{ meter.name }}\'?');" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="btn-delete-meter" title="Delete Meter" onclick="event.stopPropagation();">
+            <i class="bi bi-trash-fill"></i>
+        </button>
+    </form>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center flex-grow-1" style="min-width: 0; margin-right: 12px;">
+            <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 32px; height: 32px;">
+                <i class="bi bi-activity"></i>
+            </div>
+            <div class="mv-label mb-0 flex-grow-1" style="color: #3b82f6; font-size: 0.7rem; white-space: normal; word-wrap: break-word; overflow: visible; min-width: 0; display: block; line-height: 1.2;">
+                {% if meter.api_url %}<span class="live-dot" style="margin-right:4px; display: inline-block;"></span>{% endif %}
+                <span title="{{ (meter.api_json_key.split('.')[-1] if meter.api_json_key else meter.name) | upper }}">{{ (meter.api_json_key.split('.')[-1] if meter.api_json_key else meter.name) | upper }} {% if meter.api_url %}LIVE{% endif %}</span>
+            </div>
+        </div>
+        <div class="text-end flex-shrink-0">
+            <div class="mv-value fs-5" id="meterVal-{{ meter.id }}">
+                {% if meter.unit == 'Checklist' %}
+                    {% if latest %}
+                        {% if latest.reading_value == 1.0 %}<span class="text-success" style="font-size: 1rem;"><i class="bi bi-check-circle-fill"></i> OK</span>{% else %}<span class="text-danger" style="font-size: 1rem;"><i class="bi bi-x-circle-fill"></i> Not OK</span>{% endif %}
+                    {% else %}
+                        <span style="font-size: 1rem;">—</span>
+                    {% endif %}
+                {% else %}
+                    {{ '%.2f'|format(latest.reading_value) if latest else '—' }}
+                {% endif %}
+            </div>
+            <div class="mv-unit" style="font-size: 0.65rem; color: #94a3b8; margin-top: -2px;">{{ meter.unit or '—' }}</div>
+        </div>
+    </div>
+    
+    {% if not meter.api_url %}
+    <div id="sparkline-{{ meter.id }}" class="sparkline-container" style="margin: 0 -10px -15px -10px;"></div>
+    {% else %}
+    <div class="text-center py-2 mb-2 text-muted" style="font-size: 0.75rem; border-top: 1px dashed #e2e8f0;">
+        <i class="bi bi-cloud-arrow-down"></i> Live Data from API
+    </div>
+    {% endif %}
+
+    <div class="mv-time d-none" id="meterTime-{{ meter.id }}">
+        {% if latest %}
+        {{ (latest.reading_date + timedelta(hours=7)).strftime('%d %b %H:%M') }}
+        {% else %}
+        No data yet
+        {% endif %}
+    </div>
+</div>
+
+<!-- History Modal for {{ meter.name }} -->
+<div class="modal fade" id="histModal{{ meter.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold">{{ meter.name }}</h5>
+                    {% if meter.mqtt_broker %}
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        <span class="badge bg-info text-dark"><i class="bi bi-broadcast"></i> {{ meter.mqtt_broker }}:{{ meter.mqtt_port or 1883 }}</span>
+                        <span class="badge bg-warning text-dark"><i class="bi bi-signpost"></i> {{ meter.mqtt_topic }}</span>
+                        <span class="badge bg-success"><i class="bi bi-key"></i> {{ meter.mqtt_payload_key }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Reading</th>
+                            <th>Logged By</th>
+                        </tr>
+                    </thead>
+                    <tbody id="meterReadings-{{ meter.id }}">
+                        {% for reading in (meter_readings_map[meter.id]|sort(attribute='reading_date', reverse=True))[:20] %}
+                        <tr>
+                            <td>{{ (reading.reading_date + timedelta(hours=7)).strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td class="fw-bold text-primary">
+                                {% if meter.unit == 'Checklist' %}
+                                    {% if reading.reading_value == 1.0 %}<span class="badge bg-success"><i class="bi bi-check-circle"></i> OK</span>{% else %}<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Not OK</span>{% endif %}
+                                {% else %}
+                                    {{ reading.reading_value }}
+                                {% endif %}
+                            </td>
+                            <td>{{ reading.user.name if reading.user else '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">No readings yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#addReadingModal{{ meter.id }}" data-bs-dismiss="modal">
+                    <i class="bi bi-plus-circle"></i> Log Reading
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Reading Modal -->
+<div class="modal fade" id="addReadingModal{{ meter.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('assets.add_meter_reading', meter_id=meter.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Log Reading — {{ meter.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        {% if meter.unit == 'Checklist' %}
+                        <label class="form-label">Checklist Status</label>
+                        <select name="reading_value" class="form-select" required>
+                            <option value="1">OK / Normal</option>
+                            <option value="0">Not OK / Abnormal</option>
+                        </select>
+                        {% else %}
+                        <label class="form-label">Value ({{ meter.unit }})</label>
+                        <input type="number" step="0.01" name="reading_value" class="form-control" required>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Save Reading</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- (Chart container removed) -->
+
+{% else %}
+<div class="text-center py-5 text-muted">No meters defined for this asset.</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<!-- Modal Add Meter -->
+<!-- AI Analysis Modal -->
+<div class="modal fade" id="aiAnalysisModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold"><i class="bi bi-stars"></i> Analisis Kondisi Aset dengan AI</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2 mb-3">
+                    <h6 class="fw-bold mb-1"><i class="bi bi-info-circle"></i> Konteks Aset</h6>
+                    <ul class="mb-0 ps-3 small">
+                        <li><strong>Unit:</strong> {{ asset.name }} ({{ asset.code }})</li>
+                        <li><strong>Kategori:</strong> {{ asset.category.name if asset.category else '-' }}</li>
+                        <li><strong>Subkategori:</strong> {{ asset.subcategory.name if asset.subcategory else '-' }}</li>
+                        <li><strong>Lokasi:</strong> {{ asset.location.name if asset.location else '-' }} ({{ asset.site.name if asset.site else '-' }})</li>
+                        {% if asset.specifications %}
+                        <li><strong>Spesifikasi:</strong> {{ asset.specifications[:100] }}...</li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Pilih Parameter yang Dianalisis:</h6>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary py-0 px-2" id="aiSelectAllBtn" style="font-size: 0.75rem;">Pilih Semua</button>
+                        <button type="button" class="btn btn-outline-secondary py-0 px-2" id="aiDeselectAllBtn" style="font-size: 0.75rem;">Batal Pilih</button>
+                    </div>
+                </div>
+                <form id="aiAnalysisForm">
+                    <div class="row mb-3" style="max-height: 250px; overflow-y: auto;">
+                        {% for meter in asset.meters %}
+                        {% set latest_reading = meter_readings_map[meter.id][0] if meter_readings_map.get(meter.id) else none %}
+                        <div class="col-md-6 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input ai-meter-checkbox" type="checkbox" value="{{ meter.id }}" id="aiMeter{{ meter.id }}" checked 
+                                    data-meter-name="{{ meter.name }}" 
+                                    data-meter-value="{{ latest_reading.reading_value if latest_reading else 'N/A' }}">
+                                <label class="form-check-label small" for="aiMeter{{ meter.id }}">
+                                    {{ meter.name }} 
+                                    <span class="badge bg-light text-dark border ms-1">{{ latest_reading.reading_value if latest_reading else 'N/A' }} {{ meter.unit or '' }}</span>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </form>
+
+                <div id="aiAnalysisResult" class="d-none mt-3 p-3 bg-light border rounded">
+                    <!-- Result goes here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-warning fw-bold shadow-sm" id="btnRunAiAnalysis"><i class="bi bi-lightning-charge"></i> Mulai Analisis</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addMeterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('assets.add_meter', asset_id=asset.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Setup New Meter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Meter Name (e.g. Run Hours, Odometers)</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Unit (e.g. Hrs, Km, Bar)</label>
+                        <input type="text" name="unit" class="form-control" required>
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="bi bi-cloud-download"></i> API Integration (Optional)</h6>
+                    <div class="mb-2">
+                        <label class="form-label small">API Endpoint URL</label>
+                        <input type="text" name="api_url" class="form-control form-control-sm" placeholder="e.g. http://your-server.com/api/sensor/1">
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4">
+                            <label class="form-label small">Method</label>
+                            <select name="api_method" class="form-select form-select-sm">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                            </select>
+                        </div>
+                        <div class="col-8">
+                            <label class="form-label small">JSON Payload Key (Optional)</label>
+                            <input type="text" name="api_json_key" class="form-control form-control-sm" placeholder="e.g. data.temperature">
+                            <div class="form-text" style="font-size: 0.75rem;">Biarkan kosong jika API mereturn nilai angka/string langsung. Gunakan titik untuk nested, misal: `sensor.suhu`</div>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small">Polling Interval (Minutes)</label>
+                            <input type="number" name="api_interval" class="form-control form-control-sm" value="5" min="1">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Create Meter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+
+
+    // ── Chart Initialization ──────────────────────────────────────────────
+    let chartSeriesData = {
+        {% for meter in asset.meters %}
+        "{{ meter.id }}": [
+            {% for r in (meter_readings_map[meter.id]|sort(attribute='reading_date'))[-30:] %}
+            [new Date("{{ (r.reading_date + timedelta(hours=7)).strftime('%Y-%m-%d %H:%M:%S') }}").getTime(), {{ r.reading_value }}],
+            {% endfor %}
+        ],
+        {% endfor %}
+    };
+
+    var sparklineCharts = {};
+
+    var sparklineOptions = {
+        chart: {
+            type: 'area',
+            height: 120,
+            sparkline: { enabled: true },
+            animations: {
+                enabled: true,
+                easing: 'easeinout',
+                speed: 800,
+                dynamicAnimation: { speed: 350 }
+            }
+        },
+        stroke: { curve: 'smooth', width: 2 },
+        fill: {
+            type: 'gradient',
+            gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.05, stops: [0, 100] }
+        },
+        markers: { size: 4, colors: ['#fff'], strokeColors: '#3b82f6', strokeWidth: 2, hover: { size: 6 } },
+        tooltip: {
+            fixed: { enabled: false },
+            x: { format: 'dd MMM yyyy HH:mm:ss' },
+            y: { title: { formatter: function (seriesName) { return '' } } },
+            marker: { show: false }
+        },
+        xaxis: { type: 'datetime', crosshairs: { width: 1 } }
+    };
+
+    {% for meter in asset.meters %}
+    if (document.querySelector("#sparkline-{{ meter.id }}")) {
+        let opt = Object.assign({}, sparklineOptions);
+        opt.series = [{ name: 'Value', data: chartSeriesData["{{ meter.id }}"] || [] }];
+        let chart = new ApexCharts(document.querySelector("#sparkline-{{ meter.id }}"), opt);
+        chart.render();
+        sparklineCharts["{{ meter.id }}"] = chart;
+    }
+    {% endfor %}
+
+    // Phase 13: Live MQTT Data Synchronization via AJAX Interval
+    setInterval(function() {
+        fetch("{{ url_for('assets.get_latest_meter_readings', asset_id=asset.id) }}")
+        .then(response => response.json())
+          .then(data => {
+              if(data.success) {
+                  let chartNeedsUpdate = false;
+                  for(const [meterId, readings] of Object.entries(data.meters)) {
+                    if(document.querySelector('.meter-vcard.api-live[data-id="' + meterId + '"]')) continue;
+                    if (readings.length > 0) {
+                        const latest = readings[0];
+                        
+                        // Update visual card value
+                        const valEl = document.getElementById('meterVal-' + meterId);
+                        if (valEl) {
+                            const formattedValue = parseFloat(latest.value).toFixed(2);
+                            if (valEl.textContent.trim() !== formattedValue) {
+                                valEl.textContent = formattedValue;
+                                valEl.classList.add('updated');
+                                setTimeout(() => valEl.classList.remove('updated'), 1000);
+                                
+                                // Flash the visual card border briefly
+                                const cardEl = valEl.closest('.meter-vcard');
+                                if (cardEl) {
+                                    cardEl.style.boxShadow = '0 0 15px rgba(52, 211, 153, 0.4)';
+                                    cardEl.style.borderColor = '#34d399';
+                                    setTimeout(() => {
+                                        cardEl.style.boxShadow = '';
+                                        cardEl.style.borderColor = '';
+                                    }, 1000);
+                                }
+                            }
+                        }
+                        
+                        // Update visual card time
+                        const timeEl = document.getElementById('meterTime-' + meterId);
+                        if (timeEl) {
+                            let cleanDateStr = latest.date;
+                            try {
+                                const d = new Date(latest.date);
+                                if (!isNaN(d.getTime())) {
+                                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                    const day = String(d.getDate()).padStart(2, '0');
+                                    const month = months[d.getMonth()];
+                                    const hours = String(d.getHours()).padStart(2, '0');
+                                    const mins = String(d.getMinutes()).padStart(2, '0');
+                                    cleanDateStr = `${day} ${month} ${hours}:${mins}`;
+                                }
+                            } catch(e) {}
+                            timeEl.textContent = cleanDateStr;
+                        }
+                    }
+
+                    // Update history table inside modal if open/exists
+                    const tbody = document.getElementById('meterReadings-' + meterId);
+                    if(tbody) {
+                        let html = '';
+                        if(readings.length > 0) {
+                            readings.forEach(r => {
+                                html += `
+                                <tr>
+                                    <td>${r.date}</td>
+                                    <td class="fw-bold text-primary">${r.value}</td>
+                                    <td>${r.user}</td>
+                                </tr>`;
+                            });
+                        } else {
+                            html = '<tr><td colspan="3" class="text-center text-muted">No readings yet.</td></tr>';
+                        }
+                        
+                        let currentHtml = tbody.innerHTML.trim().replace(/\s+/g,'');
+                        let newHtml = html.trim().replace(/\s+/g,'');
+                        
+                        if (currentHtml !== newHtml) {
+                            tbody.innerHTML = html;
+                        }
+                    }
+                    
+                    // Update Chart Data
+                    if (sparklineCharts[meterId] && readings.length > 0) {
+                        const latest = readings[0];
+                        let cleanDate = latest.date.replace(' ', 'T');
+                        let ts = new Date(cleanDate).getTime();
+                        let lastData = chartSeriesData[meterId];
+                        
+                        if (lastData.length === 0 || lastData[lastData.length - 1][0] < ts) {
+                            chartSeriesData[meterId].push([ts, parseFloat(latest.value)]);
+                            if(chartSeriesData[meterId].length > 30) chartSeriesData[meterId].shift(); // Keep last 30
+                            sparklineCharts[meterId].updateSeries([{ name: 'Value', data: chartSeriesData[meterId] }]);
+                        }
+                    }
+                }
+            }
+        })
+        .catch(err => console.error("Telemetry silent sync frame drop:", err));
+    }, 5000);
+
+    // ── Edit Layout & Drag and Drop Javascript ──────────────────────────────
+    const grid = document.querySelector('.meter-grid');
+    const editBtn = document.getElementById('btnEditLayout');
+    
+    if (grid) {
+        // Load stored order on page load
+        const storedOrder = localStorage.getItem('meter-order-{{ asset.id }}');
+        if (storedOrder) {
+            try {
+                const orderArr = JSON.parse(storedOrder);
+                const cards = Array.from(grid.querySelectorAll('.meter-vcard'));
+                orderArr.forEach(id => {
+                    const card = cards.find(c => c.getAttribute('data-id') === String(id));
+                    if (card) {
+                        grid.appendChild(card);
+                    }
+                });
+            } catch (e) {
+                console.error("Failed to restore layout order:", e);
+            }
+        }
+    }
+
+    if (editBtn && grid) {
+        editBtn.addEventListener('click', function() {
+            const isEditing = grid.classList.toggle('edit-mode');
+            if (isEditing) {
+                editBtn.innerHTML = '<i class="bi bi-check-lg"></i> Done Editing';
+                editBtn.classList.remove('btn-outline-secondary');
+                editBtn.classList.add('btn-success');
+                
+                // Enable dragging
+                grid.querySelectorAll('.meter-vcard').forEach(card => {
+                    card.setAttribute('draggable', 'true');
+                    // Backup and remove the modal-trigger click action during edit mode
+                    card.setAttribute('data-onclick-backup', card.getAttribute('onclick'));
+                    card.removeAttribute('onclick');
+                });
+            } else {
+                editBtn.innerHTML = '<i class="bi bi-arrows-move"></i> Edit Layout';
+                editBtn.classList.remove('btn-success');
+                editBtn.classList.add('btn-outline-secondary');
+                
+                // Disable dragging
+                grid.querySelectorAll('.meter-vcard').forEach(card => {
+                    card.removeAttribute('draggable');
+                    // Restore original modal-trigger click action
+                    if (card.getAttribute('data-onclick-backup')) {
+                        card.setAttribute('onclick', card.getAttribute('data-onclick-backup'));
+                        card.removeAttribute('data-onclick-backup');
+                    }
+                });
+                
+                // Save layout order to localstorage
+                saveOrder();
+            }
+        });
+
+        // HTML5 Drag and Drop events
+        let draggedItem = null;
+
+        grid.addEventListener('dragstart', function(e) {
+            if (!grid.classList.contains('edit-mode')) return;
+            const card = e.target.closest('.meter-vcard');
+            if (card) {
+                draggedItem = card;
+                card.style.opacity = '0.4';
+                e.dataTransfer.effectAllowed = 'move';
+            }
+        });
+
+        grid.addEventListener('dragover', function(e) {
+            if (!grid.classList.contains('edit-mode')) return;
+            e.preventDefault();
+            const overCard = e.target.closest('.meter-vcard');
+            if (overCard && overCard !== draggedItem) {
+                const rect = overCard.getBoundingClientRect();
+                const next = (e.clientX - rect.left) / (rect.right - rect.left) > 0.5;
+                grid.insertBefore(draggedItem, next ? overCard.nextSibling : overCard);
+            }
+        });
+
+        grid.addEventListener('dragend', function(e) {
+            if (draggedItem) {
+                draggedItem.style.opacity = '1';
+                draggedItem = null;
+            }
+        });
+        
+        function saveOrder() {
+            const currentOrder = Array.from(grid.querySelectorAll('.meter-vcard')).map(card => card.getAttribute('data-id'));
+            localStorage.setItem('meter-order-{{ asset.id }}', JSON.stringify(currentOrder));
+        }
+    }
+
+    // ── Live API Fetching ─────────────────────────────────────────────────
+    document.querySelectorAll('.meter-vcard.api-live').forEach(card => {
+        const meterId = card.getAttribute('data-id');
+        const valContainer = card.querySelector('.mv-value');
+        const timeContainer = card.querySelector('.mv-time');
+        
+        // Indicate loading
+        if (valContainer) valContainer.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+        
+        fetch(`/meter/${meterId}/live`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && valContainer) {
+                    valContainer.textContent = data.value.toFixed(2);
+                    if (timeContainer) {
+                        timeContainer.classList.remove('d-none');
+                        timeContainer.textContent = 'Just now (Live)';
+                    }
+                } else {
+                    if (valContainer) valContainer.textContent = 'Err';
+                    console.error('API live fetch error for meter', meterId, data.error);
+                }
+            })
+            .catch(err => {
+                if (valContainer) valContainer.textContent = 'Err';
+                console.error('API live fetch failed for meter', meterId, err);
+            });
+    });
+});
+
+function toggleMeteringView() {
+    const view = document.getElementById('meteringViewToggle').value;
+    const iotSec = document.getElementById('iotSection');
+    const logSec = document.getElementById('logsheetSection');
+    
+    if (view === 'iot') {
+        if (iotSec) iotSec.style.display = 'block';
+        if (logSec) logSec.style.display = 'none';
+    } else {
+        if (iotSec) iotSec.style.display = 'none';
+        if (logSec) logSec.style.display = 'grid';
+    }
+}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnRun = document.getElementById('btnRunAiAnalysis');
+    const resultDiv = document.getElementById('aiAnalysisResult');
+    const selectAllBtn = document.getElementById('aiSelectAllBtn');
+    const deselectAllBtn = document.getElementById('aiDeselectAllBtn');
+    
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            document.querySelectorAll('.ai-meter-checkbox').forEach(cb => cb.checked = true);
+        });
+    }
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', function() {
+            document.querySelectorAll('.ai-meter-checkbox').forEach(cb => cb.checked = false);
+        });
+    }
+    
+    if (btnRun) {
+        btnRun.addEventListener('click', function() {
+            // Build Prompt
+            let prompt = `Tolong analisis kondisi aset berikut berdasarkan data meter/sensor terbarunya. Berikan ringkasan kondisi, deteksi anomali jika ada, dan rekomendasi perawatan.\n\n`;
+            prompt += `Informasi Aset:\n`;
+            prompt += `- Nama: {{ asset.name }} ({{ asset.code }})\n`;
+            prompt += `- Kategori: {{ asset.category.name if asset.category else '-' }}\n`;
+            prompt += `- Subkategori: {{ asset.subcategory.name if asset.subcategory else '-' }}\n`;
+            prompt += `- Lokasi: {{ asset.location.name if asset.location else '-' }}\n\n`;
+            prompt += `Data Parameter Terpilih:\n`;
+            
+            const checkboxes = document.querySelectorAll('.ai-meter-checkbox:checked');
+            if(checkboxes.length === 0) {
+                alert("Pilih minimal satu parameter untuk dianalisis!");
+                return;
+            }
+            
+            checkboxes.forEach(cb => {
+                prompt += `- ${cb.getAttribute('data-meter-name')}: ${cb.getAttribute('data-meter-value')}\n`;
+            });
+            
+            // Show loading
+            resultDiv.classList.remove('d-none');
+            resultDiv.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-warning mb-2" role="status"></div><p class="text-muted small mb-0 fw-semibold">Sedang menganalisis kondisi aset dengan AI...</p></div>';
+            btnRun.disabled = true;
+            
+            // Post to backend
+            fetch("{{ url_for('assets.analyze_meters', id=asset.id) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ prompt: prompt })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnRun.disabled = false;
+                if(data.success) {
+                    let formattedOutput = '';
+                    if (typeof marked !== 'undefined') {
+                        formattedOutput = marked.parse(data.output);
+                    } else {
+                        formattedOutput = `<pre style="white-space: pre-wrap; font-family: inherit;">${data.output}</pre>`;
+                    }
+                    resultDiv.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-1">
+                                <i class="bi bi-check-circle me-1"></i> Analisis Berhasil
+                            </span>
+                            <small class="text-muted font-monospace" style="font-size: 0.75rem;">Model: ${data.model_used || 'Groq AI'}</small>
+                        </div>
+                        <div class="ai-content-body">${formattedOutput}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger mb-0 shadow-sm">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="bi bi-exclamation-triangle-fill fs-5 mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <h6 class="fw-bold mb-1">Gagal Menjalankan Analisis AI</h6>
+                                    <p class="small mb-2">${data.message || 'Terjadi kesalahan pada layanan AI.'}</p>
+                                    <div class="small bg-white bg-opacity-75 p-2 rounded border">
+                                        <strong>Tips Solusi:</strong>
+                                        <ul class="mb-0 ps-3">
+                                            <li>Pastikan <code>GROQ_API_KEY</code> sudah dikonfigurasi di System Settings atau file <code>.env</code>.</li>
+                                            <li>Dapatkan API Key gratis di <a href="https://console.groq.com" target="_blank" class="text-primary fw-bold">console.groq.com</a>.</li>
+                                            <li>Pastikan koneksi internet server aktif.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                btnRun.disabled = false;
+                resultDiv.innerHTML = `<div class="alert alert-danger mb-0"><i class="bi bi-wifi-off me-2"></i>Error komunikasi dengan server: ${err}</div>`;
+            });
+        });
+    }
+});
+</script>

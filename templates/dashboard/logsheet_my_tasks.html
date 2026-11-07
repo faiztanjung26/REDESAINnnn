@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+<h3 class="mb-0 text-dark fw-bold me-3"><i class="bi bi-clipboard-check text-success me-2"></i> Tugas Logsheet Saya</h3>
+{% endblock %}
+
+{% block content %}
+<style>
+    .filter-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+    }
+    .table-logsheet th {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        border-bottom: 1px solid #e2e8f0;
+        background-color: #f8fafc;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    .table-logsheet td {
+        vertical-align: middle;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .badge-status {
+        padding: 0.35rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .badge-pending {
+        color: #b45309;
+        background-color: #fef3c7;
+        border: 1px solid #fde68a;
+    }
+    .badge-completed {
+        color: #059669;
+        background-color: #d1fae5;
+        border: 1px solid #a7f3d0;
+    }
+    .badge-missed {
+        color: #be123c;
+        background-color: #ffe4e6;
+        border: 1px solid #fecdd3;
+    }
+    .btn-action {
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 0.4rem 1rem;
+    }
+    .btn-isi {
+        background-color: #2563eb;
+        color: white;
+        border: none;
+    }
+    .btn-isi:hover {
+        background-color: #1d4ed8;
+        color: white;
+    }
+    .btn-susulan {
+        background-color: #475569;
+        color: white;
+        border: none;
+    }
+    .btn-susulan:hover {
+        background-color: #334155;
+        color: white;
+    }
+    .btn-disabled {
+        background-color: #ffffff;
+        color: #94a3b8;
+        border: 1px solid #e2e8f0;
+        cursor: not-allowed;
+    }
+    .btn-view {
+        background-color: #f0f9ff;
+        color: #0284c7;
+        border: 1px solid #bae6fd;
+    }
+    .btn-view:hover {
+        background-color: #e0f2fe;
+        color: #0369a1;
+        border-color: #7dd3fc;
+    }
+</style>
+
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <div class="row g-4 mb-2">
+            <div class="col-md-4">
+                <div class="filter-label">ASSIGN TO</div>
+                <select class="form-select border-0 bg-light rounded-3">
+                    <option>{{ current_user.nama }}</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <div class="filter-label">SHIFT KERJA</div>
+                <select class="form-select border-0 bg-light rounded-3">
+                    <option>Semua Shift</option>
+                    <option>Shift 1 (04:00 - 12:00)</option>
+                    <option>Shift 2 (12:00 - 20:00)</option>
+                    <option>Shift 3 (20:00 - 04:00)</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <div class="filter-label">SITE / PROJECT LOCATION</div>
+                <select class="form-select border-0 bg-light rounded-3">
+                    <option>Semua Site</option>
+                    {% if schedules and schedules|length > 0 %}
+                    <option selected>{{ schedules[0].site.name }}</option>
+                    {% endif %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-logsheet table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4" width="5%">NO</th>
+                        <th width="15%">WAKTU</th>
+                        <th width="45%">NAMA ASET TERJADWAL</th>
+                        <th width="15%" class="text-center">STATUS</th>
+                        <th width="20%" class="text-center pe-4">AKSI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if schedules %}
+                        {% for sch in schedules %}
+                        <tr>
+                            <td class="ps-4 text-muted">{{ loop.index }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-clock text-secondary me-2"></i>
+                                    <span class="text-primary fw-bold" style="font-size: 0.95rem;">
+                                        {{ sch.scheduled_time.strftime('%H:%M') if sch.scheduled_time else '-' }} WIB
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark mb-1">
+                                    {% if sch.asset %}{{ sch.asset.name }}{% else %}{{ sch.name }}{% endif %}
+                                </div>
+                                <div class="text-muted" style="font-size: 0.8rem;">
+                                    ID: {% if sch.asset %}{{ sch.asset.asset_code }}{% else %}{{ sch.code }}{% endif %}
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                {% if sch.status == 'Scheduled' %}
+                                    {% if sch.scheduled_date < today %}
+                                        <span class="badge badge-status badge-missed">MISSED</span>
+                                    {% else %}
+                                        <span class="badge badge-status badge-pending">PENDING</span>
+                                    {% endif %}
+                                {% elif sch.status == 'In Progress' %}
+                                    <span class="badge badge-status badge-pending" style="background-color: #e0f2fe; color: #0284c7; border-color: #bae6fd;">IN PROGRESS</span>
+                                {% elif sch.status == 'Completed' %}
+                                    <span class="badge badge-status badge-completed">COMPLETED</span>
+                                {% else %}
+                                    <span class="badge badge-status bg-secondary">{{ sch.status|upper }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center pe-4">
+                                {% if sch.status == 'Scheduled' %}
+                                    {% if sch.scheduled_date < today %}
+                                        <a href="{{ url_for('logsheet_schedule_execute', id=sch.id) }}" class="btn btn-action btn-susulan w-100">Isi Susulan</a>
+                                    {% else %}
+                                        <a href="{{ url_for('logsheet_schedule_execute', id=sch.id) }}" class="btn btn-action btn-isi w-100">Isi Logsheet</a>
+                                    {% endif %}
+                                {% elif sch.status == 'In Progress' %}
+                                    {% if sch.logsheet %}
+                                        <a href="{{ url_for('logsheet_fill', id=sch.logsheet.id) }}" class="btn btn-action btn-isi w-100">Lanjutkan</a>
+                                    {% endif %}
+                                {% elif sch.status == 'Completed' %}
+                                    {% if sch.logsheet %}
+                                        <a href="{{ url_for('logsheet_detail', id=sch.logsheet.id) }}" class="btn btn-action btn-view w-100">View Logsheet</a>
+                                    {% else %}
+                                        <button class="btn btn-action btn-disabled w-100" disabled>Sudah Terisi</button>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <i class="bi bi-clipboard-check fs-1 text-muted mb-3 d-block"></i>
+                                <h6 class="text-muted">Tidak Ada Tugas</h6>
+                                <p class="text-muted small mb-0">Belum ada jadwal logsheet yang ditugaskan kepada Anda</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

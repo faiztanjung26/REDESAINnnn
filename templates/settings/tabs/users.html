@@ -1,0 +1,405 @@
+                <div class="row align-items-start">
+                    <div class="col-md-8">
+                        <div class="card shadow-sm border-0 rounded-4 mb-4">
+                            <div class="card-header bg-white pb-0 border-0 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+                                <h5 class="fw-bold mb-0">System Users</h5>
+                                <div class="d-flex flex-wrap gap-1 w-100 w-md-auto">
+                                    <a href="{{ url_for('settings.download_user_template') }}" class="btn btn-sm btn-outline-info flex-grow-1 flex-md-grow-0 text-nowrap"><i class="bi bi-file-earmark-spreadsheet"></i> Download Template</a>
+                                    <a href="{{ url_for('settings.export_users') }}" class="btn btn-sm btn-outline-secondary flex-grow-1 flex-md-grow-0 text-nowrap"><i class="bi bi-download"></i> Export Excel</a>
+                                    <button class="btn btn-sm btn-outline-primary flex-grow-1 flex-md-grow-0 text-nowrap" data-bs-toggle="modal" data-bs-target="#importUsersModal"><i class="bi bi-upload"></i> Import Excel</button>
+                                </div>
+                            </div>
+                        <div class="accordion" id="usersAccordion">
+                            {% set no_site_users = users|selectattr("site_id", "none")|list %}
+                            {% set site_users_grouped = users|rejectattr("site_id", "none")|groupby("site_id") %}
+                            {% set pending_users = users|selectattr("is_approved", "equalto", False)|list %}
+
+                            {% if pending_users %}
+                            <div class="accordion-item border-0 mb-3 shadow-sm rounded">
+                                <h2 class="accordion-header" id="headingUserPending">
+                                    <button class="accordion-button collapsed fw-bold rounded" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUserPending" aria-expanded="false" aria-controls="collapseUserPending" style="background-color: #fff3cd; border: 1px solid #ffe69c; color: #856404;">
+                                        <i class="bi bi-hourglass-split me-2 text-warning"></i> Menunggu Persetujuan (Pending)
+                                        <span class="badge bg-warning text-dark rounded-pill ms-auto" style="margin-right: 15px;">{{ pending_users|length }} Users</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseUserPending" class="accordion-collapse collapse show" aria-labelledby="headingUserPending" data-bs-parent="#usersAccordion">
+                                    <div class="accordion-body p-0 border border-top-0 rounded-bottom" style="border-color: #ffe69c !important; overflow: hidden;">
+                                        <form action="{{ url_for('settings.bulk_action_users') }}" method="POST" id="bulkPendingUsersForm">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <div class="table-responsive m-0">
+                                            <div class="p-2 border-bottom d-flex flex-wrap align-items-center gap-2" style="background-color: #fffaf0;">
+                                                <div class="form-check mb-0 ms-2 ms-sm-3">
+                                                    <input class="form-check-input border-warning" type="checkbox" id="selectAllPending" onchange="toggleAllPending(this)">
+                                                    <label class="form-check-label small fw-bold text-dark" for="selectAllPending">Select All</label>
+                                                </div>
+                                                <div class="ms-auto d-flex flex-wrap gap-1">
+                                                    <button type="submit" name="action" value="approve" class="btn btn-sm btn-success" onclick="return confirm('Approve selected users?');"><i class="bi bi-check-circle"></i> Approve Selected</button>
+                                                    <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger" onclick="return confirm('Tolak dan hapus selected users?');"><i class="bi bi-trash"></i> Delete Selected</button>
+                                                </div>
+                                            </div>
+                                            <table class="table table-hover table-premium mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th class="ps-4" style="width: 40px;"></th>
+                                                        <th>ID</th>
+                                                        <th>Nama Lengkap</th>
+                                                        <th>NRP</th>
+                                                        <th>Role</th>
+                                                        <th class="text-end pe-4">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for user in pending_users %}
+                                                    <tr>
+                                                        <td class="ps-4"><input class="form-check-input pending-user-checkbox border-secondary" type="checkbox" name="user_ids" value="{{ user.id }}"></td>
+                                                        <td>{{ user.id }}</td>
+                                                        <td class="fw-bold">{{ user.name }}</td>
+                                                        <td>{{ user.nrp }}</td>
+                                                        <td>
+                                                            <span class="badge bg-secondary fw-normal">{{ user.role }}</span>
+                                                        </td>
+                                                        <td class="text-end pe-4">
+                                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditUserModal({{ user.id }}, '{{ user.name|replace('\'', '\\\'') }}', '{{ user.nrp|replace('\'', '\\\'') }}', '{{ user.role }}', '{{ user.site_id or 0 }}', '{{ user.team_id or 0 }}', '{{ user.phone_number or '' }}', '{{ user.is_approved }}')"><i class="bi bi-pencil"></i> Approve / Edit</button>
+                                                            <form action="{{ url_for('settings.delete_user', id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tolak dan hapus user ini?');">
+                                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if no_site_users %}
+                            <div class="accordion-item border-0 mb-3 shadow-sm rounded">
+                                <h2 class="accordion-header" id="headingUserSiteGlobal">
+                                    <button class="accordion-button collapsed fw-bold rounded" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUserSiteGlobal" aria-expanded="false" aria-controls="collapseUserSiteGlobal" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                                        <i class="bi bi-building me-2 text-primary"></i> Kantor Pusat / All Sites 
+                                        <span class="badge bg-primary rounded-pill ms-auto" style="margin-right: 15px;">{{ no_site_users|length }} Users</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseUserSiteGlobal" class="accordion-collapse collapse" aria-labelledby="headingUserSiteGlobal" data-bs-parent="#usersAccordion">
+                                    <div class="accordion-body p-0 border border-top-0 rounded-bottom" style="border-color: #e2e8f0 !important; overflow: hidden;">
+                                        <div class="table-responsive m-0">
+                                            <table class="table table-hover table-premium mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th class="ps-4">ID</th>
+                                                        <th>Nama Lengkap</th>
+                                                        <th>NRP</th>
+                                                        <th>Tim</th>
+                                                        <th>Role</th>
+                                                        <th class="text-end pe-4">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for user in no_site_users %}
+                                                    <tr>
+                                                        <td class="ps-4">{{ user.id }}</td>
+                                                        <td class="fw-bold">{{ user.name }}</td>
+                                                        <td>{{ user.nrp }}</td>
+                                                        <td>
+                                                            {% if user.team %}
+                                                                <span class="badge bg-info text-dark fw-normal"><i class="bi bi-diagram-3"></i> {{ user.team.name }}</span>
+                                                            {% else %}
+                                                                <span class="text-muted small">-</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if user.role == 'Admin' %}
+                                                                <span class="badge bg-danger fw-normal">Admin</span>
+                                                            {% elif user.role == 'Technician' %}
+                                                                <span class="badge bg-primary fw-normal">Technician</span>
+                                                            {% elif user.role == 'User' %}
+                                                                <span class="badge bg-info fw-normal">User</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary fw-normal">{{ user.role }}</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="text-end pe-4">
+                                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditUserModal({{ user.id }}, '{{ user.name|replace('\'', '\\\'') }}', '{{ user.nrp|replace('\'', '\\\'') }}', '{{ user.role }}', '{{ user.site_id or 0 }}', '{{ user.team_id or 0 }}', '{{ user.phone_number or '' }}', '{{ user.is_approved }}')"><i class="bi bi-pencil"></i></button>
+                                                            {% if user.id != current_user.id %}
+                                                            <form action="{{ url_for('settings.delete_user', id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus user ini?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                                            </form>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% for site_id, site_users in site_users_grouped %}
+                            {% set site_name = site_users[0].site.name if site_users[0].site else 'Unknown Site' %}
+                            <div class="accordion-item border-0 mb-3 shadow-sm rounded">
+                                <h2 class="accordion-header" id="headingUserSite{{ loop.index }}">
+                                    <button class="accordion-button collapsed fw-bold rounded" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUserSite{{ loop.index }}" aria-expanded="false" aria-controls="collapseUserSite{{ loop.index }}" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                                        <i class="bi bi-building me-2 text-primary"></i> {{ site_name }} 
+                                        <span class="badge bg-primary rounded-pill ms-auto" style="margin-right: 15px;">{{ site_users|length }} Users</span>
+                                    </button>
+                                </h2>
+                                <div id="collapseUserSite{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="headingUserSite{{ loop.index }}" data-bs-parent="#usersAccordion">
+                                    <div class="accordion-body p-0 border border-top-0 rounded-bottom" style="border-color: #e2e8f0 !important; overflow: hidden;">
+                                        <div class="table-responsive m-0">
+                                            <table class="table table-hover table-premium mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th class="ps-4">ID</th>
+                                                        <th>Nama Lengkap</th>
+                                                        <th>NRP</th>
+                                                        <th>Tim</th>
+                                                        <th>Role</th>
+                                                        <th class="text-end pe-4">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for user in site_users %}
+                                                    <tr>
+                                                        <td class="ps-4">{{ user.id }}</td>
+                                                        <td class="fw-bold">{{ user.name }}</td>
+                                                        <td>{{ user.nrp }}</td>
+                                                        <td>
+                                                            {% if user.team %}
+                                                                <span class="badge bg-info text-dark fw-normal"><i class="bi bi-diagram-3"></i> {{ user.team.name }}</span>
+                                                            {% else %}
+                                                                <span class="text-muted small">-</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if user.role == 'Admin' %}
+                                                                <span class="badge bg-danger fw-normal">Admin</span>
+                                                            {% elif user.role == 'Technician' %}
+                                                                <span class="badge bg-primary fw-normal">Technician</span>
+                                                            {% elif user.role == 'User' %}
+                                                                <span class="badge bg-info fw-normal">User</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary fw-normal">{{ user.role }}</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="text-end pe-4">
+                                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditUserModal({{ user.id }}, '{{ user.name|replace('\'', '\\\'') }}', '{{ user.nrp|replace('\'', '\\\'') }}', '{{ user.role }}', '{{ user.site_id or 0 }}', '{{ user.team_id or 0 }}', '{{ user.phone_number or '' }}', '{{ user.is_approved }}')"><i class="bi bi-pencil"></i></button>
+                                                            {% if user.id != current_user.id %}
+                                                            <form action="{{ url_for('settings.delete_user', id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus user ini?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                                            </form>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-muted text-center py-4 border rounded bg-light">No users configured.</div>
+                            {% endfor %}
+                        </div>
+                        </div> <!-- end card -->
+                    </div>
+                    <div class="col-md-4">
+                        <div class="settings-form-card">
+                            <div class="card-body">
+                                <h5>Add New User</h5>
+                                <form action="{{ url_for('settings.add_user') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Nama Lengkap *</label>
+                                        <input type="text" name="name" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">NRP *</label>
+                                        <input type="text" name="nrp" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-bold">Password *</label>
+                                        <input type="password" name="password" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Role *</label>
+                                        <select class="form-select form-select-sm" name="role" required>
+                                            <option value="Technician">Technician</option>
+                                            <option value="User">User</option>
+                                            <option value="Supervisor">Supervisor</option>
+                                            <option value="Admin">Admin</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Assigned Site (or Team)</label>
+                                        <select class="form-select form-select-sm" name="site_id">
+                                            <option value="0">-- Kantor Pusat / All Sites --</option>
+                                            {% for site in sites %}
+                                            <option value="{{ site.id }}">{{ site.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Team <small class="text-muted fw-normal">(Optional)</small></label>
+                                        <select class="form-select form-select-sm" name="team_id">
+                                            <option value="0">-- No Team --</option>
+                                            {% for site in sites %}
+                                                {% set s_teams = site.cached_teams if site.cached_teams is not none else site.teams %}
+                                                {% if (s_teams|length if site.cached_teams is not none else site.teams.count()) > 0 %}
+                                                <optgroup label="{{ site.name }}">
+                                                    {% for team in s_teams %}
+                                                    <option value="{{ team.id }}">{{ team.name }}</option>
+                                                    {% endfor %}
+                                                </optgroup>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">No WhatsApp <small class="text-muted fw-normal">(Format: 628...)</small></label>
+                                        <input type="text" name="phone_number" class="form-control form-control-sm" placeholder="628123456789">
+                                    </div>
+                                    <button class="btn btn-sm btn-primary w-100"><i class="bi bi-person-plus"></i> Add User</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+<!-- Import Users Modal -->
+<div class="modal fade" id="importUsersModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Import Users</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{{ url_for('settings.import_users') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <p class="small text-muted mb-0">Upload an Excel (.xlsx / .xls) file containing user accounts.</p>
+            <a href="{{ url_for('settings.download_user_template') }}" class="btn btn-sm btn-outline-info"><i class="bi bi-file-earmark-excel"></i> Template</a>
+          </div>
+          <p class="small text-muted">Required headers:</p>
+          <pre class="bg-light p-2 small border">Nama, NRP, Role, Site Name, Team Name, Phone Number, Password</pre>
+          <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+          <div class="form-text mt-2" style="font-size: 0.75rem;">
+            <strong>Role:</strong> Technician, User, Supervisor, Manager, or Admin.<br>
+            <strong>Site / Team:</strong> Must match existing names in Settings, or leave empty.<br>
+            <strong>Password:</strong> Optional (default will be generated if empty).
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Import Excel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editUserForm" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <div class="modal-body">
+            <div class="mb-2">
+                <label class="form-label small fw-bold">Nama Lengkap *</label>
+                <input type="text" name="name" id="editUserName" class="form-control form-control-sm" required>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-bold">NRP *</label>
+                <input type="text" name="nrp" id="editUserNrp" class="form-control form-control-sm" required>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-bold">Password Baru (Opsional)</label>
+                <input type="password" name="password" class="form-control form-control-sm" placeholder="Kosongkan jika tidak ingin mengubah password">
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Role *</label>
+                <select class="form-select form-select-sm" name="role" id="editUserRole" required>
+                    <option value="Technician">Technician</option>
+                    <option value="User">User</option>
+                    <option value="Supervisor">Supervisor</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Assigned Site (or Team)</label>
+                <select class="form-select form-select-sm" name="site_id" id="editUserSite">
+                    <option value="0">-- Kantor Pusat / All Sites --</option>
+                    {% for site in sites %}
+                    <option value="{{ site.id }}">{{ site.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Team <small class="text-muted fw-normal">(Optional)</small></label>
+                <select class="form-select form-select-sm" name="team_id" id="editUserTeam">
+                    <option value="0">-- No Team --</option>
+                    {% for site in sites %}
+                        {% set s_teams = site.cached_teams if site.cached_teams is not none else site.teams %}
+                        {% if (s_teams|length if site.cached_teams is not none else site.teams.count()) > 0 %}
+                        <optgroup label="{{ site.name }}">
+                            {% for team in s_teams %}
+                            <option value="{{ team.id }}">{{ team.name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold">No WhatsApp <small class="text-muted fw-normal">(Format: 628...)</small></label>
+                <input type="text" name="phone_number" id="editUserPhone" class="form-control form-control-sm" placeholder="628123456789">
+            </div>
+            <div class="mb-3 form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" name="is_approved" id="editUserIsApproved">
+                <label class="form-check-label small fw-bold" for="editUserIsApproved">Account Approved (Bisa Login)</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openEditUserModal(id, name, nrp, role, site_id, team_id, phone_number, is_approved) {
+    document.getElementById('editUserForm').action = "{{ url_for('settings.index') }}".replace(/\/$/, '') + '/user/' + id + '/edit';
+    document.getElementById('editUserName').value = name;
+    document.getElementById('editUserNrp').value = nrp;
+    document.getElementById('editUserRole').value = role;
+    document.getElementById('editUserSite').value = site_id;
+    document.getElementById('editUserTeam').value = team_id || "0";
+    document.getElementById('editUserPhone').value = phone_number || "";
+    document.getElementById('editUserIsApproved').checked = (is_approved === 'True');
+    new bootstrap.Modal(document.getElementById('editUserModal')).show();
+}
+
+function toggleAllPending(source) {
+    let checkboxes = document.querySelectorAll('.pending-user-checkbox');
+    for (let i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+}
+</script>

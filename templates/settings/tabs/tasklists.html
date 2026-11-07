@@ -1,0 +1,274 @@
+<div class="row align-items-start">
+    <div class="col-md-12">
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white pb-0 border-0 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+                <h5 class="fw-bold mb-0">Tasklists & Procedures</h5>
+                <div class="d-flex flex-wrap gap-1 w-100 w-md-auto">
+                    <a href="{{ url_for('settings.export_tasklists') }}" class="btn btn-sm btn-outline-secondary flex-grow-1 flex-md-grow-0 text-nowrap"><i class="bi bi-download"></i> Export Excel</a>
+                    <button class="btn btn-sm btn-outline-primary flex-grow-1 flex-md-grow-0 text-nowrap" data-bs-toggle="modal" data-bs-target="#importTasklistsModal"><i class="bi bi-upload"></i> Import Excel</button>
+                    <button class="btn btn-sm btn-primary flex-grow-1 flex-md-grow-0 text-nowrap" onclick="openAddTasklistModal()"><i class="bi bi-plus"></i> Add Tasklist</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush border rounded">
+                    {% for proj, group in tasklists|groupby('project_code_group') %}
+                    <li class="list-group-item px-3 py-3 border-bottom bg-white">
+                        <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-folder2-open text-primary me-2"></i> {{ proj if proj else 'General (No Project Code)' }}</h6>
+                        <ul class="list-group list-group-flush border-start border-3 border-light ms-3">
+                            {% for tl in group %}
+                            <li class="list-group-item px-3 py-2 border-0 border-bottom border-light">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <button class="btn btn-link text-decoration-none text-start p-0 m-0 flex-grow-1 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTasklist{{ tl.id }}" aria-expanded="false" style="color: inherit;">
+                                        <span class="fw-bold text-dark fs-6">
+                                            <i class="bi bi-ui-checks text-secondary me-2"></i> {{ tl.name }} 
+                                            <i class="bi bi-chevron-down ms-2 toggle-icon text-muted" style="transition: transform 0.2s; font-size: 0.8rem;"></i>
+                                        </span>
+                                    </button>
+                                    <div class="d-inline-flex ms-3 align-items-center">
+                                        <button type="button" class="btn btn-sm text-primary border-0 bg-transparent p-0 me-3" onclick='openEditTasklistModal({{ tl.id }}, {{ tl.name|tojson }}, {{ tl.description|tojson if tl.description else "null" }}, {{ tl.project_code|tojson if tl.project_code else "null" }})'><i class="bi bi-pencil fs-5"></i></button>
+                                        <button type="button" class="btn btn-sm text-danger border-0 bg-transparent p-0" onclick="deleteTasklist({{ tl.id }})"><i class="bi bi-trash fs-5"></i></button>
+                                    </div>
+                                </div>
+                                <div class="text-muted small mb-2 ms-4">{{ tl.description or 'No description' }}</div>
+                                
+                                <!-- Procedures Branch -->
+                                <div class="collapse" id="collapseTasklist{{ tl.id }}">
+                                <div class="ms-4 mt-2 mb-1 fw-bold small text-muted"><i class="bi bi-list-task"></i> Procedures</div>
+                                {% set tl_procs = tl.cached_procedures if tl.cached_procedures is not none else tl.procedures %}
+                                <ul class="list-group list-group-flush ms-4 mb-2 border-start border-2 border-primary rounded-0 pl-3">
+                                    {% for proc in tl_procs %}
+                                    <li class="list-group-item bg-transparent border-0 py-1 pe-0 ps-3">
+                                        <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded border shadow-sm" style="transition: all 0.2s ease;">
+                                            <span class="text-secondary small fw-semibold">
+                                                <i class="bi bi-arrow-right-short text-success"></i> {{ proc.name }}
+                                                {% if proc.requires_attachment %}
+                                                <span class="badge bg-info text-dark ms-2" style="font-size:0.65rem;"><i class="bi bi-camera"></i> Photo Required</span>
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </li>
+                                    {% endfor %}
+                                    {% if not (tl_procs|length if tl.cached_procedures is not none else tl.procedures.count()) %}
+                                    <li class="list-group-item bg-transparent border-0 py-1 ps-3 text-muted small fst-italic">No procedures defined.</li>
+                                    {% endif %}
+                                </ul>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center text-muted py-4">No Tasklists configured.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Global Hidden Forms for Delete -->
+<form id="globalDeleteTasklistForm" method="POST" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+</form>
+<form id="globalDeleteTasklistProcForm" method="POST" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+</form>
+
+<!-- Import Tasklists Modal -->
+<div class="modal fade" id="importTasklistsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Import Tasklists</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{{ url_for('settings.import_tasklists') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <p class="small text-muted mb-0">Upload an Excel file (.xlsx) containing Tasklists. The Excel file must have the following exact headers:</p>
+                <a href="{{ url_for('settings.download_tasklist_template') }}" class="btn btn-sm btn-outline-info"><i class="bi bi-file-earmark-excel"></i> Download Template</a>
+            </div>
+            <pre class="bg-light p-2 small border">Name,Project Code,Task/Step Name,Task/Attachment?,Task/Min Photos,Task/Duration (Minutes)</pre>
+            <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Import Excel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Tasklist Modal -->
+<div class="modal fade" id="editTasklistModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content form-glass">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="bi bi-ui-checks text-primary me-2"></i>Edit Tasklist & Procedures</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editTasklistForm" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body">
+            <div class="row">
+              <div class="col-md-6 mb-2">
+                  <label class="form-label small fw-bold">Tasklist Name *</label>
+                  <input type="text" name="name" id="editTasklistName" class="form-control form-control-sm" required>
+              </div>
+              <div class="col-md-6 mb-2">
+                  <label class="form-label small fw-bold">Project Code</label>
+                  <select name="project_code" id="editTasklistProjectCode" class="form-select form-select-sm">
+                      <option value="">-- No Project Code (General) --</option>
+                      {% for proj in project_codes %}
+                      <option value="{{ proj.code }}">{{ proj.code }} - {{ proj.description or 'No desc' }}</option>
+                      {% endfor %}
+                  </select>
+              </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Description</label>
+                <textarea name="description" id="editTasklistDescription" class="form-control form-control-sm" rows="2"></textarea>
+            </div>
+            
+            <hr class="text-muted">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label small fw-bold mb-0">Procedures</label>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="addProcedureBtn"><i class="bi bi-plus"></i> Add Procedure</button>
+            </div>
+            <p class="text-muted small mb-2"><i class="bi bi-info-circle"></i> Drag and drop the handles (<i class="bi bi-grip-vertical"></i>) to reorder procedures.</p>
+            <ul id="editTasklistProcedures" class="list-group list-group-flush mb-2 border rounded p-1 bg-light" style="min-height: 50px;"></ul>
+            <input type="hidden" name="procedures_json" id="editTasklistProceduresJson">
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentProcedures = [];
+
+function renderProcedures() {
+    const list = document.getElementById('editTasklistProcedures');
+    if (!list) return;
+    list.innerHTML = '';
+    currentProcedures.forEach((proc) => {
+        const li = document.createElement('li');
+        li.className = "list-group-item d-flex justify-content-between align-items-center bg-white border mb-1 rounded shadow-sm p-2";
+        li.dataset.id = proc.id || ('new_' + Math.random().toString(36).substr(2, 9));
+        
+        li.innerHTML = `
+            <i class="bi bi-grip-vertical text-secondary me-2 fs-5" style="cursor: grab;"></i>
+            <input type="text" class="form-control form-control-sm me-3 proc-name-input" value="${proc.name || ''}" placeholder="Procedure Name" required>
+            <div class="form-check form-check-inline me-2 mb-0 text-nowrap mt-1">
+                <input class="form-check-input proc-attach-check" type="checkbox" id="attach_${li.dataset.id}" ${proc.requires_attachment ? 'checked' : ''}>
+                <label class="form-check-label small text-muted" for="attach_${li.dataset.id}"><i class="bi bi-camera"></i> Photo Req.</label>
+            </div>
+            <div class="d-flex align-items-center me-2">
+                <label class="small text-muted me-1 mb-0">Min:</label>
+                <input type="number" class="form-control form-control-sm proc-min-photos-input" style="width: 50px;" value="${proc.min_photos || 0}" min="0">
+            </div>
+            <button type="button" class="btn btn-sm text-danger border-0 bg-transparent p-0 ms-2" onclick="removeProcedure(this)"><i class="bi bi-x-circle fs-5"></i></button>
+        `;
+        list.appendChild(li);
+        
+        li.querySelector('.proc-name-input').addEventListener('input', updateProceduresJson);
+        li.querySelector('.proc-attach-check').addEventListener('change', updateProceduresJson);
+        li.querySelector('.proc-min-photos-input').addEventListener('input', updateProceduresJson);
+    });
+    updateProceduresJson();
+}
+
+function updateProceduresJson() {
+    const list = document.getElementById('editTasklistProcedures');
+    if (!list) return;
+    const reordered = [];
+    list.querySelectorAll('li').forEach(li => {
+        const id = li.dataset.id;
+        const name = li.querySelector('.proc-name-input').value;
+        const reqAtt = li.querySelector('.proc-attach-check').checked;
+        const minPhotos = parseInt(li.querySelector('.proc-min-photos-input').value) || 0;
+        reordered.push({ id, name, requires_attachment: reqAtt, min_photos: minPhotos });
+    });
+    const hidden = document.getElementById('editTasklistProceduresJson');
+    if (hidden) hidden.value = JSON.stringify(reordered);
+}
+
+function removeProcedure(btn) {
+    btn.closest('li').remove();
+    updateProceduresJson();
+}
+
+document.getElementById('addProcedureBtn')?.addEventListener('click', () => {
+    currentProcedures.push({ id: 'new_' + Math.random().toString(36).substr(2, 9), name: '', requires_attachment: false });
+    renderProcedures();
+});
+
+function openAddTasklistModal() {
+    document.getElementById('editTasklistForm').action = "/settings/tasklist/add";
+    document.getElementById('editTasklistName').value = "";
+    document.getElementById('editTasklistDescription').value = "";
+    document.getElementById('editTasklistProjectCode').value = "";
+    
+    const titleEl = document.querySelector('#editTasklistModal .modal-title');
+    if (titleEl) titleEl.innerHTML = '<i class="bi bi-ui-checks text-primary me-2"></i>Add Tasklist & Procedures';
+    
+    currentProcedures = [];
+    renderProcedures();
+    
+    new bootstrap.Modal(document.getElementById('editTasklistModal')).show();
+}
+
+function openEditTasklistModal(id, name, description, projectCode) {
+    document.getElementById('editTasklistForm').action = "/settings/tasklist/" + id + "/edit";
+    document.getElementById('editTasklistName').value = name;
+    document.getElementById('editTasklistDescription').value = description;
+    document.getElementById('editTasklistProjectCode').value = projectCode || "";
+    
+    const titleEl = document.querySelector('#editTasklistModal .modal-title');
+    if (titleEl) titleEl.innerHTML = '<i class="bi bi-ui-checks text-primary me-2"></i>Edit Tasklist & Procedures';
+    
+    document.getElementById('editTasklistProcedures').innerHTML = '<li class="list-group-item text-center text-muted border-0 bg-transparent py-2"><div class="spinner-border spinner-border-sm text-primary"></div> Loading...</li>';
+    
+    fetch('/settings/api/tasklist/' + id + '/procedures')
+    .then(r => r.json())
+    .then(data => {
+        currentProcedures = data.procedures || [];
+        renderProcedures();
+    });
+    
+    new bootstrap.Modal(document.getElementById('editTasklistModal')).show();
+}
+
+function deleteTasklist(id) {
+    if (confirm('Delete this Tasklist and ALL its procedures?')) {
+        const form = document.getElementById('globalDeleteTasklistForm');
+        form.action = "{{ url_for('settings.index') }}tasklist/" + id + "/delete";
+        form.submit();
+    }
+}
+
+function deleteTasklistProc(id) {
+    if (confirm('Delete this procedure?')) {
+        const form = document.getElementById('globalDeleteTasklistProcForm');
+        form.action = "{{ url_for('settings.index') }}tasklist/procedure/" + id + "/delete";
+        form.submit();
+    }
+}
+
+if (typeof Sortable !== 'undefined') {
+    const procList = document.getElementById('editTasklistProcedures');
+    if (procList) {
+        new Sortable(procList, {
+            animation: 150,
+            handle: '.bi-grip-vertical',
+            onEnd: updateProceduresJson
+        });
+    }
+}
+</script>

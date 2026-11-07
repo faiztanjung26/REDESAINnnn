@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+<a href="{{ url_for('logsheet_my_tasks') if current_user.role == 'Technician' else url_for('logsheet_management', tab='schedules') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Kembali
+</a>
+<h5 class="mb-0 ms-3 d-flex align-items-center">
+    <i class="bi bi-pencil-square text-success me-2"></i> {{ logsheet.code }}
+</h5>
+{% endblock %}
+
+{% block toolbar_right %}
+{% if logsheet.status == 'Draft' %}
+<button type="button" class="btn btn-sm btn-primary rounded-pill me-2 fw-bold px-3 shadow-sm" onclick="if(confirm('Submit logsheet ini untuk approval?')) document.getElementById('fillForm').submit();">
+    <i class="bi bi-send-check"></i> Selesaikan & Submit
+</button>
+{% elif logsheet.status == 'Submitted' %}
+<span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm"><i class="bi bi-hourglass-split"></i> Menunggu Approval</span>
+{% elif logsheet.status == 'Approved' %}
+<span class="badge bg-success px-3 py-2 rounded-pill shadow-sm"><i class="bi bi-check-circle"></i> Approved</span>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<style>
+    .fill-card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    .wo-header {
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+        padding: 1.5rem;
+    }
+    .wo-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #1e293b;
+        letter-spacing: -0.5px;
+    }
+    .wo-meta-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #64748b;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    .wo-meta-value {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #0f172a;
+    }
+    .info-box {
+        background: white;
+        border: 1px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        height: 100%;
+    }
+    .task-section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #334155;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .entry-row {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .entry-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .entry-icon.reading { background: #3b82f6; color: white; }
+    .entry-icon.task { background: #10b981; color: white; }
+    .entry-icon.observation { background: #eab308; color: white; }
+    .entry-icon.issue { background: #ef4444; color: white; }
+    .entry-content { flex-grow: 1; }
+    .entry-name { font-weight: 600; color: #1e293b; }
+    .entry-std { font-size: 0.75rem; color: #94a3b8; }
+    .value-display {
+        font-size: 1.1rem;
+        font-weight: 700;
+        min-width: 80px;
+        text-align: center;
+    }
+    .value-ok { color: #10b981; }
+    .value-warning { color: #f59e0b; }
+    .value-danger { color: #ef4444; }
+    .check-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .check-btn:hover { border-color: #10b981; }
+    .check-btn.checked { background: #10b981; border-color: #10b981; color: white; }
+</style>
+
+<form method="POST" action="{{ url_for('logsheet_fill', id=logsheet.id) }}" id="fillForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="entries_json" id="entriesJson" value="[]"/>
+
+    <div class="fill-card">
+        <div class="wo-header">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+                <div>
+                    <div class="wo-meta-label">Work Order / Logsheet</div>
+                    <div class="wo-title text-primary"><i class="bi bi-clipboard-check me-2"></i>{{ logsheet.code }}</div>
+                    {% if logsheet.logsheet_schedule %}
+                    <div class="text-muted mt-1 fw-bold">{{ logsheet.logsheet_schedule.name }}</div>
+                    {% endif %}
+                </div>
+                <div class="text-md-end mt-3 mt-md-0">
+                    <span class="badge bg-secondary px-3 py-2 fs-6 rounded-pill">Status: {{ logsheet.status }}</span>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="info-box">
+                        <div class="wo-meta-label">Target Asset</div>
+                        <div class="wo-meta-value">{% if logsheet.asset %}{{ logsheet.asset.name }} <span class="text-muted ms-1">({{ logsheet.asset.code }})</span>{% else %}-{% endif %}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <div class="wo-meta-label">Location / Site</div>
+                        <div class="wo-meta-value">{% if logsheet.site %}{{ logsheet.site.name }}{% else %}-{% endif %}</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="info-box">
+                        <div class="wo-meta-label">Date</div>
+                        <div class="wo-meta-value">{{ logsheet.date.strftime('%d %b %Y') if logsheet.date else '-' }}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-box">
+                        <div class="wo-meta-label">Assigned Technician</div>
+                        <div class="wo-meta-value">
+                            <i class="bi bi-person-circle text-muted me-1"></i>
+                            {{ logsheet.filled_by.name if logsheet.filled_by else '-' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            <h5 class="task-section-title"><i class="bi bi-list-check text-primary me-2"></i> Tasks / Pekerjaan</h5>
+
+            {% for entry in entries %}
+            <div class="entry-row">
+                <div class="entry-icon {{ entry.entry_type }}">
+                    {% if entry.entry_type == 'reading' %}
+                    <i class="bi bi-gauge"></i>
+                    {% elif entry.entry_type == 'task' %}
+                    <i class="bi bi-check2-square"></i>
+                    {% elif entry.entry_type == 'observation' %}
+                    <i class="bi bi-eye"></i>
+                    {% else %}
+                    <i class="bi bi-exclamation-triangle"></i>
+                    {% endif %}
+                </div>
+                <div class="entry-content">
+                    <div class="entry-name">{{ entry.parameter_name or entry.description }}</div>
+                    {% if entry.entry_type == 'reading' and (entry.standard_min is not none or entry.standard_max is not none) %}
+                    <div class="entry-std">
+                        Standard: {% if entry.standard_min is not none %}{{ entry.standard_min }}{% endif %} -
+                        {% if entry.standard_max is not none %}{{ entry.standard_max }}{% endif %} {{ entry.unit or '' }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if entry.entry_type == 'reading' %}
+                <div>
+                    <input type="text" class="form-control text-center fw-bold"
+                           value="{{ entry.value or '' }}"
+                           style="width: 100px;"
+                           placeholder="-"
+                           name="entry_value_{{ entry.id }}"
+                           data-entry-id="{{ entry.id }}"
+                           {% if logsheet.status != 'Draft' %}readonly{% endif %}>
+                </div>
+                <span class="param-unit">{{ entry.unit or '' }}</span>
+                {% else %}
+                <div class="check-btn {% if entry.is_completed %}checked{% endif %}"
+                     onclick="{% if logsheet.status == 'Draft' %}toggleCheck(this){% endif %}">
+                    {% if entry.is_completed %}
+                    <i class="bi bi-check-lg"></i>
+                    {% else %}
+                    <i class="bi bi-circle"></i>
+                    {% endif %}
+                </div>
+                <input type="hidden" name="entry_checked_{{ entry.id }}" value="{{ '1' if entry.is_completed else '0' }}">
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <!-- Notes -->
+            <div class="mt-4">
+                <label class="form-label fw-bold text-muted small">Catatan</label>
+                <textarea class="form-control" name="notes" rows="3"
+                          {% if logsheet.status != 'Draft' %}readonly{% endif %}>{{ logsheet.notes or '' }}</textarea>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+    function toggleCheck(el) {
+        el.classList.toggle('checked');
+        if (el.classList.contains('checked')) {
+            el.innerHTML = '<i class="bi bi-check-lg"></i>';
+            el.nextElementSibling.value = '1';
+        } else {
+            el.innerHTML = '<i class="bi bi-circle"></i>';
+            el.nextElementSibling.value = '0';
+        }
+    }
+
+    document.querySelector('form').addEventListener('submit', function() {
+        const entries = [];
+
+        // Collect all entries
+        document.querySelectorAll('input[name^="entry_value_"]').forEach(input => {
+            const id = input.name.replace('entry_value_', '');
+            entries.push({
+                id: parseInt(id),
+                value: input.value
+            });
+        });
+
+        document.querySelectorAll('input[name^="entry_checked_"]').forEach(input => {
+            const id = input.name.replace('entry_checked_', '');
+            entries.push({
+                id: parseInt(id),
+                is_completed: input.value === '1'
+            });
+        });
+
+        document.getElementById('entriesJson').value = JSON.stringify(entries);
+    });
+</script>
+{% endblock %}

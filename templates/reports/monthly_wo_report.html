@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan Bulanan Work Order{% endblock %}
+
+{% block toolbar_left %}
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('reports.index') }}" class="btn btn-sm btn-light border rounded-pill px-3 text-muted">
+            <i class="bi bi-arrow-left me-1"></i> Reports
+        </a>
+        <h4 class="mb-0 text-dark fw-bold ms-1">Laporan Bulanan Work Order</h4>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">Portrait PDF</span>
+    </div>
+{% endblock %}
+
+{% block content %}
+<style>
+/* Styling Laporan Bulanan Work Order */
+.filter-card {
+    background: #ffffff;
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+}
+
+.table-wo-report {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+.table-wo-report thead th {
+    background-color: #f8fafc;
+    color: #475569;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.85rem 1rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+.table-wo-report tbody td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+}
+.table-wo-report tbody tr:hover td {
+    background-color: #f8fafc;
+}
+
+.floating-action-bar {
+    position: sticky;
+    top: 70px;
+    z-index: 1020;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    border-radius: 1rem;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.form-select-sm, .form-control-sm {
+    border-radius: 0.5rem;
+}
+
+.wo-code-link {
+    font-weight: 600;
+    color: #1e293b;
+    text-decoration: none;
+}
+.wo-code-link:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+</style>
+
+<!-- Filter Section -->
+<div class="filter-card p-4 mb-4">
+    <form method="GET" action="{{ url_for('reports.wo_monthly_report') }}" id="filterForm">
+        <div class="row g-3 align-items-end">
+            <!-- Site Filter -->
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-geo-alt me-1"></i> Site / Lokasi</label>
+                {% if available_sites|length == 1 %}
+                    <input type="text" class="form-control form-control-sm bg-light fw-bold" value="{{ available_sites[0].name }}" readonly>
+                    <input type="hidden" name="site_id" value="{{ available_sites[0].id }}">
+                {% else %}
+                    <select name="site_id" class="form-select form-select-sm fw-semibold" onchange="document.getElementById('filterForm').submit();">
+                        <option value="">Semua Site</option>
+                        {% for s in available_sites %}
+                            <option value="{{ s.id }}" {% if selected_site_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
+            </div>
+
+            <!-- Bulan -->
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-month me-1"></i> Bulan</label>
+                <select name="month" id="monthSelect" class="form-select form-select-sm fw-semibold" onchange="document.getElementById('filterForm').submit();">
+                    {% for m_num, m_name in months %}
+                        <option value="{{ m_num }}" {% if selected_month == m_num %}selected{% endif %}>{{ m_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Tahun -->
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-event me-1"></i> Tahun</label>
+                <select name="year" id="yearSelect" class="form-select form-select-sm fw-semibold" onchange="document.getElementById('filterForm').submit();">
+                    {% for y in years %}
+                        <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-check2-circle me-1"></i> Status</label>
+                <select name="status_control" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit();">
+                    <option value="All" {% if selected_status == 'All' %}selected{% endif %}>Semua Status</option>
+                    <option value="Closed" {% if selected_status == 'Closed' %}selected{% endif %}>Closed / Selesai</option>
+                    <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active / In Progress</option>
+                    <option value="Pending" {% if selected_status == 'Pending' %}selected{% endif %}>Pending / On Hold</option>
+                </select>
+            </div>
+
+            <!-- Maintenance Type Filter -->
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-tools me-1"></i> Tipe</label>
+                <select name="maintenance_type" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit();">
+                    <option value="All" {% if selected_type == 'All' %}selected{% endif %}>Semua Tipe</option>
+                    <option value="Preventive" {% if selected_type == 'Preventive' %}selected{% endif %}>Preventive</option>
+                    <option value="Corrective" {% if selected_type == 'Corrective' %}selected{% endif %}>Corrective</option>
+                    <option value="Inspection" {% if selected_type == 'Inspection' %}selected{% endif %}>Inspection</option>
+                </select>
+            </div>
+
+            <!-- Reset -->
+            <div class="col-md-1 text-end">
+                <a href="{{ url_for('reports.wo_monthly_report') }}" class="btn btn-sm btn-light border text-muted w-100" title="Reset Filter">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Quick Shortcuts -->
+        <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top">
+            <span class="small text-muted fw-bold me-1">Pintasan Periode:</span>
+            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3 py-1" onclick="setQuickMonth({{ current_now.month }}, {{ current_now.year }})">
+                Bulan Ini ({{ months[current_now.month - 1][1] }})
+            </button>
+            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3 py-1" onclick="setQuickMonth({{ last_month_num }}, {{ last_month_year }})">
+                Bulan Lalu ({{ months[last_month_num - 1][1] }})
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Form Ekspor PDF -->
+<form method="POST" action="{{ url_for('reports.wo_monthly_export_pdf') }}" id="pdfExportForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="site_id" value="{{ selected_site_id or '' }}">
+    <input type="hidden" name="month" value="{{ selected_month }}">
+    <input type="hidden" name="year" value="{{ selected_year }}">
+    <input type="hidden" name="period_str" value="{{ months[selected_month - 1][1] }} {{ selected_year }}">
+
+    <!-- Floating Action Bar -->
+    <div class="floating-action-bar p-3 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="form-check m-0">
+                <input class="form-check-input" type="checkbox" id="checkAll" onchange="toggleSelectAll(this)" style="cursor: pointer; transform: scale(1.15);">
+                <label class="form-check-label fw-bold text-dark ms-1" for="checkAll" style="cursor: pointer;">
+                    Pilih Semua
+                </label>
+            </div>
+            <div class="vr my-1"></div>
+            <span class="badge bg-light text-dark border px-3 py-2 fw-bold" id="selectedBadge" style="font-size: 0.85rem;">
+                <span id="selectedCount">0</span> / {{ work_orders|length }} WO Dipilih
+            </span>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="form-check m-0 me-2">
+                <input class="form-check-input" type="checkbox" name="include_cover" value="1" id="includeCoverCheck" checked style="cursor: pointer;">
+                <label class="form-check-label small fw-semibold text-secondary" for="includeCoverCheck" style="cursor: pointer;">
+                    <i class="bi bi-image me-1"></i> Sertakan Cover
+                </label>
+            </div>
+
+            <!-- Download PDF Button -->
+            <button type="button" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-2" id="btnSubmitExport" onclick="submitExport('pdf');">
+                <i class="bi bi-file-earmark-pdf-fill fs-6"></i>
+                <span id="btnExportText">Download (PDF)</span>
+                <span class="spinner-border spinner-border-sm d-none" id="btnExportSpinner" role="status" aria-hidden="true"></span>
+            </button>
+
+            <!-- Download PPTX Button -->
+            <button type="button" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-2 text-dark" id="btnSubmitExportPpt" onclick="submitExport('ppt');">
+                <i class="bi bi-file-earmark-slides-fill fs-6 text-dark"></i>
+                <span id="btnExportPptText">Download (PPTX)</span>
+                <span class="spinner-border spinner-border-sm d-none" id="btnExportPptSpinner" role="status" aria-hidden="true"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
+        <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-0 fw-bold text-dark">Daftar Work Order Periode {{ months[selected_month - 1][1] }} {{ selected_year }}</h6>
+                <small class="text-muted">Centang Work Order yang ingin disertakan pada dokumen laporan.</small>
+            </div>
+            <span class="text-muted small">Total: <strong>{{ work_orders|length }}</strong> WO</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover table-wo-report align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;" class="ps-4">
+                            <input class="form-check-input" type="checkbox" id="checkAllTh" onchange="toggleSelectAll(this)" style="cursor: pointer;">
+                        </th>
+                        <th style="width: 220px;">Nomor WO</th>
+                        <th style="width: 200px;">Aset & Lokasi</th>
+                        <th style="width: 140px;">Tipe & Prioritas</th>
+                        <th style="width: 120px;">Status</th>
+                        <th style="width: 200px;">Tanggal Rencana / Realisasi</th>
+                        <th style="width: 150px;" class="text-center">Lampiran Foto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in wo_data %}
+                    {% set wo = item.wo %}
+                    <tr>
+                        <td class="ps-4">
+                            <input class="form-check-input wo-checkbox" type="checkbox" name="selected_wo_ids" value="{{ wo.id }}" onchange="updateSelectedCount()" style="cursor: pointer; transform: scale(1.1);" checked>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('work_orders.edit', id=wo.id) }}" target="_blank" class="wo-code-link d-inline-flex align-items-center gap-1" title="Buka Detail WO">
+                                {{ wo.code }}
+                                <i class="bi bi-box-arrow-up-right text-muted" style="font-size: 0.75rem;"></i>
+                            </a>
+                            <div class="text-muted small text-truncate" style="max-width: 260px;" title="{{ wo.description }}">
+                                {{ wo.description }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ wo.asset.name if wo.asset else '-' }}</div>
+                            <div class="text-muted small">
+                                <i class="bi bi-geo-alt"></i>
+                                {% if wo.asset and wo.asset.location %}
+                                    {{ wo.asset.location.name if wo.asset.location.name is defined else wo.asset.location }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border mb-1">{{ wo.maintenance_type or 'General' }}</span>
+                            <div>
+                                {% if wo.priority == 'Highest' or wo.priority == 'High' %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.7rem;">High</span>
+                                {% elif wo.priority == 'Medium' %}
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 0.7rem;">Medium</span>
+                                {% else %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.7rem;">Low</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if wo.current_status %}
+                                {% if wo.current_status.control_type == 'Closed' %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>{{ wo.current_status.name }}</span>
+                                {% elif wo.current_status.control_type == 'Active' %}
+                                    <span class="badge bg-primary"><i class="bi bi-play-circle me-1"></i>{{ wo.current_status.name }}</span>
+                                {% elif wo.current_status.control_type == 'Pending' %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-pause-circle me-1"></i>{{ wo.current_status.name }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ wo.current_status.name }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-light text-muted border">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            <div><span class="text-muted">Rencana:</span> {{ wo.suggested_start_date.strftime('%d/%m/%Y') if wo.suggested_start_date else '-' }}</div>
+                            <div><span class="text-muted">Realisasi:</span> {{ wo.start_date.strftime('%d/%m/%Y') if wo.start_date else '-' }}</div>
+                        </td>
+                        <td class="text-center">
+                            {% if item.photo_count > 0 %}
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                    <i class="bi bi-camera-fill me-1"></i> {{ item.photo_count }} Foto
+                                </span>
+                            {% else %}
+                                <span class="badge bg-light text-muted border px-2 py-1">
+                                    <i class="bi bi-camera me-1"></i> 0 Foto
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                            <h6 class="fw-bold">Tidak ada Work Order pada periode ini</h6>
+                            <p class="small mb-0">Silakan ubah filter Bulan, Tahun, atau Site pada panel di atas.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+<script>
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.wo-checkbox:checked');
+    const totalCheckboxes = document.querySelectorAll('.wo-checkbox');
+    const count = checkboxes.length;
+    const badgeCount = document.getElementById('selectedCount');
+    if (badgeCount) badgeCount.innerText = count;
+
+    // Sinkronkan state Check All
+    const checkAll = document.getElementById('checkAll');
+    const checkAllTh = document.getElementById('checkAllTh');
+    const isAll = (count === totalCheckboxes.length && totalCheckboxes.length > 0);
+    if (checkAll) checkAll.checked = isAll;
+    if (checkAllTh) checkAllTh.checked = isAll;
+}
+
+function toggleSelectAll(masterCheckbox) {
+    const isChecked = masterCheckbox.checked;
+    const checkboxes = document.querySelectorAll('.wo-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+    });
+    
+    // Sinkronkan master checkbox lainnya
+    const checkAll = document.getElementById('checkAll');
+    const checkAllTh = document.getElementById('checkAllTh');
+    if (checkAll) checkAll.checked = isChecked;
+    if (checkAllTh) checkAllTh.checked = isChecked;
+
+    updateSelectedCount();
+}
+
+function setQuickMonth(m, y) {
+    const mSel = document.getElementById('monthSelect');
+    const ySel = document.getElementById('yearSelect');
+    if (mSel) mSel.value = m;
+    if (ySel) ySel.value = y;
+    document.getElementById('filterForm').submit();
+}
+
+function submitExport(format) {
+    const checked = document.querySelectorAll('.wo-checkbox:checked');
+    if (checked.length === 0) {
+        alert('Silakan pilih minimal 1 Work Order untuk dibuatkan laporan.');
+        return false;
+    }
+
+    const form = document.getElementById('pdfExportForm');
+    if (format === 'ppt') {
+        form.action = "{{ url_for('reports.wo_monthly_export_ppt') }}";
+        const btnText = document.getElementById('btnExportPptText');
+        const btnSpinner = document.getElementById('btnExportPptSpinner');
+        if (btnText) btnText.innerText = 'Membuat PPTX...';
+        if (btnSpinner) btnSpinner.classList.remove('d-none');
+        setTimeout(() => {
+            if (btnText) btnText.innerText = 'Download (PPTX)';
+            if (btnSpinner) btnSpinner.classList.add('d-none');
+        }, 6000);
+    } else {
+        form.action = "{{ url_for('reports.wo_monthly_export_pdf') }}";
+        const btnText = document.getElementById('btnExportText');
+        const btnSpinner = document.getElementById('btnExportSpinner');
+        if (btnText) btnText.innerText = 'Membuat PDF...';
+        if (btnSpinner) btnSpinner.classList.remove('d-none');
+        setTimeout(() => {
+            if (btnText) btnText.innerText = 'Download (PDF)';
+            if (btnSpinner) btnSpinner.classList.add('d-none');
+        }, 6000);
+    }
+
+    form.submit();
+    return true;
+}
+
+// Inisialisasi hitungan saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelectedCount();
+});
+</script>
+{% endblock %}

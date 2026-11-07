@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('reports.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-print-none"><i class="bi bi-arrow-left"></i> Back to Reports</a>
+{% endblock %}
+
+{% block content %}
+<style>
+/* Premium Reports View Design */
+.settings-pane-card { background: #ffffff; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 1.5rem; overflow: hidden; }
+.filter-card { background: linear-gradient(180deg, #ffffff, #f8fafc); border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 1.5rem; }
+
+.table-premium { border-collapse: separate; border-spacing: 0; width: 100%; margin-bottom: 0; }
+.table-premium thead th { background-color: #f8fafc; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 1rem 1.25rem; border-bottom: 2px solid #e2e8f0; border-top: none; }
+.table-premium tbody td { padding: 0.85rem 1.25rem; vertical-align: middle; color: #334155; border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; }
+.table-premium tbody tr:hover td { background-color: #f8fafc; }
+
+.form-control { border-radius: 8px; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
+.form-control:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mt-2 mb-4 gap-3 flex-wrap d-print-none">
+    <div>
+        <h3 class="mb-1 fw-bold text-dark">{{ title }}</h3>
+        <p class="text-muted small mb-0"><i class="bi bi-clock-history me-1"></i> Report generated dynamically based on selected parameters.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button onclick="window.print()" class="btn btn-light border shadow-sm fw-bold text-secondary px-3"><i class="bi bi-printer me-1"></i> Print</button>
+        <a href="{{ url_for('reports.export_csv', report_id=report_id, start_date=start_date, end_date=end_date) }}" class="btn btn-primary shadow-sm fw-bold px-3"><i class="bi bi-download me-1"></i> Export CSV</a>
+    </div>
+</div>
+
+<div class="d-none d-print-block mb-4">
+    <h2>{{ title }}</h2>
+    <hr>
+</div>
+
+{% if supports_date %}
+<div class="filter-card d-print-none">
+    <form method="GET" action="{{ url_for('reports.view_report', report_id=report_id) }}" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small fw-bold text-muted mb-2 text-uppercase" style="letter-spacing: 0.05em;">Start Date</label>
+            <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small fw-bold text-muted mb-2 text-uppercase" style="letter-spacing: 0.05em;">End Date</label>
+            <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-primary w-100 shadow-sm fw-bold"><i class="bi bi-funnel me-1"></i> Apply Filter</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<div class="settings-pane-card">
+    <div class="table-responsive">
+        <table class="table-premium text-nowrap" id="reportTable">
+            <thead>
+                <tr>
+                    {% for col in columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                <tr>
+                    {% for item in row %}
+                    <td>
+                        {% set str_item = item|string %}
+                        {% if str_item in ['Closed', 'Solved'] %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1"><i class="bi bi-check-circle me-1"></i>{{ item }}</span>
+                        {% elif str_item in ['Pending', 'Hold', 'Incompleted'] %}
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1"><i class="bi bi-hourglass-split me-1"></i>{{ item }}</span>
+                        {% elif str_item in ['In Progress', 'Active', 'Assigned', 'Confirmed'] %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1"><i class="bi bi-play-circle me-1"></i>{{ item }}</span>
+                        {% elif str_item in ['Draft'] %}
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2 py-1"><i class="bi bi-pencil me-1"></i>{{ item }}</span>
+                        {% elif str_item == 'Highest' %}
+                            <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> {{ item }}</span>
+                        {% elif str_item == 'High' %}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle"></i> {{ item }}</span>
+                        {% elif str_item == 'Medium' %}
+                            <span class="badge bg-info text-dark">{{ item }}</span>
+                        {% elif str_item == 'Low' %}
+                            <span class="badge bg-light text-dark border">{{ item }}</span>
+                        {% elif str_item == 'None' and 'Priority' in columns[loop.index0]|default('') %}
+                            <span class="badge bg-light text-dark border">{{ item }}</span>
+                        {% elif str_item|length > 0 and str_item.startswith('WO-') %}
+                            <span class="fw-bold text-primary">{{ item }}</span>
+                        {% else %}
+                            {{ item }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="{{ columns|length }}" class="text-center py-5">
+                        <div class="text-muted mb-3">
+                            <i class="bi bi-inboxes fs-1 opacity-50"></i>
+                        </div>
+                        <h6 class="fw-bold text-dark">No data found</h6>
+                        <p class="text-muted small mb-0">Try adjusting your date filters or check back later.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-light border-top px-4 py-3 d-flex justify-content-between align-items-center d-print-none">
+        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2 fw-bold">{{ data|length }} Records found</span>
+        <small class="text-muted fw-semibold">Report dynamically generated.</small>
+    </div>
+</div>
+{% endblock %}

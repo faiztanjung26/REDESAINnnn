@@ -1,0 +1,92 @@
+<div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+    <h5 class="fw-bold text-primary mb-0">Associated Businesses & Vendors</h5>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addBusinessModal"><i class="bi bi-building-add"></i> Link Vendor</button>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Vendor</th>
+                <th>Supplier Part #</th>
+                <th>Catalog Ref</th>
+                <th>Price</th>
+                <th>Preferred</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for b in asset.businesses %}
+            <tr>
+                <td class="fw-bold">{{ b.vendor.name }}</td>
+                <td>{{ b.supplier_part_number or '-' }}</td>
+                <td>{{ b.catalog or '-' }}</td>
+                <td>${{ b.price }}</td>
+                <td>
+                    {% if b.is_preferred %}
+                    <span class="badge bg-success"><i class="bi bi-star-fill"></i> Preferred</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <form action="{{ url_for('assets.remove_business', id=b.id) }}" method="POST" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Unlink this vendor?');"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">No vendors associated with this asset yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Business -->
+<div class="modal fade" id="addBusinessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('assets.add_business', asset_id=asset.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Link Vendor/Supplier</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Vendor</label>
+                        <select name="vendor_id" class="form-select" required>
+                            {% for v in vendors %}
+                            <option value="{{ v.id }}">{{ v.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Supplier Part Number</label>
+                            <input type="text" name="supplier_part_number" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Catalog Reference</label>
+                            <input type="text" name="catalog" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Price / Quote</label>
+                            <input type="number" step="0.01" name="price" class="form-control" value="0.00">
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" name="is_preferred" value="1" id="isPref">
+                        <label class="form-check-label text-success fw-bold" for="isPref">Set as Preferred Vendor</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Link</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

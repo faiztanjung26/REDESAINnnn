@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+/* Premium Reports Index Design */
+.settings-pane-card { background: #ffffff; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 1.5rem; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.settings-pane-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+.hero-card { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 1rem; color: white; position: relative; overflow: hidden; box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.4); }
+.hero-icon { position: absolute; right: -20px; bottom: -30px; font-size: 8rem; opacity: 0.1; color: #fff; transform: rotate(-15deg); }
+.list-group-item { transition: background-color 0.2s ease; border-color: rgba(0,0,0,0.03) !important; }
+.list-group-item:hover { background-color: rgba(79, 70, 229, 0.03) !important; }
+</style>
+
+<div class="row g-4 mb-4 mt-2">
+    <div class="col-12">
+        <div class="hero-card p-4 d-flex justify-content-between align-items-center">
+            <div style="z-index: 2;">
+                <h3 class="mb-2 fw-bold text-white"><i class="bi bi-graph-up-arrow text-primary me-2"></i> Report Center</h3>
+                <p class="mb-0 text-white-50">Access detailed analytics across {{ count }} predefined data views.</p>
+            </div>
+            <i class="bi bi-bar-chart-line-fill hero-icon"></i>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% for category in categories %}
+    <div class="col-md-6 mb-2">
+        <div class="settings-pane-card h-100">
+            <div class="card-header bg-transparent border-bottom pt-4 pb-3 px-4">
+                <h5 class="fw-bold mb-0" style="color: #1e293b; letter-spacing: -0.02em;">
+                    <i class="bi {{ category.icon }} text-primary me-2"></i> {{ category.name }}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for report in category.reports %}
+                    <a href="{{ url_for(report.custom_url) if report.custom_url else url_for('reports.view_report', report_id=report.id) }}" class="list-group-item list-group-item-action border-0 px-4 py-3 d-flex align-items-center">
+                        <div class="bg-light rounded p-2 me-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                            <i class="bi {% if report.id == 'monthly_wo' %}bi-file-earmark-pdf-fill text-danger{% else %}bi-file-earmark-text text-primary{% endif %} fs-5"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">{{ report.title }}</div>
+                            <div class="small text-muted mt-1">{{ report.desc }}</div>
+                        </div>
+                        <div class="ms-3 text-primary opacity-50">
+                            <i class="bi bi-chevron-right"></i>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

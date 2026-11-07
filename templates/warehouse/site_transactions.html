@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('warehouse.site_inventory', site_id=site.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Inventory</a>
+{% endblock %}
+
+{% block content %}
+<style>
+/* Transaction History Styling */
+body { background-color: #f8fafc; }
+.transaction-card { background: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid rgba(0,0,0,0.04); margin-bottom: 1.5rem; overflow: hidden; }
+
+.table-history { width: 100%; margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+.table-history thead th { background-color: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; font-weight: 700; }
+.table-history tbody td { padding: 1rem 1.25rem; vertical-align: middle; color: #334155; border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; }
+.table-history tbody tr:last-child td { border-bottom: none; }
+.table-history tbody tr:hover td { background-color: #f8fafc; }
+
+.change-positive { color: #10b981; font-weight: 700; }
+.change-negative { color: #ef4444; font-weight: 700; }
+.change-neutral { color: #64748b; font-weight: 700; }
+
+.action-badge { padding: 0.35em 0.65em; font-size: 0.75em; font-weight: 700; border-radius: 6px; text-transform: uppercase; }
+.action-add { background-color: #dbeafe; color: #1e3a8a; }
+.action-adjust { background-color: #fef3c7; color: #92400e; }
+.collapse-row { display: none; }
+.collapse-row td { background-color: #f8fafc !important; }
+</style>
+
+<div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h3 class="fw-bold text-dark mb-1" style="letter-spacing: -0.02em;"><i class="bi bi-clock-history text-primary me-2"></i>{{ site.name }} - Stock History</h3>
+        <p class="text-muted mb-0">Riwayat mutasi keluar masuk barang di gudang ini.</p>
+    </div>
+    <div>
+        <select id="actionFilter" class="form-select shadow-sm" style="min-width: 150px;">
+            <option value="all">All Actions</option>
+            <option value="add">Add Only</option>
+            <option value="adjust">Adjust Only</option>
+        </select>
+    </div>
+</div>
+
+<div class="transaction-card">
+    <div class="table-responsive">
+        <table class="table-history text-nowrap">
+            <thead>
+                <tr>
+                    <th>Date / Time</th>
+                    <th>Form No.</th>
+                    <th>Part Details</th>
+                    <th>Action</th>
+                    <th class="text-center">Before</th>
+                    <th class="text-center">Change</th>
+                    <th class="text-center">After</th>
+                    <th>Source / PIC</th>
+                    <th class="text-center">Proof</th>
+                </tr>
+            </thead>
+            <tbody id="transactionTableBody">
+                {% for tx in transactions %}
+                <tr data-action="{{ tx.action.lower() }}" {% if tx.is_bulk %}style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#items-{{ tx.transaction_code }}"{% endif %}>
+                    <td>
+                        <div class="fw-semibold">{{ tx.timestamp.strftime('%Y-%m-%d') }}</div>
+                        <div class="small text-muted">{{ tx.timestamp.strftime('%H:%M:%S') }}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border font-monospace">{{ tx.transaction_code }}</span>
+                    </td>
+                    <td>
+                        {% if tx.is_bulk %}
+                            <div class="fw-bold text-primary">
+                                <i class="bi bi-box-seam me-1"></i> Bulk Import ({{ tx['items']|length }} items) <i class="bi bi-chevron-down small ms-1"></i>
+                            </div>
+                        {% else %}
+                            {% set item = tx['items'][0] %}
+                            <div class="fw-bold text-dark">{{ item.part.name }}</div>
+                            <div class="small text-muted">{{ item.part.code }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if tx.action == 'ADD' %}
+                            <span class="action-badge action-add">Add</span>
+                        {% else %}
+                            <span class="action-badge action-adjust">Adjust</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center text-muted fw-semibold">
+                        {% if tx.is_bulk %}
+                            -
+                        {% else %}
+                            {{ tx['items'][0].qty_before }}
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if tx.is_bulk %}
+                            {% set total_change = namespace(val=0) %}
+                            {% for item in tx['items'] %}
+                                {% set total_change.val = total_change.val + item.qty_change %}
+                            {% endfor %}
+                            {% if total_change.val > 0 %}
+                                <span class="change-positive">+{{ total_change.val }}</span>
+                            {% elif total_change.val < 0 %}
+                                <span class="change-negative">{{ total_change.val }}</span>
+                            {% else %}
+                                <span class="change-neutral">0</span>
+                            {% endif %}
+                        {% else %}
+                            {% set item = tx['items'][0] %}
+                            {% if item.qty_change > 0 %}
+                                <span class="change-positive">+{{ item.qty_change }}</span>
+                            {% elif item.qty_change < 0 %}
+                                <span class="change-negative">{{ item.qty_change }}</span>
+                            {% else %}
+                                <span class="change-neutral">0</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    <td class="text-center fw-bold text-dark">
+                        {% if tx.is_bulk %}
+                            -
+                        {% else %}
+                            {{ tx['items'][0].qty_after }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if tx.action == 'ADD' %}
+                            <div class="small text-muted">From:</div>
+                            <div class="fw-semibold">{{ tx.source_from or '-' }}</div>
+                        {% else %}
+                            <div class="small text-muted">PIC:</div>
+                            <div class="fw-semibold">{{ tx.user.name if tx.user else '-' }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if tx.attachment_path %}
+                        <a href="{{ url_for('static', filename='uploads/warehouse/' ~ tx.attachment_path) }}" target="_blank" class="btn btn-sm btn-light border text-primary" title="View Proof">
+                            <i class="bi bi-file-earmark-image"></i>
+                        </a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                
+                {% if tx.is_bulk %}
+                <tr class="collapse-row">
+                    <td colspan="9" class="p-0 border-0">
+                        <div class="collapse" id="items-{{ tx.transaction_code }}">
+                            <div class="bg-light p-4 border-bottom" style="white-space: normal;">
+                                <h6 class="fw-bold mb-3 text-secondary"><i class="bi-list-ul me-1"></i> Rincian Barang Impor ({{ tx['items']|length }} items)</h6>
+                                <div class="table-responsive rounded border bg-white shadow-sm" style="max-height: 400px; overflow-y: auto;">
+                                    <table class="table table-hover table-striped mb-0 align-middle" style="font-size: 0.9rem;">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th class="ps-3">Nama Part</th>
+                                                <th>Kode Part</th>
+                                                <th class="text-center">Sebelum</th>
+                                                <th class="text-center">Perubahan</th>
+                                                <th class="text-center">Sesudah</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in tx['items'] %}
+                                            <tr>
+                                                <td class="ps-3 fw-semibold text-dark">{{ item.part.name }}</td>
+                                                <td><span class="badge bg-light text-dark border font-monospace">{{ item.part.code }}</span></td>
+                                                <td class="text-center text-muted">{{ item.qty_before }}</td>
+                                                <td class="text-center">
+                                                    {% if item.qty_change > 0 %}
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2">+{{ item.qty_change }}</span>
+                                                    {% elif item.qty_change < 0 %}
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2">{{ item.qty_change }}</span>
+                                                    {% else %}
+                                                        <span class="text-muted">0</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center fw-bold">{{ item.qty_after }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center py-5">
+                        <div class="text-muted mb-3"><i class="bi bi-clipboard-x fs-1" style="color: #cbd5e1;"></i></div>
+                        <h5 class="fw-bold text-dark">No transactions found</h5>
+                        <p class="text-muted small">Riwayat mutasi barang akan muncul di sini.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-light border-top p-3 d-flex justify-content-between align-items-center">
+        <small id="recordCount" class="text-muted fw-semibold">{{ transactions|length }} record(s) found.</small>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Show/hide parent row on collapse events
+    $('.collapse').on('show.bs.collapse', function () {
+        $(this).closest('.collapse-row').show();
+        // Update arrow icon in parent row
+        var parentRow = $(this).closest('.collapse-row').prev('tr');
+        parentRow.find('.bi-chevron-down').removeClass('bi-chevron-down').addClass('bi-chevron-up');
+    });
+    $('.collapse').on('hidden.bs.collapse', function () {
+        $(this).closest('.collapse-row').hide();
+        // Update arrow icon in parent row
+        var parentRow = $(this).closest('.collapse-row').prev('tr');
+        parentRow.find('.bi-chevron-up').removeClass('bi-chevron-up').addClass('bi-chevron-down');
+    });
+
+    $('#actionFilter').on('change', function() {
+        var selectedAction = $(this).val();
+        
+        $('#transactionTableBody tr').each(function() {
+            // Skip the empty state row
+            if ($(this).find('td').length === 1 && !$(this).hasClass('collapse-row')) return;
+            
+            if ($(this).hasClass('collapse-row')) {
+                var parentRow = $(this).prev('tr');
+                var isParentVisible = parentRow.is(':visible') && parentRow.css('display') !== 'none';
+                var isExpanded = $(this).find('.collapse').hasClass('show');
+                if (isParentVisible && isExpanded) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+                return;
+            }
+            
+            var rowAction = $(this).data('action');
+            if (selectedAction === 'all' || rowAction === selectedAction) {
+                $(this).show();
+                var targetId = $(this).attr('data-bs-target');
+                if (targetId && $(targetId).hasClass('show')) {
+                    $(this).next('.collapse-row').show();
+                }
+            } else {
+                $(this).hide();
+                var targetId = $(this).attr('data-bs-target');
+                if (targetId) {
+                    $(targetId).removeClass('show');
+                    $(this).next('.collapse-row').hide();
+                }
+            }
+        });
+        
+        // Update the count text
+        var visibleCount = $('#transactionTableBody tr:visible').not('.collapse-row').length;
+        if (visibleCount === 1 && $('#transactionTableBody tr:visible td').length === 1) {
+            visibleCount = 0;
+        }
+        $('#recordCount').text(visibleCount + ' record(s) found.');
+    });
+});
+</script>
+{% endblock %}

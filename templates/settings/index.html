@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+.settings-header {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
+}
+.settings-header h3 { font-weight: 700; letter-spacing: -0.5px; }
+
+.premium-card-wrapper { border: none; background: transparent; box-shadow: none; }
+.premium-nav-container {
+    background: #ffffff;
+    border-radius: 1rem;
+    padding: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+}
+.premium-nav-container::-webkit-scrollbar { display: none; }
+.premium-nav {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    border-bottom: none !important;
+}
+.premium-nav .nav-item { margin: 0; }
+.premium-nav .nav-link {
+    color: #64748b;
+    border-radius: 0.75rem;
+    padding: 0.6rem 1.25rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.premium-nav .nav-link:hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    transform: translateY(-1px);
+}
+.premium-nav .nav-link.active {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+}
+.premium-nav .nav-link i { font-size: 1.1rem; }
+
+.settings-pane-card {
+    background: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f1f5f9;
+    animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.table-premium {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+.table-premium thead th {
+    background-color: #f8fafc;
+    color: #475569;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem;
+    border-bottom: 2px solid #e2e8f0;
+    border-top: none;
+}
+.table-premium tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.2s;
+}
+.table-premium tbody tr:hover td { background-color: #f8fafc; }
+
+.settings-form-card {
+    background: #f8fafc;
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    padding: 1.5rem;
+    height: 100%;
+}
+.settings-form-card h5 {
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.75rem;
+}
+.settings-form-card .form-control, .settings-form-card .form-select {
+    border-radius: 0.5rem;
+    border: 1px solid #cbd5e1;
+    padding: 0.5rem 0.75rem;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+.settings-form-card .form-control:focus, .settings-form-card .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.settings-form-card .btn-primary {
+    border-radius: 0.5rem;
+    padding: 0.5rem 1.25rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border: none;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+    transition: all 0.2s;
+}
+.settings-form-card .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 8px -1px rgba(37, 99, 235, 0.3);
+}
+
+@media (max-width: 768px) {
+    .settings-header {
+        padding: 1rem;
+    }
+    .settings-header h3 {
+        font-size: 1.25rem;
+    }
+    .settings-pane-card {
+        padding: 1rem !important;
+    }
+    .settings-form-card {
+        margin-top: 1.25rem;
+        padding: 1rem;
+    }
+    .table-premium thead th, .table-premium tbody td {
+        padding: 0.65rem 0.5rem;
+        font-size: 0.85rem;
+    }
+}
+</style>
+
+<div class="settings-header d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+    <h3 class="mb-0"><i class="bi bi-gear-fill me-2 me-sm-3" style="color: #60a5fa;"></i>Settings & Administration</h3>
+</div>
+
+<div class="premium-card-wrapper">
+    <div class="d-flex align-items-center mb-4 gap-2">
+        <button class="btn btn-light rounded-circle shadow-sm flex-shrink-0 d-none d-md-flex align-items-center justify-content-center" id="scrollLeftBtn" style="width: 40px; height: 40px; border: 1px solid #e2e8f0; background: #fff;"><i class="bi bi-chevron-left text-primary fw-bold"></i></button>
+        
+        <div class="premium-nav-container flex-grow-1 mb-0" id="navContainer">
+            <ul class="nav premium-nav" id="settingsTab" role="tablist">
+            {% if not current_user.site_id %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'sites' %}active{% endif %} fw-bold text-dark" id="sites-tab" data-bs-toggle="pill" data-bs-target="#sites" type="button" role="tab" aria-controls="sites" aria-selected="{% if active_tab == 'sites' %}true{% else %}false{% endif %}"><i class="bi bi-geo-alt"></i> Sites</button>
+            </li>
+            {% endif %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'locations' %}active{% endif %} fw-bold text-dark" id="locations-tab" data-bs-toggle="pill" data-bs-target="#locations" type="button" role="tab" aria-controls="locations" aria-selected="{% if active_tab == 'locations' %}true{% else %}false{% endif %}"><i class="bi bi-geo"></i> Locations</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'categories' %}active{% endif %} fw-bold text-dark" id="categories-tab" data-bs-toggle="pill" data-bs-target="#categories" type="button" role="tab" aria-controls="categories" aria-selected="false"><i class="bi bi-tags"></i> Categories</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'teams' %}active{% endif %} fw-bold text-dark" id="teams-tab" data-bs-toggle="pill" data-bs-target="#teams" type="button" role="tab" aria-controls="teams" aria-selected="false"><i class="bi bi-diagram-3"></i> Teams</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'users' %}active{% endif %} fw-bold text-dark" id="users-tab" data-bs-toggle="pill" data-bs-target="#users" type="button" role="tab" aria-controls="users" aria-selected="false"><i class="bi bi-people"></i> Users</button>
+            </li>
+            {% if not current_user.site_id %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'wo-statuses' %}active{% endif %} fw-bold text-dark" id="wo-statuses-tab" data-bs-toggle="pill" data-bs-target="#wo-statuses" type="button" role="tab" aria-controls="wo-statuses" aria-selected="false"><i class="bi bi-list-check"></i> WO Statuses</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'project-codes' %}active{% endif %} fw-bold text-dark" id="project-codes-tab" data-bs-toggle="pill" data-bs-target="#project-codes" type="button" role="tab" aria-controls="project-codes" aria-selected="false"><i class="bi bi-briefcase"></i> Project Codes</button>
+            </li>
+            {% endif %}
+
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'tasklists' %}active{% endif %} fw-bold text-dark" id="tasklists-tab" data-bs-toggle="pill" data-bs-target="#tasklists" type="button" role="tab" aria-controls="tasklists" aria-selected="false"><i class="bi bi-ui-checks"></i> Tasklists</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'checklists' %}active{% endif %} fw-bold text-dark" id="checklists-tab" data-bs-toggle="pill" data-bs-target="#checklists" type="button" role="tab" aria-controls="checklists" aria-selected="false"><i class="bi bi-list-check"></i> Checklists</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'logsheet-templates' %}active{% endif %} fw-bold text-dark" id="logsheet-templates-tab" data-bs-toggle="pill" data-bs-target="#logsheet-templates" type="button" role="tab" aria-controls="logsheet-templates" aria-selected="false"><i class="bi bi-journal-check"></i> Logsheet Templates</button>
+            </li>
+
+            {% if not current_user.site_id %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'parts' %}active{% endif %} fw-bold text-dark" id="parts-tab" data-bs-toggle="pill" data-bs-target="#parts" type="button" role="tab" aria-controls="parts" aria-selected="false"><i class="bi bi-nut"></i> Master Parts</button>
+            </li>
+            {% endif %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'customers' %}active{% endif %} fw-bold text-dark" id="customers-tab" data-bs-toggle="pill" data-bs-target="#customers" type="button" role="tab" aria-controls="customers" aria-selected="false"><i class="bi bi-building"></i> Customers</button>
+            </li>
+            {% if not current_user.site_id %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'system' %}active{% endif %} fw-bold text-dark" id="system-tab" data-bs-toggle="pill" data-bs-target="#system" type="button" role="tab" aria-controls="system" aria-selected="false"><i class="bi bi-gear"></i> System</button>
+            </li>
+            {% endif %}
+          </ul>
+      </div>
+      <button class="btn btn-light rounded-circle shadow-sm flex-shrink-0 d-none d-md-flex align-items-center justify-content-center" id="scrollRightBtn" style="width: 40px; height: 40px; border: 1px solid #e2e8f0; background: #fff;"><i class="bi bi-chevron-right text-primary fw-bold"></i></button>
+    </div>
+    <div class="card-body p-0 mt-0">
+        <div class="settings-pane-card p-3 p-md-4 tab-content" id="settingsTabContent">
+            
+            {% if not current_user.site_id %}
+            <!-- Sites Tab -->
+            <div class="tab-pane fade {% if active_tab == 'sites' %}show active{% endif %}" id="sites" role="tabpanel" aria-labelledby="sites-tab" data-loaded="{% if active_tab == 'sites' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'sites' %}
+                    {% include 'settings/tabs/sites.html' %}
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Locations Tab -->
+            <div class="tab-pane fade {% if active_tab == 'locations' %}show active{% endif %}" id="locations" role="tabpanel" aria-labelledby="locations-tab" data-loaded="{% if active_tab == 'locations' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'locations' %}
+                    {% include 'settings/tabs/locations.html' %}
+                {% endif %}
+            </div>
+
+            <!-- Categories Tab -->
+            <div class="tab-pane fade {% if active_tab == 'categories' %}show active{% endif %}" id="categories" role="tabpanel" aria-labelledby="categories-tab" data-loaded="{% if active_tab == 'categories' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'categories' %}
+                    {% include 'settings/tabs/categories.html' %}
+                {% endif %}
+            </div>
+
+            <!-- Teams Tab -->
+            <div class="tab-pane fade {% if active_tab == 'teams' %}show active{% endif %}" id="teams" role="tabpanel" aria-labelledby="teams-tab" data-loaded="{% if active_tab == 'teams' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'teams' %}
+                    {% include 'settings/tabs/teams.html' %}
+                {% endif %}
+            </div>
+
+            <!-- Users Tab -->
+            <div class="tab-pane fade {% if active_tab == 'users' %}show active{% endif %}" id="users" role="tabpanel" aria-labelledby="users-tab" data-loaded="{% if active_tab == 'users' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'users' %}
+                    {% include 'settings/tabs/users.html' %}
+                {% endif %}
+            </div>
+
+            {% if not current_user.site_id %}
+            <!-- WO Statuses Tab -->
+            <div class="tab-pane fade {% if active_tab == 'wo-statuses' %}show active{% endif %}" id="wo-statuses" role="tabpanel" aria-labelledby="wo-statuses-tab" data-loaded="{% if active_tab == 'wo-statuses' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'wo-statuses' %}
+                    {% include 'settings/tabs/wo_statuses.html' %}
+                {% endif %}
+            </div>
+
+            <!-- Project Codes Tab -->
+            <div class="tab-pane fade {% if active_tab == 'project-codes' %}show active{% endif %}" id="project-codes" role="tabpanel" aria-labelledby="project-codes-tab" data-loaded="{% if active_tab == 'project-codes' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'project-codes' %}
+                    {% include 'settings/tabs/project_codes.html' %}
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Tasklists Tab -->
+            <div class="tab-pane fade {% if active_tab == 'tasklists' %}show active{% endif %}" id="tasklists" role="tabpanel" aria-labelledby="tasklists-tab" data-loaded="{% if active_tab == 'tasklists' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'tasklists' %}
+                    {% include 'settings/tabs/tasklists.html' %}
+                {% endif %}
+            </div>
+
+            <!-- Checklists Tab -->
+            <div class="tab-pane fade {% if active_tab == 'checklists' %}show active{% endif %}" id="checklists" role="tabpanel" aria-labelledby="checklists-tab" data-loaded="{% if active_tab == 'checklists' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'checklists' %}
+                    {% include 'settings/tabs/checklists.html' %}
+                {% endif %}
+            </div>
+
+            <!-- Logsheet Templates Tab -->
+            <div class="tab-pane fade {% if active_tab == 'logsheet-templates' %}show active{% endif %}" id="logsheet-templates" role="tabpanel" aria-labelledby="logsheet-templates-tab" data-loaded="{% if active_tab == 'logsheet-templates' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'logsheet-templates' %}
+                    {% include 'settings/tabs/logsheet_templates.html' %}
+                {% endif %}
+            </div>
+
+            {% if not current_user.site_id %}
+            <!-- Master Parts Tab -->
+            <div class="tab-pane fade {% if active_tab == 'parts' %}show active{% endif %}" id="parts" role="tabpanel" aria-labelledby="parts-tab" data-loaded="{% if active_tab == 'parts' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'parts' %}
+                    {% include 'settings/tabs/parts.html' %}
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Customers Tab -->
+            <div class="tab-pane fade {% if active_tab == 'customers' %}show active{% endif %}" id="customers" role="tabpanel" aria-labelledby="customers-tab" data-loaded="{% if active_tab == 'customers' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'customers' %}
+                    {% include 'settings/tabs/customers.html' %}
+                {% endif %}
+            </div>
+
+            {% if not current_user.site_id %}
+            <!-- System Tab -->
+            <div class="tab-pane fade {% if active_tab == 'system' %}show active{% endif %}" id="system" role="tabpanel" aria-labelledby="system-tab" data-loaded="{% if active_tab == 'system' %}true{% else %}false{% endif %}">
+                {% if active_tab == 'system' %}
+                    {% include 'settings/tabs/system.html' %}
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function setInnerHTMLWithScripts(element, html) {
+    element.innerHTML = html;
+    const scripts = element.querySelectorAll('script');
+    scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.textContent = oldScript.textContent;
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+}
+
+function loadTab(tabId) {
+    const pane = document.getElementById(tabId);
+    if (!pane) return;
+    if (pane.getAttribute('data-loaded') === 'true') return;
+    
+    pane.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 2.5rem; height: 2.5rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="text-muted small mt-2 fw-semibold">Loading data...</div>
+        </div>
+    `;
+    
+    fetch("{{ url_for('settings.index') }}tab/" + tabId)
+        .then(res => {
+            if (!res.ok) throw new Error('Network error: ' + res.status);
+            return res.text();
+        })
+        .then(html => {
+            setInnerHTMLWithScripts(pane, html);
+            pane.setAttribute('data-loaded', 'true');
+        })
+        .catch(err => {
+            console.error("Tab load error:", err);
+            pane.innerHTML = `
+                <div class="alert alert-danger my-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Failed to load tab data.
+                    <button class="btn btn-sm btn-outline-danger ms-2" onclick="pane.removeAttribute('data-loaded'); loadTab('${tabId}');">Retry</button>
+                </div>
+            `;
+        });
+}
+
+// Initialize Tabs & URL State
+document.addEventListener('DOMContentLoaded', function() {
+    // Listen for tab switch to lazy load
+    const tabButtons = document.querySelectorAll('button[data-bs-toggle="pill"]');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('show.bs.tab', function(event) {
+            const targetSelector = event.target.getAttribute('data-bs-target');
+            if (targetSelector) {
+                const tabId = targetSelector.replace('#', '');
+                loadTab(tabId);
+            }
+        });
+        btn.addEventListener('shown.bs.tab', function(event) {
+            const targetSelector = event.target.getAttribute('data-bs-target');
+            if (targetSelector) {
+                const tabId = targetSelector.replace('#', '');
+                window.location.hash = targetSelector;
+                const url = new URL(window.location);
+                url.searchParams.set('tab', tabId);
+                window.history.replaceState(null, '', url);
+            }
+        });
+    });
+
+    // Tab persistence & initial load logic from URL hash or query param
+    const urlParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash.replace('#', '') || urlParams.get('tab');
+    if (hash) {
+        const targetTab = document.querySelector(`button[data-bs-target="#${hash}"]`);
+        if (targetTab) {
+            const tab = new bootstrap.Tab(targetTab);
+            tab.show();
+            loadTab(hash);
+        }
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const navContainer = document.getElementById('navContainer');
+    const btnLeft = document.getElementById('scrollLeftBtn');
+    const btnRight = document.getElementById('scrollRightBtn');
+    
+    if (navContainer && btnLeft && btnRight) {
+        btnLeft.addEventListener('click', function() {
+            navContainer.scrollBy({ left: -300, behavior: 'smooth' });
+        });
+        btnRight.addEventListener('click', function() {
+            navContainer.scrollBy({ left: 300, behavior: 'smooth' });
+        });
+    }
+});
+</script>
+{% endblock %}

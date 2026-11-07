@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+<a href="{{ url_for('logsheet_my_tasks') if current_user.role == 'Technician' else url_for('logsheet_management', tab='schedules') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Kembali
+</a>
+<h5 class="mb-0 ms-3 d-flex align-items-center">
+    <i class="bi bi-clipboard-plus text-success me-2"></i> Execute: {{ schedule.name }}
+</h5>
+{% endblock %}
+
+{% block toolbar_right %}
+<button type="submit" form="executeForm" class="btn btn-sm btn-success rounded-pill">
+    <i class="bi bi-check-lg"></i> Simpan & Selesaikan
+</button>
+{% endblock %}
+
+{% block content %}
+<style>
+    .exec-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    .card-header-exec {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 1.25rem 1.5rem;
+    }
+    .task-check {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: white;
+    }
+    .task-check:hover { border-color: #10b981; }
+    .task-check.checked { background: #10b981; border-color: #10b981; color: white; }
+    .table-sm td, .table-sm th {
+        padding: 0.75rem;
+    }
+    .qr-container {
+        padding: 2rem;
+        background: white;
+        border-radius: 12px;
+        border: 1px dashed #cbd5e1;
+    }
+</style>
+
+<div class="row g-4">
+    <!-- Left Sidebar: Asset Information -->
+    <div class="col-lg-3">
+        <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-body p-4 text-center">
+                <h6 class="fw-bold mb-4 text-start">Asset Information</h6>
+                
+                <div class="mb-3">
+                    <div class="bg-light rounded p-3 d-inline-block mb-3">
+                        <i class="bi bi-box-seam fs-1 text-primary"></i>
+                    </div>
+                    {% if schedule.asset %}
+                    <h5 class="fw-bold text-dark mb-1">{{ schedule.asset.name }}</h5>
+                    <p class="text-muted mb-2">Code: {{ schedule.asset.code }}</p>
+                    <div class="small text-muted mb-4"><i class="bi bi-geo-alt me-1"></i>{{ schedule.asset.site.name if schedule.asset.site else 'No Site' }}</div>
+                    {% else %}
+                    <h5 class="fw-bold text-dark mb-1">No Asset</h5>
+                    {% endif %}
+                </div>
+
+                <hr class="text-muted opacity-25">
+                
+                <div class="mt-4">
+                    <p class="small text-muted fw-bold mb-2">ASSET QR</p>
+                    {% if schedule.asset %}
+                    <div class="qr-container d-inline-block">
+                        <img src="{{ url_for('static', filename='qrcodes/asset_' ~ schedule.asset.id ~ '.png') }}" alt="QR Code" style="width: 120px; height: 120px; object-fit: contain;">
+                    </div>
+                    {% else %}
+                    <div class="qr-container d-inline-block text-muted">No QR</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Main Content: Checklist Data -->
+    <div class="col-lg-9">
+        <form method="POST" action="{{ url_for('logsheet_schedule_execute', id=schedule.id) }}" id="executeForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="entries_json" id="entriesJson" value="[]"/>
+
+            <!-- Optional: We can add the fake tabs here to look identical, but skipping them makes it cleaner. We'll jump straight to Checklist Data. -->
+            <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
+                <h6 class="fw-bold mb-0">Checklist Data Collection</h6>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-warning text-dark rounded-pill px-3 me-2">{{ parameters|length }} Parameters</span>
+                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill shadow-sm bg-white me-2" onclick="if(confirm('Tarik parameter dari Master Metering aset ini?')) document.getElementById('pullMetersForm').submit();">
+                        <i class="bi bi-cloud-download"></i> Tarik dari API Metering
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill shadow-sm bg-white" data-bs-toggle="modal" data-bs-target="#addParamModal">
+                        <i class="bi bi-plus-lg"></i> Tambah Parameter
+                    </button>
+                    <button type="submit" class="btn btn-sm btn-primary ms-2 rounded-pill shadow-sm"><i class="bi bi-save-fill"></i> Save All Checklist</button>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 25%" class="ps-4">Parameter</th>
+                                    <th style="width: 15%">Standard</th>
+                                    <th style="width: 25%">Value</th>
+                                    <th style="width: 25%">Note (Optional)</th>
+                                    <th style="width: 10%" class="text-center pe-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if parameters %}
+                                {% for param in parameters %}
+                                <tr>
+                                    <td class="fw-bold text-dark ps-4">{{ param.name }}</td>
+                                    <td>
+                                        {% if param.entry_type == 'reading' and (param.standard_min is not none or param.standard_max is not none) %}
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="bi bi-bullseye text-warning me-1"></i> 
+                                            {% if param.standard_min is not none %}{{ param.standard_min }}{% endif %} -
+                                            {% if param.standard_max is not none %}{{ param.standard_max }}{% endif %}
+                                            {{ param.unit or '' }}
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-light text-muted border">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if param.entry_type == 'reading' %}
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control border-warning param-value-input"
+                                                placeholder="Enter value..."
+                                                data-entry-type="{{ param.entry_type }}"
+                                                data-param-id="{{ param.id }}"
+                                                data-name="{{ param.name }}"
+                                                data-unit="{{ param.unit or '' }}"
+                                                data-min="{{ param.standard_min or '' }}"
+                                                data-max="{{ param.standard_max or '' }}">
+                                            {% if param.unit %}<span class="input-group-text bg-white">{{ param.unit }}</span>{% endif %}
+                                        </div>
+                                        {% else %}
+                                        <input type="hidden" class="param-value-input" 
+                                            value="0"
+                                            data-entry-type="{{ param.entry_type }}"
+                                            data-param-id="{{ param.id }}"
+                                            data-name="{{ param.name }}">
+                                        <span class="text-muted small fst-italic">Task / Observation</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm param-desc-input" placeholder="Freetext note...">
+                                    </td>
+                                    <td class="text-center pe-4">
+                                        <div class="task-check" onclick="toggleTaskCheck(this, '{{ param.entry_type }}')">
+                                            <i class="bi bi-check2"></i>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5">
+                                        <div class="alert alert-light border d-inline-block">
+                                            <i class="bi bi-exclamation-triangle me-2"></i> Tidak ada parameter.
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="mt-4 card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <label class="form-label fw-bold text-muted small">Catatan Logsheet (Opsional)</label>
+                    <textarea class="form-control" name="notes" rows="3" placeholder="Tambahkan catatan umum jika ada..."></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Add Parameter -->
+<div class="modal fade" id="addParamModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 bg-primary text-white">
+                <h6 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Tambah Parameter (Otomatis Masuk Master Metering)</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('logsheet_schedule_execute', id=schedule.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="action" value="add_param"/>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Nama Parameter / Pengecekan</label>
+                        <input type="text" name="new_param_name" class="form-control" required placeholder="Contoh: Tekanan Freon">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Tipe Data</label>
+                        <select name="new_param_type" class="form-select">
+                            <option value="reading">Angka / Nilai (Reading)</option>
+                            <option value="task">Tugas / Checklist (Task)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Satuan / Unit (Opsional)</label>
+                        <input type="text" name="new_param_unit" class="form-control" placeholder="Contoh: Psi, °C, Ampere">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary shadow-sm"><i class="bi bi-plus"></i> Simpan Parameter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleTaskCheck(el, entryType) {
+        el.classList.toggle('checked');
+        
+        // For task type, sync the hidden input value
+        if (entryType !== 'reading') {
+            const hiddenInput = el.closest('tr').querySelector('.param-value-input');
+            if(hiddenInput) {
+                hiddenInput.value = el.classList.contains('checked') ? '1' : '0';
+            }
+        }
+    }
+
+    document.querySelector('form').addEventListener('submit', function() {
+        const entries = [];
+
+        document.querySelectorAll('tbody tr').forEach((tr, index) => {
+            const valInput = tr.querySelector('.param-value-input');
+            if(!valInput) return;
+            
+            const descInput = tr.querySelector('.param-desc-input');
+            const desc = descInput ? descInput.value : '';
+            
+            const entryType = valInput.dataset.entryType;
+            
+            if (entryType === 'reading') {
+                entries.push({
+                    entry_type: entryType,
+                    param_id: valInput.dataset.paramId,
+                    parameter_name: valInput.dataset.name,
+                    unit: valInput.dataset.unit,
+                    value: valInput.value,
+                    min: valInput.dataset.min,
+                    max: valInput.dataset.max,
+                    description: desc,
+                    position: index
+                });
+            } else {
+                entries.push({
+                    entry_type: entryType,
+                    param_id: valInput.dataset.paramId,
+                    parameter_name: valInput.dataset.name,
+                    value: '',
+                    is_completed: valInput.value === '1',
+                    description: desc,
+                    position: index
+                });
+            }
+        });
+
+        document.getElementById('entriesJson').value = JSON.stringify(entries);
+    });
+
+    {% if iot_api_url %}
+    // Auto-fill values from IoT API
+    document.addEventListener("DOMContentLoaded", function() {
+        const targetUrl = "{{ iot_api_url }}";
+        const apiUrl = "{{ url_for('assets.api_proxy') }}?url=" + encodeURIComponent(targetUrl);
+        
+        fetch(apiUrl)
+        .then(res => res.json())
+        .then(data => {
+            function extractMetrics(d, prefix='') {
+                let m = {};
+                if (typeof d === 'object' && d !== null && !Array.isArray(d)) {
+                    for (let [k, v] of Object.entries(d)) {
+                        if (Array.isArray(v)) continue;
+                        let newPrefix = prefix ? prefix + '.' + k : k;
+                        if (typeof v === 'number') m[newPrefix] = v;
+                        else if (typeof v === 'object') Object.assign(m, extractMetrics(v, newPrefix));
+                    }
+                }
+                return m;
+            }
+            
+            let latest = data;
+            if (Array.isArray(data) && data.length > 0) {
+                latest = data[0];
+            } else if (typeof data === 'object') {
+                for (let v of Object.values(data)) {
+                    if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'object') {
+                        latest = v[0];
+                        break;
+                    }
+                }
+            }
+            
+            const metrics = extractMetrics(latest);
+            
+            for (const [key, value] of Object.entries(metrics)) {
+                let displayName = key.replace(/_/g, ' ').toUpperCase();
+                displayName = displayName.replace('PARSED DATA.', '');
+                const inputs = document.querySelectorAll('.param-value-input');
+                inputs.forEach(input => {
+                    if (input.dataset.name.toUpperCase() === displayName) {
+                        input.value = value;
+                        input.classList.remove('border-warning');
+                        input.classList.add('border-success', 'bg-light');
+                        
+                        const checkBtn = input.closest('tr').querySelector('.task-check');
+                        if (checkBtn && !checkBtn.classList.contains('checked')) {
+                            checkBtn.classList.add('checked');
+                        }
+                    }
+                });
+            }
+        })
+        .catch(err => {
+            console.error("Auto-fill IoT fetch error:", err);
+        });
+    });
+    {% endif %}
+</script>
+
+<form id="pullMetersForm" method="POST" action="{{ url_for('logsheet_schedule_execute', id=schedule.id) }}" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="action" value="pull_meters"/>
+</form>
+
+{% endblock %}

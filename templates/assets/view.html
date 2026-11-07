@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('assets.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Asset List</a>
+    <a href="{{ url_for('work_orders.create', asset_id=asset.id) }}" class="btn btn-sm btn-danger ms-1"><i class="bi bi-tools"></i> Create WO</a>
+{% endblock %}
+
+{% block content %}
+<style>
+/* Premium Asset View CSS */
+.settings-header { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); margin-bottom: 2rem; }
+.settings-header h3 { font-weight: 700; letter-spacing: -0.5px; color: white !important; }
+.premium-card-wrapper { border: none; background: transparent; box-shadow: none; }
+.premium-nav-container { background: #ffffff; border-radius: 1rem; padding: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-bottom: 1.5rem; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; }
+.premium-nav-container::-webkit-scrollbar { display: none; }
+.premium-nav { display: flex; flex-wrap: nowrap; gap: 0.5rem; border-bottom: none !important; }
+.premium-nav .nav-item { margin: 0; }
+.premium-nav .nav-link { color: #64748b; border-radius: 0.75rem; padding: 0.6rem 1.25rem; font-weight: 600; font-size: 0.85rem; transition: all 0.3s; border: none; white-space: nowrap; display: flex; align-items: center; gap: 8px; background: transparent; }
+.premium-nav .nav-link:hover { background-color: #f1f5f9; color: #0f172a; transform: translateY(-1px); }
+.premium-nav .nav-link.active { background: linear-gradient(135deg, #3b82f6, #2563eb) !important; color: #ffffff !important; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3); border: none !important; }
+.settings-pane-card { background: #ffffff; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; animation: fadeIn 0.4s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Profile Cards */
+.profile-card { border-radius: 1rem; border: 1px solid #e2e8f0; background: #ffffff; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+.profile-card:hover { border-color: #bfdbfe; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); transform: translateY(-3px); }
+.avatar-circle { width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex-shrink: 0; }
+.notif-badge { font-size: 0.75rem; padding: 0.35rem 0.75rem; border-radius: 2rem; background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+.notif-badge i { font-size: 0.85rem; }
+.notif-badge.active { background: #fffbeb; border-color: #fde68a; color: #d97706; }
+.notif-badge.wo { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+.profile-card:hover .notif-badge.active { background: #fef3c7; }
+.profile-card:hover .notif-badge.wo { background: #dcfce3; }
+</style>
+
+<div class="settings-header d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0 fw-bold"><i class="bi bi-box-seam me-3" style="color: #60a5fa;"></i>{{ asset.name }}</h3>
+    <div>
+        {% if asset.status == 'Online' %}
+            <span class="badge bg-success bg-opacity-25 text-white border border-success border-opacity-50 px-4 py-2 rounded-pill fs-6"><i class="bi bi-check-circle-fill me-2"></i>{{ asset.status }}</span>
+        {% elif asset.status == 'Offline' %}
+            <span class="badge bg-danger bg-opacity-25 text-white border border-danger border-opacity-50 px-4 py-2 rounded-pill fs-6"><i class="bi bi-x-circle-fill me-2"></i>{{ asset.status }}</span>
+        {% else %}
+            <span class="badge bg-warning bg-opacity-25 text-white border border-warning border-opacity-50 px-4 py-2 rounded-pill fs-6"><i class="bi bi-exclamation-circle-fill me-2"></i>{{ asset.status }}</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="premium-card-wrapper">
+    {% set active_tab = request.args.get('tab', 'general') %}
+    <div class="d-flex align-items-center mb-4 gap-2">
+        <button class="btn btn-light rounded-circle shadow-sm flex-shrink-0" id="scrollLeftBtn" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; background: #fff;"><i class="bi bi-chevron-left text-primary fw-bold"></i></button>
+        <div class="premium-nav-container flex-grow-1 mb-0" id="navContainer">
+            <ul class="nav premium-nav" id="assetTabs" role="tablist">
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'general' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#general" type="button"><i class="bi bi-info-circle text-primary"></i> General (Umum)</button></li>
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'bom' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#bom" type="button"><i class="bi bi-nut text-primary"></i> Parts BOM</button></li>
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'metering' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#metering" type="button"><i class="bi bi-speedometer2 text-primary"></i> Metering</button></li>
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'personnel' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#personnel" type="button"><i class="bi bi-people text-primary"></i> Personnel</button></li>
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'warranties' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#warranties" type="button"><i class="bi bi-shield-check text-primary"></i> Warranties</button></li>
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'businesses' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#businesses" type="button"><i class="bi bi-building text-primary"></i> Businesses</button></li>
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'purchasing' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#purchasing" type="button"><i class="bi bi-receipt text-primary"></i> Purchasing</button></li>
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'files' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#files" type="button"><i class="bi bi-folder text-primary"></i> Files</button></li>
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'custom' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#custom" type="button"><i class="bi bi-ui-checks text-primary"></i> Custom</button></li>
+            <li class="nav-item"><button class="nav-link {% if active_tab == 'log' %}active{% else %}{% endif %}" data-bs-toggle="tab" data-bs-target="#log" type="button"><i class="bi bi-clock-history text-primary"></i> Log</button></li>
+        </ul>
+        </div>
+        <button class="btn btn-light rounded-circle shadow-sm flex-shrink-0" id="scrollRightBtn" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; background: #fff;"><i class="bi bi-chevron-right text-primary fw-bold"></i></button>
+    </div>
+    <div class="settings-pane-card p-4 p-md-5" style="min-height: 50vh;">
+        <div class="tab-content" id="assetTabContent">
+            <!-- General Tab -->
+            <div class="tab-pane fade {% if active_tab == 'general' %}show active{% endif %}" id="general" role="tabpanel">
+                {% include 'assets/tabs/general.html' %}
+            </div>
+            <!-- BOM Tab -->
+            <div class="tab-pane fade {% if active_tab == 'bom' %}show active{% endif %}" id="bom" role="tabpanel">
+                {% include 'assets/tabs/bom.html' %}
+            </div>
+            <!-- Metering Tab -->
+            <div class="tab-pane fade {% if active_tab == 'metering' %}show active{% endif %}" id="metering" role="tabpanel">
+                {% include 'assets/tabs/metering.html' %}
+            </div>
+            <!-- Personnel Tab -->
+            <div class="tab-pane fade {% if active_tab == 'personnel' %}show active{% endif %}" id="personnel" role="tabpanel">
+                {% include 'assets/tabs/personnel.html' %}
+            </div>
+            <!-- Warranties Tab -->
+            <div class="tab-pane fade {% if active_tab == 'warranties' %}show active{% endif %}" id="warranties" role="tabpanel">
+                {% include 'assets/tabs/warranties.html' %}
+            </div>
+            <!-- Businesses Tab -->
+            <div class="tab-pane fade {% if active_tab == 'businesses' %}show active{% endif %}" id="businesses" role="tabpanel">
+                {% include 'assets/tabs/businesses.html' %}
+            </div>
+            <!-- Purchasing Tab -->
+            <div class="tab-pane fade {% if active_tab == 'purchasing' %}show active{% endif %}" id="purchasing" role="tabpanel">
+                {% include 'assets/tabs/purchasing.html' %}
+            </div>
+            <!-- Files Tab -->
+            <div class="tab-pane fade {% if active_tab == 'files' %}show active{% endif %}" id="files" role="tabpanel">
+                {% include 'assets/tabs/files.html' %}
+            </div>
+            <!-- Custom Tab -->
+            <div class="tab-pane fade {% if active_tab == 'custom' %}show active{% endif %}" id="custom" role="tabpanel">
+                {% include 'assets/tabs/custom.html' %}
+            </div>
+            <!-- Log Tab -->
+            <div class="tab-pane fade {% if active_tab == 'log' %}show active{% endif %}" id="log" role="tabpanel">
+                {% include 'assets/tabs/log.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Hoist all modals to the document body to prevent Bootstrap z-index nesting bugs inside tab panes
+        let modals = document.querySelectorAll('.modal');
+        modals.forEach(function(modal) {
+            document.body.appendChild(modal);
+        });
+        
+        const navLinks = document.querySelectorAll('#assetTabs .nav-link');
+        
+        const navContainer = document.getElementById('navContainer');
+        const btnLeft = document.getElementById('scrollLeftBtn');
+        const btnRight = document.getElementById('scrollRightBtn');
+        if (navContainer && btnLeft && btnRight) {
+            btnLeft.addEventListener('click', function() { navContainer.scrollBy({ left: -300, behavior: 'smooth' }); });
+            btnRight.addEventListener('click', function() { navContainer.scrollBy({ left: 300, behavior: 'smooth' }); });
+        }
+    });
+</script>
+{% endblock %}

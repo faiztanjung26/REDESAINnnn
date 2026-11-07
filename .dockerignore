@@ -1,0 +1,10 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.git/
+.gitignore
+cmms.db
+# (Opsional) jika mau db ikut dicopy saat build, hapus cmms.db dari sini. 
+# Tapi karena kita pakai volume di docker-compose, lebih aman di-ignore saat build.

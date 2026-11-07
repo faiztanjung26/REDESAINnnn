@@ -1,0 +1,474 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<!-- Marked.js for rich Markdown parsing -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+    /* Hide the floating widget on the dedicated page */
+    .custom-chat-widget { display: none !important; }
+    
+    /* Sembunyikan top toolbar bawaan */
+    .top-toolbar { display: none !important; }
+    
+    /* Hilangkan padding default */
+    .content-area { padding: 0 !important; }
+    .container-fluid { padding: 0 !important; }
+    
+    .dedicated-chatbot-container {
+        height: 100vh;
+        background: var(--color-surface, #ffffff);
+        border-radius: 0;
+        box-shadow: none;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: none;
+        margin-bottom: 0;
+    }
+    
+    .dc-header {
+        background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+    
+    .dc-header .bot-avatar {
+        width: 44px;
+        height: 44px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-right: 14px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    
+    .dc-messages {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .dc-message {
+        display: flex;
+        max-width: 82%;
+        animation: fadeInMsg 0.25s ease-out;
+    }
+    
+    @keyframes fadeInMsg {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @media (max-width: 768px) {
+        .dc-message { max-width: 95%; }
+        .dedicated-chatbot-container { height: calc(100vh - 120px); }
+    }
+    
+    .dc-message.user { align-self: flex-end; }
+    .dc-message.bot { align-self: flex-start; }
+    
+    .dc-message .msg-bubble {
+        padding: 14px 20px;
+        border-radius: 18px;
+        font-size: 14.5px;
+        line-height: 1.6;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+        word-break: break-word;
+    }
+    
+    .dc-message.user .msg-bubble {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+    
+    .dc-message.bot .msg-bubble {
+        background: white;
+        color: #1e293b;
+        border-bottom-left-radius: 4px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    /* Markdown inside bot bubble */
+    .dc-message.bot .msg-bubble p:last-child {
+        margin-bottom: 0;
+    }
+    .dc-message.bot .msg-bubble ul, .dc-message.bot .msg-bubble ol {
+        margin-bottom: 0.5rem;
+        padding-left: 1.25rem;
+    }
+    .dc-message.bot .msg-bubble code {
+        background: #f1f5f9;
+        color: #0f172a;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    .dc-message.bot .msg-bubble pre {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 12px 14px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 8px 0;
+    }
+    .dc-message.bot .msg-bubble pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+    }
+    .dc-message.bot .msg-bubble table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 0.9em;
+    }
+    .dc-message.bot .msg-bubble th, .dc-message.bot .msg-bubble td {
+        border: 1px solid #cbd5e1;
+        padding: 6px 10px;
+    }
+    .dc-message.bot .msg-bubble th {
+        background: #f1f5f9;
+        font-weight: 600;
+    }
+    
+    /* Quick prompt chips */
+    .quick-chips-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 24px 0 24px;
+        background: #f8fafc;
+    }
+    .quick-chip {
+        background: white;
+        border: 1px solid #cbd5e1;
+        color: #334155;
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .quick-chip:hover {
+        background: #2563eb;
+        color: white;
+        border-color: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(37,99,235,0.2);
+    }
+    
+    .dc-input-area {
+        padding: 16px 24px;
+        background: white;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+    
+    .dc-input-area .form-control {
+        border-radius: 24px;
+        padding: 12px 20px;
+        border: 2px solid #e2e8f0;
+        background: #f8fafc;
+        font-size: 15px;
+        color: #1e293b;
+        transition: all 0.2s ease;
+    }
+    
+    .dc-input-area .form-control:focus {
+        background: white;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+    
+    .dc-input-area .btn-send {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #2563eb;
+        color: white;
+        border: none;
+        font-size: 18px;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+    
+    .dc-input-area .btn-send:hover:not(:disabled) {
+        background: #1d4ed8;
+        transform: scale(1.05);
+    }
+    .dc-input-area .btn-send:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .dc-typing .msg-bubble {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 60px;
+        height: 44px;
+        padding: 0 18px !important;
+    }
+    
+    .dc-typing i {
+        font-size: 22px;
+        color: #64748b;
+        animation: typingBlink 1.4s infinite;
+    }
+    @keyframes typingBlink {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-0">
+    <div class="dedicated-chatbot-container">
+        <!-- Header -->
+        <div class="dc-header">
+            <div class="d-flex align-items-center">
+                <div class="bot-avatar"><i class="bi bi-robot"></i></div>
+                <div>
+                    <h5 class="mb-0 fw-bold">Portal Engineer</h5>
+                    <div style="font-size: 0.85rem; color: #e0e7ff;" class="d-flex align-items-center gap-2">
+                        <span><i class="bi bi-circle-fill text-success" style="font-size: 0.55rem;"></i> Online</span>
+                        <span>&bull;</span>
+                        <span class="badge bg-white text-primary fw-semibold px-2 py-0.5 rounded-pill" style="font-size: 0.75rem;">
+                            <i class="bi bi-cpu-fill me-1"></i>Sumopod GPT-5 Nano
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" id="btnClearChat" class="btn btn-sm btn-outline-light rounded-pill px-3 fw-semibold" title="Mulai percakapan baru">
+                    <i class="bi bi-trash3 me-1"></i> Bersihkan Chat
+                </button>
+            </div>
+        </div>
+        
+        <!-- Messages List -->
+        <div id="dcMessages" class="dc-messages">
+            <div class="dc-message bot">
+                <div class="msg-bubble">
+                    <strong>Halo {{ current_user.name }}!</strong> 👋<br>
+                    Saya adalah <strong>Portal Engineer</strong>, Asisten AI resmi CMMS PT Jaya Teknik Indonesia yang didukung oleh model <strong>Sumopod GPT-5 Nano</strong>.<br><br>
+                    Saya dapat membantu Anda dalam:
+                    <ul class="mt-2 mb-2">
+                        <li>Mengecek ringkasan status & KPI maintenance (MTBF, MTTR, Work Order).</li>
+                        <li>Panduan operasional modul CMMS (SPK, Helpdesk, Logsheet, Stok Gudang).</li>
+                        <li>Troubleshooting teknis peralatan engineering (HVAC, Chiller, Pompa, AHU, Kelistrikan).</li>
+                        <li>Perhitungan efisiensi teknis (COP, kW/TR, dsb).</li>
+                    </ul>
+                    Ada yang ingin Anda tanyakan atau diskusikan hari ini?
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Prompt Chips -->
+        <div class="quick-chips-container" id="quickChips">
+            <button class="quick-chip" onclick="sendQuickPrompt('Bagaimana ringkasan status aset dan work order CMMS saat ini?')">
+                <i class="bi bi-bar-chart-fill text-primary"></i> Ringkasan CMMS Hari Ini
+            </button>
+            <button class="quick-chip" onclick="sendQuickPrompt('Bagaimana alur dan langkah-langkah membuat Work Order baru?')">
+                <i class="bi bi-tools text-warning"></i> Panduan Work Order
+            </button>
+            <button class="quick-chip" onclick="sendQuickPrompt('Berikan panduan diagnosis awal jika Chiller mengalami high discharge pressure atau trip!')">
+                <i class="bi bi-snow text-info"></i> Troubleshooting Chiller
+            </button>
+            <button class="quick-chip" onclick="sendQuickPrompt('Bagaimana prosedur permintaan suku cadang (PPM) dan cek stok gudang?')">
+                <i class="bi bi-box-seam text-success"></i> Manajemen Sparepart
+            </button>
+        </div>
+        
+        <!-- Input Area -->
+        <input type="hidden" id="chatbotCsrfToken" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="dc-input-area">
+            <input type="text" id="dcInput" class="form-control" placeholder="Tanyakan seputar maintenance, aset, atau modul CMMS..." autocomplete="off">
+            <button id="dcSendBtn" class="btn-send shadow-sm" title="Kirim Pesan">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const messagesContainer = document.getElementById('dcMessages');
+        const inputBox = document.getElementById('dcInput');
+        const sendBtn = document.getElementById('dcSendBtn');
+        const clearBtn = document.getElementById('btnClearChat');
+        
+        // Multi-turn conversation history
+        let chatHistory = [];
+
+        function renderMarkdown(text) {
+            if (typeof marked !== 'undefined') {
+                try {
+                    return marked.parse(text);
+                } catch(e) {
+                    console.error("Marked parse error:", e);
+                }
+            }
+            return text.replace(/\n/g, '<br>');
+        }
+
+        function addMessage(text, sender) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `dc-message ${sender}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'msg-bubble';
+            
+            if (sender.includes('bot')) {
+                bubble.innerHTML = renderMarkdown(text);
+            } else {
+                bubble.textContent = text;
+            }
+            
+            msgDiv.appendChild(bubble);
+            messagesContainer.appendChild(msgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function setInputState(disabled) {
+            inputBox.disabled = disabled;
+            sendBtn.disabled = disabled;
+            if (!disabled) {
+                inputBox.focus();
+            }
+        }
+
+        function sendMessage() {
+            const text = inputBox.value.trim();
+            if (!text) return;
+            
+            // Render user message
+            addMessage(text, 'user');
+            inputBox.value = '';
+            setInputState(true);
+            
+            // Push to local session history
+            chatHistory.push({ role: 'user', content: text });
+            
+            // Show typing indicator
+            const typingId = 'typing-' + Date.now();
+            const typingMsg = document.createElement('div');
+            typingMsg.className = 'dc-message bot dc-typing';
+            typingMsg.id = typingId;
+            typingMsg.innerHTML = '<div class="msg-bubble"><i class="bi bi-three-dots"></i></div>';
+            messagesContainer.appendChild(typingMsg);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            const csrfToken = document.getElementById('chatbotCsrfToken')?.value || document.querySelector('input[name="csrf_token"]')?.value || '';
+            const fetchHeaders = { 'Content-Type': 'application/json' };
+            if (csrfToken) {
+                fetchHeaders['X-CSRFToken'] = csrfToken;
+            }
+
+            // Fetch from internal AI API endpoint
+            fetch('/api/chatbot/message', {
+                method: 'POST',
+                headers: fetchHeaders,
+                body: JSON.stringify({
+                    message: text,
+                    history: chatHistory.slice(-8)
+                })
+            })
+            .then(async response => {
+                const isJson = response.headers.get('content-type')?.includes('application/json');
+                const data = isJson ? await response.json().catch(() => null) : null;
+                if (!response.ok) {
+                    const textErr = !data ? await response.text().catch(() => '') : '';
+                    const errMsg = data?.reply || data?.message || (textErr ? `HTTP ${response.status}: ${textErr.substring(0, 150)}` : `HTTP ${response.status}: Gagal memproses request AI`);
+                    throw new Error(errMsg);
+                }
+                return data || {};
+            })
+            .then(data => {
+                const typingEl = document.getElementById(typingId);
+                if (typingEl) typingEl.remove();
+                
+                let botReply = "Maaf, tidak ada respon dari sistem AI.";
+                if (data && data.reply) {
+                    botReply = data.reply;
+                } else if (data && data.output) {
+                    botReply = data.output;
+                }
+                
+                // Add to history and render
+                chatHistory.push({ role: 'assistant', content: botReply });
+                addMessage(botReply, 'bot');
+            })
+            .catch(error => {
+                console.error('Chat error:', error);
+                const typingEl = document.getElementById(typingId);
+                if (typingEl) typingEl.remove();
+                addMessage(`⚠️ **Terjadi Kendala:** ${error.message}`, 'bot');
+            })
+            .finally(() => {
+                setInputState(false);
+            });
+        }
+
+        // Quick prompt helper
+        window.sendQuickPrompt = function(promptText) {
+            inputBox.value = promptText;
+            sendMessage();
+        };
+
+        // Clear chat handler
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                if (confirm('Apakah Anda yakin ingin membersihkan riwayat percakapan ini?')) {
+                    chatHistory = [];
+                    messagesContainer.innerHTML = `
+                        <div class="dc-message bot">
+                            <div class="msg-bubble">
+                                <strong>Percakapan baru telah dimulai.</strong><br>
+                                Ada yang bisa saya bantu terkait operasional CMMS atau pemeliharaan hari ini?
+                            </div>
+                        </div>
+                    `;
+                    inputBox.focus();
+                }
+            });
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        inputBox.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Focus input on load
+        inputBox.focus();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('warehouse.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Warehouse
+    </a>
+{% endblock %}
+
+{% block content %}
+<style>
+/* Modern CMMS Design System */
+:root {
+    --ppm-primary: #4f46e5;
+    --ppm-primary-hover: #4338ca;
+    --ppm-primary-subtle: #eef2ff;
+    --ppm-border: #e2e8f0;
+    --ppm-card-bg: #ffffff;
+    --ppm-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+    --ppm-shadow-hover: 0 10px 20px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+}
+
+body {
+    background-color: #f8fafc;
+    font-family: 'Inter', sans-serif;
+    color: #1e293b;
+}
+
+/* Header Banner */
+.page-header-card {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 16px;
+    padding: 1.75rem 2rem;
+    color: #ffffff;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+.page-header-card::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(79, 70, 229, 0.25) 0%, transparent 70%);
+    border-radius: 50%;
+}
+
+/* KPI Cards */
+.kpi-stat-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 1.25rem;
+    border: 1px solid var(--ppm-border);
+    box-shadow: var(--ppm-shadow);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+    height: 100%;
+}
+.kpi-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--ppm-shadow-hover);
+    border-color: #cbd5e1;
+}
+.kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+/* Filter Card */
+.filter-card {
+    background: #ffffff;
+    border: 1px solid var(--ppm-border);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--ppm-shadow);
+}
+
+/* Main Table Card */
+.ppm-table-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid var(--ppm-border);
+    box-shadow: var(--ppm-shadow);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.table-modern {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.table-modern thead th {
+    background-color: #f8fafc;
+    color: #64748b;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--ppm-border);
+    font-weight: 700;
+}
+.table-modern tbody td {
+    padding: 1.1rem 1.25rem;
+    vertical-align: middle;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.9rem;
+    transition: background-color 0.15s ease;
+}
+.table-modern tbody tr:last-child td {
+    border-bottom: none;
+}
+.table-modern tbody tr:hover td {
+    background-color: #f8fafc;
+}
+
+/* Status Pill Badges */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+}
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-draft { background-color: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+.status-draft .status-dot { background-color: #64748b; }
+
+.status-submitted { background-color: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+.status-submitted .status-dot { background-color: #0284c7; }
+
+.status-approved { background-color: #fef3c7; color: #92400e; border-color: #fde68a; }
+.status-approved .status-dot { background-color: #f59e0b; }
+
+.status-purchasing { background-color: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
+.status-purchasing .status-dot { background-color: #7c3aed; }
+
+.status-transit { background-color: #ffedd5; color: #9a3412; border-color: #fed7aa; }
+.status-transit .status-dot { background-color: #ea580c; }
+
+.status-received { background-color: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+.status-received .status-dot { background-color: #10b981; }
+
+.status-rejected { background-color: #fee2e2; color: #991b1b; border-color: #fecaca; }
+.status-rejected .status-dot { background-color: #ef4444; }
+
+/* Custom Action Buttons */
+.btn-primary-gradient {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    transition: all 0.2s ease;
+}
+.btn-primary-gradient:hover {
+    background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+}
+</style>
+
+<!-- Hero Header Card -->
+<div class="page-header-card">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h2 class="fw-bold text-white mb-1" style="letter-spacing: -0.02em;">
+                Permintaan Pengadaan Material (PPM)
+            </h2>
+            <p class="text-white text-opacity-75 mb-0" style="font-size: 0.92rem; max-width: 680px;">
+                Kelola pengadaan barang dan material site proyek berbasis persetujuan bertingkat, verifikasi tanda tangan digital, dan integrasi otomatis ke inventori gudang.
+            </p>
+        </div>
+        <div>
+            <a href="{{ url_for('ppm.create') }}" class="btn btn-primary-gradient rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center gap-2">
+                <i class="bi bi-plus-circle fs-5"></i>
+                <span>Buat Pengajuan PPM Baru</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Metric Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl">
+        <div class="kpi-stat-card">
+            <div class="kpi-icon" style="background-color: #eef2ff; color: #4f46e5;">
+                <i class="bi bi-folder2-open"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Total PPM</div>
+                <h4 class="mb-0 fw-bold text-dark">{{ metrics.total }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl">
+        <div class="kpi-stat-card">
+            <div class="kpi-icon" style="background-color: #e0f2fe; color: #0284c7;">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Menunggu SPV</div>
+                <h4 class="mb-0 fw-bold text-dark">{{ metrics.pending_approval }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl">
+        <div class="kpi-stat-card">
+            <div class="kpi-icon" style="background-color: #ede9fe; color: #7c3aed;">
+                <i class="bi bi-cart3"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Proses Purchasing</div>
+                <h4 class="mb-0 fw-bold text-dark">{{ metrics.purchasing }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl">
+        <div class="kpi-stat-card">
+            <div class="kpi-icon" style="background-color: #ffedd5; color: #ea580c;">
+                <i class="bi bi-truck"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Transit JTI / Jalan</div>
+                <h4 class="mb-0 fw-bold text-dark">{{ metrics.transit }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl">
+        <div class="kpi-stat-card">
+            <div class="kpi-icon" style="background-color: #d1fae5; color: #059669;">
+                <i class="bi bi-check2-circle"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Diterima di Site</div>
+                <h4 class="mb-0 fw-bold text-dark">{{ metrics.completed }}</h4>
+            </div>
+        </div>
+    </div>
+    {% if metrics.hold and metrics.hold > 0 %}
+    <div class="col-6 col-md-4 col-xl">
+        <div class="kpi-stat-card">
+            <div class="kpi-icon" style="background-color: #fef3c7; color: #d97706;">
+                <i class="bi bi-pause-circle-fill"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Ditahan (On Hold)</div>
+                <h4 class="mb-0 fw-bold text-warning-emphasis">{{ metrics.hold }}</h4>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Search & Filter Controls -->
+<div class="filter-card">
+    <form method="GET" action="{{ url_for('ppm.index') }}" class="row g-2 align-items-center">
+        <div class="col-md-3">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" value="{{ q }}" class="form-control bg-light border-start-0" placeholder="Cari No PPM, barang, proyek...">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <select name="site_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Semua Site / Proyek</option>
+                {% for s in sites %}
+                <option value="{{ s.id }}" {% if selected_site_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="division" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Semua Divisi / Sheet</option>
+                <option value="OT" {% if selected_division == 'OT' %}selected{% endif %}>OT - Operasional / Other</option>
+                <option value="Cons" {% if selected_division == 'Cons' %}selected{% endif %}>Cons - Consumables</option>
+                <option value="FA" {% if selected_division == 'FA' %}selected{% endif %}>FA - Fire Alarm</option>
+                <option value="ME" {% if selected_division == 'ME' %}selected{% endif %}>ME - Mechanical Electrical</option>
+                <option value="EL" {% if selected_division == 'EL' %}selected{% endif %}>EL - Electrical</option>
+                <option value="HVAC" {% if selected_division == 'HVAC' %}selected{% endif %}>HVAC - Chiller / Pendingin</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="delivery_type" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Semua Jalur Kirim</option>
+                <option value="DIRECT_SITE" {% if selected_delivery == 'DIRECT_SITE' %}selected{% endif %}>Langsung ke Site</option>
+                <option value="VIA_JTI" {% if selected_delivery == 'VIA_JTI' %}selected{% endif %}>Transit via JTI</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Semua Status</option>
+                <option value="Draft" {% if selected_status == 'Draft' %}selected{% endif %}>Draft</option>
+                <option value="Submitted" {% if selected_status == 'Submitted' %}selected{% endif %}>Submitted (Menunggu SPV)</option>
+                <option value="Approved" {% if selected_status == 'Approved' %}selected{% endif %}>Approved (Disetujui)</option>
+                <option value="Purchasing" {% if selected_status == 'Purchasing' %}selected{% endif %}>Purchasing (PO)</option>
+                <option value="Arrived_JTI" {% if selected_status == 'Arrived_JTI' %}selected{% endif %}>Tiba di JTI (QC)</option>
+                <option value="Shipped_to_Site" {% if selected_status == 'Shipped_to_Site' %}selected{% endif %}>Dalam Pengiriman</option>
+                <option value="Received_Site" {% if selected_status == 'Received_Site' %}selected{% endif %}>Diterima di Site</option>
+                <option value="On_Hold" {% if selected_status == 'On_Hold' %}selected{% endif %}>Ditahan (On Hold)</option>
+                <option value="Rejected" {% if selected_status == 'Rejected' %}selected{% endif %}>Ditolak</option>
+            </select>
+        </div>
+        <div class="col-md-1 d-flex gap-1">
+            <button type="submit" class="btn btn-sm btn-primary w-100 rounded-3"><i class="bi bi-funnel-fill"></i></button>
+            <a href="{{ url_for('ppm.index') }}" class="btn btn-sm btn-light border rounded-3" title="Reset Filter"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Main Table Card -->
+<div class="ppm-table-card">
+    <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <span class="p-2 rounded-3" style="background-color: #eef2ff; color: #4f46e5;">
+                <i class="bi bi-list-task fs-5"></i>
+            </span>
+            <h5 class="mb-0 fw-bold text-dark" style="letter-spacing: -0.01em;">Daftar Pengajuan Material</h5>
+        </div>
+        <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill font-monospace" style="font-size: 0.8rem;">
+            {{ ppms|length }} Dokumen
+        </span>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table-modern text-nowrap">
+            <thead>
+                <tr>
+                    <th>No. Dokumen & Tanggal</th>
+                    <th>Proyek / Site</th>
+                    <th>Divisi & Jalur Pengiriman</th>
+                    <th>Material Diminta</th>
+                    <th>Pemohon (TTD)</th>
+                    <th>Target Datang</th>
+                    <th>Status Lifecycle</th>
+                    <th class="text-end">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if ppms %}
+                    {% for p in ppms %}
+                    <tr>
+                        <td>
+                            <div>
+                                <a href="{{ url_for('ppm.view', id=p.id) }}" class="fw-bold text-decoration-none" style="color: #4f46e5; font-size: 0.95rem;">
+                                    {{ p.requisition_no }}
+                                </a>
+                                <div class="small text-muted mt-1 d-flex align-items-center gap-1">
+                                    <i class="bi bi-calendar3"></i>
+                                    <span>{{ p.request_date.strftime('%d %b %Y') }}</span>
+                                    {% if p.drawing_ref %}
+                                        <span class="badge bg-light text-muted border ms-1" style="font-size: 0.7rem;">Ref: {{ p.drawing_ref }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ p.site.name }}</div>
+                            <div class="small text-muted font-monospace" style="font-size: 0.78rem;">
+                                <i class="bi bi-tag me-1"></i>{{ p.project_code or p.site.project_code or '-' }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column gap-1 align-items-start">
+                                <span class="badge px-2 py-1 rounded" style="background-color: #f1f5f9; color: #334155; font-weight: 700; font-size: 0.75rem;">
+                                    {{ p.category_division }}
+                                </span>
+                                {% if p.delivery_type == 'DIRECT_SITE' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.72rem;">
+                                        <i class="bi bi-geo-alt-fill me-1"></i>Langsung ke Site
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 0.72rem;">
+                                        <i class="bi bi-building me-1"></i>Transit Gudang JTI
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ p.items.count() }} Item</div>
+                            <div class="small text-muted text-truncate" style="max-width: 180px;">
+                                {% if p.items.first() %}
+                                    {{ p.items.first().item_name }}
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ p.requester.name }}</div>
+                            <div class="small">
+                                {% if p.requester_signature %}
+                                    <span class="text-success fw-semibold"><i class="bi bi-patch-check-fill me-1"></i>Signed Digital</span>
+                                {% else %}
+                                    <span class="text-muted"><i class="bi bi-dash-circle me-1"></i>Belum TTD</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% set first_item = p.items.first() %}
+                            {% if first_item and first_item.target_date %}
+                                <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 0.78rem;">
+                                    <i class="bi bi-clock-history me-1 text-primary"></i>{{ first_item.target_date.strftime('%d %b %Y') }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if p.status == 'Draft' %}
+                                <span class="status-pill status-draft"><i class="bi bi-lock-fill me-1" style="font-size: 0.65rem;"></i>Draft (Privat)</span>
+                            {% elif p.status == 'Submitted' %}
+                                <span class="status-pill status-submitted"><span class="status-dot"></span>Menunggu SPV</span>
+                            {% elif p.status == 'Approved' %}
+                                <span class="status-pill status-approved"><span class="status-dot"></span>Disetujui SPV</span>
+                            {% elif p.status == 'Purchasing' %}
+                                <span class="status-pill status-purchasing"><span class="status-dot"></span>Proses PO</span>
+                            {% elif p.status == 'Arrived_JTI' %}
+                                <span class="status-pill status-transit"><span class="status-dot"></span>Tiba di JTI (QC)</span>
+                            {% elif p.status == 'Shipped_to_Site' %}
+                                <span class="status-pill status-transit"><span class="status-dot"></span>Kirim ke Site</span>
+                            {% elif p.status == 'Received_Site' %}
+                                <span class="status-pill status-received"><span class="status-dot"></span>Diterima di Site</span>
+                            {% elif p.status == 'On_Hold' %}
+                                <span class="status-pill" style="background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a;"><i class="bi bi-pause-circle-fill me-1" style="color: #d97706;"></i>On Hold</span>
+                            {% elif p.status == 'Rejected' %}
+                                <span class="status-pill status-rejected"><span class="status-dot"></span>Ditolak</span>
+                            {% else %}
+                                <span class="status-pill status-draft">{{ p.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('ppm.view', id=p.id) }}" class="btn btn-light border px-3 fw-semibold text-dark shadow-sm" title="Lihat Detail PPM">
+                                    <i class="bi bi-eye me-1 text-primary"></i> Detail
+                                </a>
+                                <a href="{{ url_for('ppm.print_doc', id=p.id) }}" target="_blank" class="btn btn-light border text-secondary shadow-sm" title="Cetak Dokumen RP-JT-115">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <div class="text-muted py-4">
+                                <div class="bg-light rounded-circle p-3 d-inline-flex mb-3">
+                                    <i class="bi bi-inbox fs-2 text-secondary opacity-50"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark">Belum ada data Permintaan Pengadaan Material (PPM)</h6>
+                                <p class="small text-muted mb-3">Klik tombol di bawah untuk membuat pengajuan formulir RP - JT - 115.</p>
+                                <a href="{{ url_for('ppm.create') }}" class="btn btn-sm btn-primary-gradient rounded-pill px-4 py-2 fw-bold">
+                                    <i class="bi bi-plus-circle me-1"></i> Buat Pengajuan PPM
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

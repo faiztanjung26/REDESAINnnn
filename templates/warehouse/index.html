@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+/* Elegant & Professional Warehouse Card Design */
+body {
+    background-color: #f8fafc;
+}
+
+.site-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.8rem;
+    margin-top: 1.5rem;
+}
+
+.warehouse-card {
+    background: #ffffff;
+    border-radius: 16px;
+    overflow: hidden;
+    color: #334155;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    text-decoration: none;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.warehouse-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: #e2e8f0;
+    color: #334155;
+}
+
+.card-image-wrapper {
+    height: 150px;
+    position: relative;
+    background-color: #0f172a;
+    /* Elegant modern mesh gradient */
+    background-image: 
+        radial-gradient(at 10% 20%, hsla(215, 98%, 61%, 0.4) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, hsla(189, 100%, 56%, 0.3) 0px, transparent 50%),
+        radial-gradient(at 0% 90%, hsla(280, 100%, 70%, 0.2) 0px, transparent 50%);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Add a subtle overlay to make it look premium */
+.card-image-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.9), transparent 70%);
+}
+
+.status-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    padding: 0.35rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    z-index: 10;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #10b981;
+}
+
+.warehouse-body {
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.site-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0 0 0.4rem 0;
+    font-family: 'Inter', sans-serif;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+}
+
+.site-desc {
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.2rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.stats-container {
+    display: flex;
+    gap: 1rem;
+    margin-top: auto;
+    padding-top: 1.2rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.stat-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #94a3b8;
+    margin-bottom: 0.2rem;
+    letter-spacing: 0.05em;
+}
+
+.stat-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.explore-text {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    font-size: 1.2rem;
+    color: #cbd5e1;
+    transition: all 0.3s ease;
+}
+
+.warehouse-card:hover .explore-text {
+    color: #3b82f6;
+    transform: translateX(4px);
+}
+</style>
+
+<div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div class="d-flex align-items-center">
+        <div class="bg-primary text-white rounded-circle p-3 me-3 shadow-sm d-flex align-items-center justify-content-center" style="width: 54px; height: 54px; background: linear-gradient(135deg, #1e3a8a, #3b82f6) !important;">
+            <i class="bi bi-box-seam fs-3"></i>
+        </div>
+        <div>
+            <h3 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.02em;">Logistics & Warehousing</h3>
+            <p class="text-muted mb-0">Select a facility to manage inventory, or manage Material Requisitions (PPM).</p>
+        </div>
+    </div>
+    <div>
+        <a href="{{ url_for('ppm.index') }}" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
+            <i class="bi bi-file-earmark-text me-1"></i> Permintaan Pengadaan Material (PPM)
+        </a>
+    </div>
+</div>
+
+<div class="site-grid">
+    {% for site in sites %}
+    <a href="{{ url_for('warehouse.site_inventory', site_id=site.id) }}" class="warehouse-card">
+        
+        <!-- Elegant Header with Gradient -->
+        <div class="card-image-wrapper">
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                ONLINE
+            </div>
+            <!-- Large subtle icon in the background -->
+            <i class="bi bi-building" style="font-size: 5rem; color: rgba(255,255,255,0.05); z-index: 1;"></i>
+        </div>
+        
+        <div class="warehouse-body">
+            <h4 class="site-title">{{ site.name }}</h4>
+            <p class="site-desc">
+                <i class="bi bi-geo-alt me-1" style="color: #94a3b8;"></i> 
+                {{ site.address or 'No address registered for this facility.' }}
+            </p>
+            
+            <div class="stats-container">
+                <div class="stat-item">
+                    <span class="stat-label">Total Item</span>
+                    <span class="stat-value"><i class="bi bi-box-seam text-primary" style="font-size: 1.1rem;"></i> {{ site.stock_levels.count() }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Stock</span>
+                    {% set total_qty = namespace(value=0) %}
+                    {% for stock in site.stock_levels %}
+                        {% set total_qty.value = total_qty.value + (stock.qty_on_hand or 0) %}
+                    {% endfor %}
+                    <span class="stat-value"><i class="bi bi-boxes text-muted" style="font-size: 1rem;"></i> <span style="font-size: 0.95rem;">{{ total_qty.value }} items</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="explore-text">
+            <i class="bi bi-arrow-right-circle-fill"></i>
+        </div>
+    </a>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info border-0 shadow-sm rounded-3">
+            <i class="bi bi-info-circle me-2"></i> No facilities available.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

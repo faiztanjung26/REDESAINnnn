@@ -1,0 +1,688 @@
+{% extends 'base.html' %}
+
+{% block title %}Chiller Telemetry Dashboard - CMMS{% endblock %}
+
+{% block extra_head %}
+<link rel="icon" href="data:,">
+{% endblock %}
+
+{% block content %}
+<style>
+    .metric-card {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        text-align: center;
+        padding: 20px 15px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 100px;
+    }
+    .metric-title {
+        font-size: 0.75rem;
+        font-weight: bold;
+        color: #6c757d;
+        display: block;
+        margin-bottom: 5px;
+    }
+    .metric-val {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #212529;
+    }
+    .metric-sub {
+        font-size: 0.65rem;
+        color: #adb5bd;
+        margin-top: 5px;
+    }
+    .section-title {
+        font-size: 0.95rem;
+        font-weight: bold;
+        color: #495057;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 5px;
+    }
+    .metric-card:hover .hide-btn {
+        opacity: 1 !important;
+    }
+    .hide-btn {
+        opacity: 0;
+        transition: opacity 0.2s;
+        border: none;
+        background: transparent;
+        color: #adb5bd;
+        font-size: 0.9rem;
+    }
+    .hide-btn:hover {
+        color: #dc3545;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-3">
+    <div>
+        <a href="{{ url_for('chiller_monitoring.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill shadow-sm mb-2"><i class="bi bi-arrow-left"></i> Back to Monitor</a>
+        <h4 class="fw-bold mb-0 text-dark" id="chillerTitle"><i class="bi bi-cpu me-2 text-info"></i>Loading Chiller Data...</h4>
+        <div id="chillerStatusGroup" class="mt-2" style="display:none;"></div>
+    </div>
+    <div class="text-end">
+        <small class="text-muted d-block">Last Update</small>
+        <div class="d-flex flex-column align-items-end">
+            <span class="badge bg-light text-dark shadow-sm border" id="lastUpdateBadge">Waiting...</span>
+            <button class="btn btn-sm btn-link text-decoration-none p-0 mt-1" onclick="resetHiddenParams()" style="font-size: 0.7rem; display: none;" id="resetHiddenBtn">
+                <i class="bi bi-arrow-counterclockwise"></i> Tampilkan Semua
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="telemetryLoading" class="col-12 text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="mt-2 text-muted fw-bold">Fetching Live Analytics...</p>
+</div>
+
+<!-- Historical Data Filter -->
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-light" id="historyFilterCard">
+    <div class="card-body p-3">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted">Start Date & Time</label>
+                <input type="datetime-local" id="historyStart" class="form-control form-control-sm rounded-3">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted">End Date & Time</label>
+                <input type="datetime-local" id="historyEnd" class="form-control form-control-sm rounded-3">
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-primary btn-sm w-100 rounded-3" onclick="fetchHistoricalData()">
+                    <i class="bi bi-graph-up me-1"></i> Tampilkan Grafik Historis
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="telemetrySections" style="display: none;">
+    <!-- Fault Description -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light" id="alarmSection" style="display: none;">
+        <div class="card-body p-4">
+            <div class="section-title text-center text-danger mb-3">Fault / Alarm Status</div>
+            <div class="row g-3 text-center justify-content-center" id="telemetryGrid_alarm"></div>
+        </div>
+    </div>
+
+    <!-- General Metrics Section (Top Grid) -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light">
+        <div class="card-body p-4">
+            <div class="section-title text-start mb-3">General Metrics</div>
+            <div class="row align-items-center">
+                <div class="col-12 col-lg-3 col-xl-2 text-center mb-4 mb-lg-0">
+                    <img id="chillerImage" src="{{ url_for('static', filename='images/chiller.png') }}" alt="Chiller Unit" class="img-fluid" style="max-height: 220px; object-fit: contain;">
+                </div>
+                <div class="col-12 col-lg-9 col-xl-10">
+                    <div class="row g-2 justify-content-center" id="telemetryGrid_general">
+                        <!-- Dynamically Populated -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evap and Condenser Split -->
+    <div class="row g-4 mb-4">
+        <!-- EVAP -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-light">
+                <div class="card-body p-4">
+                    <div class="section-title text-center text-info mb-3">Evap</div>
+                    <div class="row g-3 text-center justify-content-center" id="telemetryGrid_evap">
+                        <!-- Dynamically Populated -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CONDENSER -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-light">
+                <div class="card-body p-4">
+                    <div class="section-title text-center text-warning mb-3">Condenser</div>
+                    <div class="row g-3 text-center justify-content-center" id="telemetryGrid_cond">
+                        <!-- Dynamically Populated -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Oil & Discharge -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light">
+        <div class="card-body p-4">
+            <div class="section-title text-center mb-3">Oil, Discharge & Systems</div>
+            <div class="row g-3 text-center justify-content-center" id="telemetryGrid_oil">
+                <!-- Dynamically Populated -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Historical Charts Section -->
+    <div id="historicalSection" class="mt-4">
+        <div class="section-title text-start mb-3 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-graph-up me-2"></i>Real-time Data Analysis (Last 60 Points)</span>
+            <span class="badge bg-danger blink-red" style="font-size: 0.65rem;"><i class="bi bi-record-fill"></i> LIVE</span>
+        </div>
+        <div class="row g-4" id="chartsContainer">
+            <!-- Dynamically Populated Charts -->
+        </div>
+    </div>
+</div>
+
+<style>
+    .blink-red {
+        animation: blink-animation 1s steps(5, start) infinite;
+    }
+    @keyframes blink-animation {
+        to { visibility: hidden; }
+    }
+    .chart-card {
+        background: #1e293b !important;
+        border: 1px solid #334155 !important;
+    }
+    .chart-title {
+        color: #94a3b8 !important;
+        font-size: 0.8rem !important;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const CHILLER_ID = "{{ chiller_id }}";
+    const API_BASE = "/monitoring/api_proxy";
+
+    function formatKey(key) {
+        return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+    
+    function getUnit(key) {
+        key = key.toLowerCase();
+        if(key.includes('temp') || key.includes('ambient') || key.includes('approach') || key.includes('dt') || key.includes('superheat')) return '&deg;C';
+        if(key.includes('pressure') || key.includes('press')) return 'kPa';
+        if(key.includes('voltage') || key.includes('vsd_out_voltage')) return 'V';
+        if(key.includes('current') || key.includes('amp') || key.includes('fla') && !key.includes('%')) return 'A';
+        if(key.includes('pct') || key.includes('percent')) return '%';
+        if(key.includes('time') || key.includes('hour')) return 'Hrs';
+        if(key.includes('power') || key.includes('kw')) return 'kW';
+        if(key.includes('freq') || key.includes('hz')) return 'Hz';
+        if(key.includes('capacity') || key.includes('tr')) return 'TR';
+        if(key.includes('efficiency')) return 'kW/TR';
+        return '';
+    }
+
+    const STORAGE_KEY = `hidden_params_${CHILLER_ID}`;
+    let hiddenParams = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    let charts = {};
+    let lastChartTimestamp = null;
+
+    // Initialize logic
+    window.addEventListener('DOMContentLoaded', () => {
+        // Initial load of last 60 points
+        fetchHistoricalData(60);
+        
+        // Setup manual filters default values
+        const now = new Date();
+        const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+        const formatForInput = (date) => date.toISOString().slice(0, 16);
+        document.getElementById('historyStart').value = formatForInput(yesterday);
+        document.getElementById('historyEnd').value = formatForInput(now);
+    });
+
+    async function fetchHistoricalData(limit = null) {
+        const container = document.getElementById('chartsContainer');
+        const section = document.getElementById('historicalSection');
+        
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000));
+        const formatForAPI = (date) => date.toISOString().slice(0, 19).replace('T', ' ');
+
+        let url = `${API_BASE}/chillers/${CHILLER_ID}/history`;
+        
+        // Default to 1-hour window
+        let start = formatForAPI(oneHourAgo);
+        let end = formatForAPI(now);
+        
+        if (!limit) {
+            // Manual filter case
+            start = document.getElementById('historyStart').value;
+            end = document.getElementById('historyEnd').value;
+            if (!start || !end) {
+                alert("Harap pilih rentang waktu.");
+                return;
+            }
+            container.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Memuat data historis...</p></div>';
+            url += `?start_date=${start.replace('T', ' ')}&end_date=${end.replace('T', ' ')}`;
+        } else {
+            // Auto initial load: Try 1 hour window first
+            url += `?start_date=${start}&end_date=${end}&limit=500`;
+        }
+
+        try {
+            console.log("Fetching history from:", url);
+            let res = await fetch(url);
+            let data = [];
+
+            if (res.ok) {
+                data = await res.json();
+            }
+
+            // Fallback: If no data in the last 1 hour, get the latest 1 hour window relative to the last data point
+            if (limit && (!Array.isArray(data) || data.length === 0)) {
+                console.log("No data in the last hour, searching for latest available data point...");
+                const latestRes = await fetch(`${API_BASE}/chillers/${CHILLER_ID}/latest_data`);
+                if (latestRes.ok) {
+                    const latest = await latestRes.json();
+                    if (latest && latest.timestamp) {
+                        const latestTime = new Date(latest.timestamp);
+                        const fallbackStart = new Date(latestTime.getTime() - (60 * 60 * 1000));
+                        console.log("Fallback: Fetching 1-hour window ending at last known point:", latestTime.toISOString());
+                        
+                        const fallbackUrl = `${API_BASE}/chillers/${CHILLER_ID}/history?start_date=${formatForAPI(fallbackStart)}&end_date=${formatForAPI(latestTime)}&limit=500`;
+                        const fallbackRes = await fetch(fallbackUrl);
+                        if (fallbackRes.ok) {
+                            data = await fallbackRes.json();
+                        }
+                    }
+                }
+            }
+
+            if (!Array.isArray(data) || data.length === 0) {
+                if (!limit) container.innerHTML = '<div class="col-12 text-center py-5 text-muted">Data tidak ditemukan untuk rentang ini.</div>';
+                else console.warn("No historical data found even with fallback.");
+                return;
+            }
+
+            console.log("Historical data loaded:", data.length, "points in 1h window.");
+            container.innerHTML = '';
+            charts = {}; // Reset charts
+            section.style.display = 'block';
+            
+            const labels = data.map(d => {
+                const date = new Date(d.timestamp);
+                if (isNaN(date)) return '?';
+                return date.toLocaleDateString([], { day: '2-digit', month: 'short' }) + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            });
+            const keysToExclude = ['id', 'chiller_id', 'timestamp', 'status', 'image_name', 'date', 'time'];
+            
+            const keys = Object.keys(data[0]).filter(k => {
+                if (keysToExclude.includes(k) || hiddenParams.includes(k)) return false;
+                return data.some(d => d[k] !== null && d[k] !== '' && !isNaN(d[k]));
+            });
+            
+            const displayKeys = keys.slice(0, 30);
+            lastChartTimestamp = data.length > 0 ? data[data.length - 1].timestamp : null;
+
+            displayKeys.forEach(key => {
+                const values = data.map(d => d[key]);
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-xl-4';
+                col.innerHTML = `
+                    <div class="card border-0 shadow-sm rounded-4 h-100 chart-card" style="min-height: 250px;">
+                        <div class="card-body p-3 d-flex flex-column">
+                            <div class="chart-title fw-bold mb-2 text-center text-truncate">${formatKey(key)} (${getUnit(key)})</div>
+                            <div class="flex-grow-1" style="position: relative; height: 180px;">
+                                <canvas id="chart_${key}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(col);
+
+                const canvas = col.querySelector('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+                gradient.addColorStop(0, 'rgba(245, 158, 11, 0.4)');
+                gradient.addColorStop(1, 'rgba(245, 158, 11, 0)');
+
+                charts[key] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            borderColor: '#f59e0b',
+                            backgroundColor: gradient,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: true,
+                            tension: 0.4,
+                            timestamps: data.map(d => new Date(d.timestamp).getTime()) // Store timestamps for windowing
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    title: (context) => {
+                                        return context[0].label; // Shows the full date string we created
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { 
+                                display: true,
+                                ticks: { 
+                                    color: '#64748b', 
+                                    font: { size: 8 }, 
+                                    maxRotation: 45, 
+                                    minRotation: 45,
+                                    autoSkip: true,
+                                    maxTicksLimit: 6
+                                },
+                                grid: { display: false }
+                            },
+                            y: { 
+                                beginAtZero: false, 
+                                ticks: { color: '#94a3b8', font: { size: 9 } },
+                                grid: { color: 'rgba(255,255,255,0.05)' }
+                            }
+                        }
+                    }
+                });
+            });
+
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    function updateChartsWithLive(data) {
+        if (!lastChartTimestamp || data.timestamp === lastChartTimestamp) return;
+        lastChartTimestamp = data.timestamp;
+
+        const now = new Date(data.timestamp);
+        const timeLabel = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const oneHourAgo = now.getTime() - (60 * 60 * 1000);
+
+        Object.keys(charts).forEach(key => {
+            const chart = charts[key];
+            const val = data[key];
+            
+            if (val !== undefined && val !== null) {
+                // Add new point
+                chart.data.labels.push(timeLabel);
+                chart.data.datasets[0].data.push(val);
+                chart.data.datasets[0].timestamps.push(now.getTime());
+
+                // Remove points older than 1 hour relative to the new data point
+                while (chart.data.datasets[0].timestamps.length > 0 && chart.data.datasets[0].timestamps[0] < oneHourAgo) {
+                    chart.data.labels.shift();
+                    chart.data.datasets[0].data.shift();
+                    chart.data.datasets[0].timestamps.shift();
+                }
+                
+                chart.update('none');
+            }
+        });
+    }
+
+    function hideParam(key) {
+        if (!hiddenParams.includes(key)) {
+            hiddenParams.push(key);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(hiddenParams));
+            loadTelemetry();
+        }
+    }
+
+    function resetHiddenParams() {
+        hiddenParams = [];
+        localStorage.removeItem(STORAGE_KEY);
+        loadTelemetry();
+    }
+
+    function loadTelemetry() {
+        // Toggle reset button visibility
+        const resetBtn = document.getElementById('resetHiddenBtn');
+        if (resetBtn) resetBtn.style.display = hiddenParams.length > 0 ? 'inline-block' : 'none';
+
+        fetchTelemetry();
+    }
+
+    async function fetchTelemetry() {
+        try {
+            // Fetch chiller details
+            let chRes = await fetch(`${API_BASE}/chillers/${CHILLER_ID}`);
+            let chiller = await chRes.json();
+            
+            document.getElementById('chillerTitle').innerHTML = `<i class="bi bi-cpu me-2 text-info"></i>${chiller.chiller_num} <small class="text-muted fw-normal fs-6">(${chiller.chiller_type})</small>`;
+            
+            let trRes = await fetch(`${API_BASE}/chillers/${CHILLER_ID}/latest_data`);
+            let data = await trRes.json();
+            
+            // Fetch safe ranges from CMMS backend mappings
+            let safeRanges = {};
+            try {
+                if (chiller.site_id) {
+                    let srRes = await fetch(`/monitoring/api/safe_ranges/${chiller.site_id}`);
+                    safeRanges = await srRes.json();
+                }
+            } catch(e) {
+                console.error("Could not fetch safe ranges", e);
+            }
+            
+            // Fetch chiller fault mappings
+            let faultMappings = {};
+            try {
+                if (chiller.chiller_type) {
+                    let fmRes = await fetch(`/monitoring/api/fault_mappings/${chiller.chiller_type}`);
+                    faultMappings = await fmRes.json();
+                }
+            } catch(e) {
+                console.error("Could not fetch fault mappings", e);
+            }
+            
+            document.getElementById('lastUpdateBadge').innerHTML = `<i class="bi bi-clock-history text-primary"></i> ${new Date(data.timestamp).toLocaleString()}`;
+            
+            // View transition
+            document.getElementById('telemetryLoading').style.display = 'none';
+            document.getElementById('telemetrySections').style.display = 'block';
+
+            // Update charts with live data
+            updateChartsWithLive(data);
+
+            // Base Fault Mapping is now handled via direct cards
+            let hasFault = data.safety_fault && parseInt(data.safety_fault) > 0;
+            if (hasFault) {
+                document.getElementById('alarmSection').style.display = 'block';
+            }
+
+            let isRunning = false;
+            if (data.fla !== undefined && data.fla !== null && !isNaN(data.fla)) {
+                isRunning = parseFloat(data.fla) > 2;
+            } else {
+                let statVal = data.status !== undefined && data.status !== null ? String(data.status).toLowerCase() : '';
+                isRunning = ['run', 'running', '1', 'true', 'on'].includes(statVal);
+            }
+            document.getElementById('chillerStatusGroup').innerHTML = isRunning ? `<span class="badge bg-success shadow-sm px-3">RUNNING</span>` : `<span class="badge bg-danger shadow-sm px-3">STOPPED</span>`;
+            document.getElementById('chillerStatusGroup').style.display = 'block';
+
+            // Swap chiller photo based on Live Status
+            let chillerImg = document.getElementById('chillerImage');
+            if (chillerImg) {
+                chillerImg.src = isRunning ? "{{ url_for('static', filename='images/chiller-active.gif') }}" : "{{ url_for('static', filename='images/chiller.png') }}";
+            }
+
+            // GRIDS PREP
+            let gridGeneral = document.getElementById('telemetryGrid_general');
+            let gridEvap = document.getElementById('telemetryGrid_evap');
+            let gridCond = document.getElementById('telemetryGrid_cond');
+            let gridOil = document.getElementById('telemetryGrid_oil');
+            let gridAlarm = document.getElementById('telemetryGrid_alarm');
+            
+            gridGeneral.innerHTML = '';
+            gridEvap.innerHTML = '';
+            gridCond.innerHTML = '';
+            gridOil.innerHTML = '';
+            gridAlarm.innerHTML = '';
+
+            const ignoredKeys = ['id', 'chiller_id', 'timestamp', 'date', 'time', 'status', 'image_name'];
+
+            Object.keys(data).forEach(key => {
+                if(ignoredKeys.includes(key) || data[key] === null || data[key] === '' || hiddenParams.includes(key)) return;
+                
+                let val = data[key];
+                let keyLower = key.toLowerCase();
+                let unit = getUnit(key);
+                let title = formatKey(key);
+                
+                // Categorize Mapping
+                let targetGrid = gridGeneral;
+                let colClass = "col-6 col-md-3 col-xl-2";
+                let textClass = "text-dark";
+                
+                if (keyLower.includes('alarm') || keyLower.includes('fault') || keyLower.includes('warning') || keyLower.includes('code')) {
+                    targetGrid = gridAlarm;
+                    colClass = "col-12 col-md-4 col-xl-3";
+                    
+                    // Determine dictionary category
+                    let fCat = 'general';
+                    if (keyLower.includes('safety')) fCat = 'safety_fault';
+                    else if (keyLower.includes('cycling')) fCat = 'cycling_fault';
+                    else if (keyLower.includes('operating')) fCat = 'operating_code';
+                    else if (keyLower.includes('warning')) fCat = 'warning';
+                    else if (keyLower.includes('alarm')) fCat = 'alarm';
+                    else if (keyLower.includes('fault')) fCat = 'fault_code';
+                    
+                    let categoryDict = faultMappings[fCat] || faultMappings['general'] || {};
+                    
+                    // Convert floats like 145.00 to 145 for matching
+                    let searchVal = val;
+                    if (!isNaN(val) && val !== null && val !== '') {
+                        searchVal = parseInt(Number(val));
+                    }
+                    let strVal = searchVal.toString();
+                    
+                    if(val == 0 || val == '0' || val.toString().toLowerCase() === 'none' || val.toString().toLowerCase() === 'ok') {
+                        // Check if 0 is mapped in faultMappings before overriding to OK
+                        if (categoryDict[strVal]) {
+                            val = `${strVal} - ${categoryDict[strVal]}`;
+                        } else {
+                            val = 'OK';
+                        }
+                        textClass = "text-success";
+                    } else {
+                        // Try mapping the fault code
+                        if (categoryDict[strVal]) {
+                            val = `${strVal} - ${categoryDict[strVal]}`;
+                        }
+                        textClass = "text-danger";
+                    }
+                }
+                else if (keyLower.includes('evap') || keyLower.includes('chw') || keyLower.includes('chilled')) {
+                    targetGrid = gridEvap;
+                    colClass = "col-6 col-md-4";
+                    textClass = "text-info";
+                }
+                else if (keyLower.includes('cond') || keyLower.includes('cdw') || keyLower.includes('condenser')) {
+                    targetGrid = gridCond;
+                    colClass = "col-6 col-md-4";
+                    textClass = "text-warning";
+                }
+                else if (keyLower.includes('oil') || keyLower.includes('discharge') || keyLower.includes('suct') || keyLower.includes('motor') || keyLower.includes('sys')) {
+                    targetGrid = gridOil;
+                    colClass = "col-6 col-md-4 col-lg-3";
+                    if(keyLower.includes('pressure') || keyLower.includes('press')) textClass = "text-success";
+                    else textClass = "text-warning";
+                }
+
+                // Format decimals safely
+                if(val !== 'OK') {
+                    if(typeof val === 'number') val = val.toFixed(2);
+                    else if(!isNaN(val)) val = Number(val).toFixed(2);
+                }
+
+                // Check Safe Ranges logic
+                textClass = "text-dark";
+                let sr = safeRanges[key];
+                let rangeHtml = '';
+                if (sr) {
+                    let hasMin = sr.min !== null && sr.min !== undefined;
+                    let hasMax = sr.max !== null && sr.max !== undefined;
+                    let minStr = hasMin ? sr.min : '...';
+                    let maxStr = hasMax ? sr.max : '...';
+                    
+                    if (hasMin || hasMax) {
+                        rangeHtml = `<div class="mt-2 text-muted" style="font-size: 0.75rem;"><i class="bi bi-shield-check text-success"></i> ${minStr} &sim; ${maxStr} ${unit || ''}</div>`;
+                    }
+                    
+                    if (val !== 'OK' && !isNaN(val)) {
+                        let vNum = parseFloat(val);
+                        let isSafe = true;
+                        if (hasMin && vNum < sr.min) isSafe = false;
+                        if (hasMax && vNum > sr.max) isSafe = false;
+                        
+                        if (isSafe) {
+                            textClass = "text-success";
+                        } else {
+                            textClass = "text-danger";
+                            if (rangeHtml) {
+                                rangeHtml = `<div class="mt-2 text-danger fw-bold" style="font-size: 0.75rem;"><i class="bi bi-shield-exclamation"></i> ${minStr} &sim; ${maxStr} ${unit || ''}</div>`;
+                            }
+                        }
+                    }
+                }
+
+                let card = document.createElement('div');
+                card.className = colClass;
+                card.innerHTML = `
+                    <div class="metric-card h-100 pb-2 position-relative">
+                        <button class="hide-btn position-absolute top-0 end-0 p-1" 
+                                onclick="hideParam('${key}')" title="Sembunyikan parameter ini">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                        <span class="metric-title text-truncate pe-3" title="${title}">${title}</span>
+                        <div class="metric-val ${textClass}">${val}</div>
+                        ${unit ? `<div class="metric-sub">${unit}</div>` : ''}
+                        ${rangeHtml}
+                    </div>
+                `;
+                targetGrid.appendChild(card);
+            });
+
+            if(gridGeneral.innerHTML === '') gridGeneral.innerHTML = '<div class="col-12 text-muted small">No general metrics available.</div>';
+            if(gridEvap.innerHTML === '') gridEvap.innerHTML = '<div class="col-12 text-muted small">No evaporator telemetry available.</div>';
+            if(gridCond.innerHTML === '') gridCond.innerHTML = '<div class="col-12 text-muted small">No condenser telemetry available.</div>';
+            if(gridOil.innerHTML === '') gridOil.innerHTML = '<div class="col-12 text-muted small">No subsystem telemetry available.</div>';
+            
+            // Only show alarm section if cards were populated into it
+            if(gridAlarm.innerHTML !== '') {
+                document.getElementById('alarmSection').style.display = 'block';
+            }
+            
+        } catch(err) {
+            console.error(err);
+            document.getElementById('telemetryLoading').style.display = 'none';
+            document.getElementById('telemetrySections').style.display = 'block';
+            document.getElementById('telemetrySections').innerHTML = `
+                <div class="alert alert-warning shadow-sm rounded-4 border-0">
+                    <i class="bi bi-exclamation-triangle fs-4 d-block mb-2"></i> 
+                    <strong>Telemetry is currently unavailable.</strong><br>
+                    ${err.message}
+                </div>
+            `;
+        }
+    }
+
+    loadTelemetry();
+    setInterval(loadTelemetry, 5000); // 5 sec interval
+</script>
+{% endblock %}

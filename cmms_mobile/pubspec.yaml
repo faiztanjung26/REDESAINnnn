@@ -1,0 +1,45 @@
+name: cmms_mobile
+description: "Aplikasi Android CMMS Teknisi Lapangan (Offline-First)"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  
+  # State Management
+  provider: ^6.1.2
+  
+  # Offline Storage & Database
+  sqflite: ^2.3.3+1
+  path_provider: ^2.1.2
+  path: ^1.9.0
+  shared_preferences: ^2.2.3
+  
+  # Networking
+  http: ^1.2.1
+  connectivity_plus: ^6.0.3
+  
+  # Date & Utilities
+  intl: ^0.20.2
+  image_picker: ^1.1.2
+  cross_file: ^0.3.5+5
+  
+  # UI & Icons
+  cupertino_icons: ^1.0.8
+  sqflite_common_ffi_web: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

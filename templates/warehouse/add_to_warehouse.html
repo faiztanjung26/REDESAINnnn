@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    {% if site_id %}
+    <a href="{{ url_for('warehouse.site_inventory', site_id=site_id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Inventory</a>
+    {% else %}
+    <a href="{{ url_for('warehouse.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Warehouse</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<style>
+/* Premium Warehouse Design */
+.settings-pane-card { background: #ffffff; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 1.5rem; overflow: hidden; }
+
+.table-premium { border-collapse: separate; border-spacing: 0; width: 100%; margin-bottom: 0; }
+.table-premium thead th { background-color: #f8fafc; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.85rem 1rem; border-bottom: 2px solid #e2e8f0; border-top: none; }
+.table-premium tbody td { padding: 0.65rem 1rem; vertical-align: middle; color: #334155; border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; }
+.table-premium tbody tr:hover td { background-color: #f8fafc; cursor: pointer; }
+</style>
+
+<div class="mb-3">
+    <h4 class="fw-bold">Select Master Part to Add{% if category %} - {{ category.name }}{% endif %}</h4>
+    <p class="text-muted small">Choose a master part to bring into your site's warehouse and adjust its initial stock.</p>
+</div>
+
+<div class="settings-pane-card mt-2">
+    <div class="table-responsive">
+        <table class="table-premium text-nowrap">
+            <thead>
+                <tr>
+                    <th style="width: 40px; text-align: center;"><input class="form-check-input" type="checkbox"></th>
+                    <th>Part Details</th>
+                    <th>Price / Cost</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for part in parts %}
+                <tr>
+                    <td style="text-align: center;"><input class="form-check-input" type="checkbox"></td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-light rounded p-2 me-3 d-flex align-items-center justify-content-center border" style="width: 42px; height: 42px;">
+                                <i class="bi bi-nut fs-5 text-primary"></i>
+                            </div>
+                            <div>
+                                <span class="fw-bold text-dark" style="font-size: 0.95rem;">{{ part.name }}</span>
+                                <br>
+                                <span class="small text-muted">
+                                    Part #: <span class="fw-semibold">{{ part.code }}</span> 
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {{ part.price }} <br>
+                        <span class="small text-muted">{{ part.unit_cost }}</span>
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('warehouse.adjust_stock', part_id=part.id, site_id=site_id, action='add') }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-circle"></i> Add to Site</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center py-5">
+                        <div class="text-muted mb-2"><i class="bi bi-inboxes fs-1"></i></div>
+                        <h6 class="fw-bold text-dark">No master parts found</h6>
+                        <p class="text-muted small">Admin needs to create master parts in settings.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

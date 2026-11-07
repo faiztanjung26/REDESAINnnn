@@ -1,0 +1,12 @@
+<!-- WO Status Doughnut Chart Widget -->
+<div class="card shadow-sm border-0 h-100">
+    <div class="card-header bg-white pt-3 pb-2 border-bottom-0 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-pie-chart text-primary me-2"></i> Work Order Status</h6>
+        {% if draft_wos_count is defined %}
+        <span class="badge bg-secondary">Draft: {{ draft_wos_count }}</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <canvas id="woStatusChart" style="max-height: 250px;"></canvas>
+    </div>
+</div>

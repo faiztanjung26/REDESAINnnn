@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .page-title {
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 2rem;
+        font-size: 1.75rem;
+        letter-spacing: -0.02em;
+    }
+    
+    .site-card {
+        border-radius: 1rem;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        transition: all 0.2s ease;
+        background-color: white;
+        text-decoration: none;
+    }
+    
+    .site-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 25px -5px rgba(0,0,0,0.1);
+        border-color: #e2e8f0;
+    }
+    
+    .site-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(55, 48, 163, 0.1) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .site-icon i {
+        color: #4f46e5;
+        font-size: 1.5rem;
+    }
+    
+    .chevron-icon {
+        color: #cbd5e1;
+        transition: color 0.2s;
+    }
+    
+    .site-card:hover .chevron-icon {
+        color: #4f46e5;
+        transform: translateX(3px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="page-title"><i class="bi bi-calendar-range me-2 text-primary"></i>Team Schedule by Site</h2>
+        <a href="{{ url_for('schedule.attendance_recap') }}" class="btn btn-primary shadow-sm"><i class="bi bi-person-lines-fill"></i> Attendance Recap</a>
+    </div>
+    
+    <div class="row g-4">
+        {% for site in sites %}
+        {% set is_kp = 'kantor pusat' in site.name|lower %}
+        <div class="col-md-6 col-xl-4">
+            <a href="{{ url_for('schedule.site_schedule', site_id=site.id) }}" class="text-decoration-none">
+                <div class="site-card p-4 d-flex align-items-center h-100 {% if is_kp %}border-primary border-opacity-25 shadow-sm{% endif %}">
+                    <div class="site-icon me-4 {% if is_kp %}bg-primary bg-opacity-10{% endif %}">
+                        <i class="bi {% if is_kp %}bi-buildings-fill text-primary{% else %}bi-building{% endif %}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center flex-wrap gap-1 mb-1">
+                            <h5 class="mb-0 fw-bold text-dark">{{ site.name }}</h5>
+                            {% if is_kp %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.68rem; font-weight: 600;">9 - 5 Fixed</span>
+                            {% endif %}
+                        </div>
+                        <div class="small {% if is_kp %}text-primary fw-medium{% else %}text-muted{% endif %}">
+                            {% if is_kp %}
+                            <i class="bi bi-clock me-1"></i>Jadwal Tetap: Senin - Jumat (09:00 - 17:00)
+                            {% else %}
+                            Manage Shifts & Plot Schedule
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="chevron-icon ms-3">
+                        <i class="bi bi-chevron-right fs-5"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info rounded-4 border-0 d-flex align-items-center p-4">
+                <i class="bi bi-info-circle-fill fs-4 me-3 text-info"></i> 
+                <div>
+                    <strong>No sites available</strong><br>
+                    <span class="small">You don't have any sites to manage schedules for.</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

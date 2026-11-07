@@ -1,0 +1,15 @@
+{
+  "packageId": "com.jayateknik.cmms",
+  "name": "CMMS Engineer Mobile Work Order",
+  "launcherName": "CMMS Mobile",
+  "display": "standalone",
+  "themeColor": "#2563eb",
+  "navigationColor": "#0f172a",
+  "backgroundColor": "#0f172a",
+  "enableNotifications": true,
+  "startUrl": "/work-orders/",
+  "iconUrl": "https://raw.githubusercontent.com/basjayateknik-cpu/cmms2/main/static/images/Logo%20Jaya%20Teknik.png",
+  "maskableIconUrl": "https://raw.githubusercontent.com/basjayateknik-cpu/cmms2/main/static/images/Logo%20Jaya%20Teknik.png",
+  "appVersion": "1.0.0",
+  "minSdkVersion": 21
+}

@@ -1,0 +1,74 @@
+<div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-people text-primary me-2"></i>Assigned Personnel</h5>
+    <button class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addPersonnelModal"><i class="bi bi-person-plus me-1"></i> Assign User</button>
+</div>
+
+<div class="row">
+    {% for p in asset.personnel %}
+    <div class="col-md-6 mb-4">
+        <div class="profile-card p-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-4">
+                    <div class="avatar-circle">
+                        {{ p.user.name[0]|upper if p.user and p.user.name else '?' }}
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1 text-dark">{{ p.user.name if p.user else 'Deleted User' }}</h5>
+                        <small class="text-muted d-block mb-3 fs-6">{{ p.user.role if p.user else '' }} <span class="mx-2 text-light">&bull;</span> <i class="bi bi-person-vcard text-secondary me-1"></i>{{ p.user.nrp if p.user else '' }}</small>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% if p.notify_on_status_change %}
+                            <span class="notif-badge active"><i class="bi bi-bell-fill"></i> Status Alerts</span>
+                            {% endif %}
+                            {% if p.notify_on_wo %}
+                            <span class="notif-badge wo"><i class="bi bi-tools"></i> New WO Alerts</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <form action="{{ url_for('assets.remove_personnel', id=p.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-light text-danger rounded-circle shadow-sm" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;" title="Remove Personnel" onclick="return confirm('Remove personnel?');"><i class="bi bi-trash fs-5"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5 text-muted">No specific personnel are assigned responsibility for this asset.</div>
+    {% endfor %}
+</div>
+
+<!-- Modal Personnel -->
+<div class="modal fade" id="addPersonnelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('assets.add_personnel', asset_id=asset.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign Personnel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">User</label>
+                        <select name="user_id" class="form-select" required>
+                            {% for u in users %}
+                            <option value="{{ u.id }}">{{ u.name }} ({{ u.role }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="notify_on_status_change" value="1" id="notifStatus">
+                        <label class="form-check-label" for="notifStatus">Notify when Status changes online/offline</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="notify_on_wo" value="1" id="notifWO">
+                        <label class="form-check-label" for="notifWO">Notify when new WO is created</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Assign</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

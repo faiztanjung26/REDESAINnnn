@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+<a href="{{ url_for('logsheet_management', tab='records') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Kembali
+</a>
+<h5 class="mb-0 ms-3 d-flex align-items-center">
+    <i class="bi bi-journal-text text-success me-2"></i> {{ logsheet.code }}
+</h5>
+{% endblock %}
+
+{% block toolbar_right %}
+<a href="{{ url_for('logsheet_export_pdf', id=logsheet.id) }}" class="btn btn-sm btn-danger rounded-pill me-2">
+    <i class="bi bi-file-earmark-pdf"></i> Export PDF
+</a>
+<button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="window.print()">
+    <i class="bi bi-printer"></i> Print
+</button>
+{% if logsheet.status == 'Submitted' and current_user.role in ['Admin', 'Supervisor'] %}
+<form method="POST" action="{{ url_for('logsheet_approve', id=logsheet.id) }}" class="d-inline ms-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <button type="submit" class="btn btn-sm btn-success rounded-pill" onclick="return confirm('Approve logsheet ini?')">
+        <i class="bi bi-check-lg"></i> Approve
+    </button>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<style>
+/* Premium Edit View Styling */
+.settings-pane-card { background: #ffffff; border-radius: 18px; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.08); border: none; overflow: hidden; }
+.nav-tabs .nav-link { border: none; color: #64748b; font-weight: 600; padding: 1rem 1.25rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.nav-tabs .nav-link:hover { color: #4f46e5; border-bottom-color: rgba(79, 70, 229, 0.3); }
+.nav-tabs .nav-link.active { color: #4f46e5; border-bottom-color: #4f46e5; background: transparent; }
+.form-label.text-muted { font-size: 0.8rem; letter-spacing: 0.02em; text-transform: uppercase; color: #94a3b8 !important; }
+.form-control, .form-select { border-radius: 10px; border: 1px solid #e2e8f0; padding: 0.6rem 1rem; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
+.form-control:focus, .form-select:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+
+/* Additional styles from previous logsheet for specific elements */
+.signature-box {
+    background: #f8fafc;
+    border: 2px dashed #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.signature-box.signed {
+    border-style: solid;
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+
+@media print {
+    .top-toolbar, .sidebar, .bottom-nav, .no-print { display: none !important; }
+    .main-content { margin-left: 0 !important; }
+    .settings-pane-card { box-shadow: none !important; border: 1px solid #ddd; }
+}
+</style>
+
+<div class="row g-4">
+    <!-- Left Column: Asset Info -->
+    <div class="col-md-4">
+        <div class="settings-pane-card h-100">
+            <div class="card-header bg-transparent border-bottom">
+                <h6 class="mb-0 fw-bold">Asset Information</h6>
+            </div>
+            <div class="card-body text-center">
+                <fieldset disabled>
+                    {% if logsheet.asset %}
+                    <div class="bg-light rounded p-4 mb-3 d-inline-block">
+                        <i class="bi bi-box fs-1 text-muted"></i>
+                    </div>
+                    <h5 class="fw-bold">{{ logsheet.asset.name }}</h5>
+                    <p class="text-muted mb-1">Code: {{ logsheet.asset.code }}</p>
+                    <p class="text-muted mb-3"><i class="bi bi-geo-alt"></i> {{ logsheet.site.name if logsheet.site else 'Unknown Location' }}</p>
+
+                    <div class="border-top pt-3 mt-3">
+                        <h6 class="small text-muted text-uppercase fw-bold mb-2">Asset QR</h6>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ logsheet.asset.code }}"
+                            class="img-fluid border p-1 rounded bg-white shadow-sm" alt="QR Code">
+                    </div>
+                    {% else %}
+                    <div class="text-muted mt-3">
+                        <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
+                        No Asset Assigned
+                    </div>
+                    {% endif %}
+                </fieldset>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Form Tabs -->
+    <div class="col-md-8">
+        <div class="settings-pane-card mb-4">
+            <div class="card-header bg-transparent p-0 border-bottom-0">
+                <ul class="nav nav-tabs px-3 pt-3" id="logsheetTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active text-dark fw-semibold" id="general-tab" data-bs-toggle="tab"
+                            data-bs-target="#general" type="button" role="tab"><i class="bi bi-card-text me-1"></i>
+                            General</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-dark fw-semibold" id="checklist-tab" data-bs-toggle="tab"
+                            data-bs-target="#checklist_panel" type="button" role="tab">
+                            <i class="bi bi-ui-checks me-1"></i> Checklist Data
+                            {% if logsheet.entries.count() > 0 %}
+                            <span class="badge rounded-pill bg-warning text-dark ms-1" style="font-size: 0.65em;">{{ logsheet.entries.count() }}</span>
+                            {% endif %}
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-dark fw-semibold" id="signature-tab" data-bs-toggle="tab"
+                            data-bs-target="#signature" type="button" role="tab"><i class="bi bi-pen me-1"></i>
+                            Signature</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-dark fw-semibold" id="log-tab" data-bs-toggle="tab"
+                            data-bs-target="#log" type="button" role="tab"><i class="bi bi-clock-history me-1"></i>
+                            Work Log</button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-body p-4">
+                <div class="tab-content" id="logsheetTabsContent">
+
+                    <!-- General Tab -->
+                    <div class="tab-pane fade show active" id="general" role="tabpanel">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Logsheet Code</label>
+                                <input type="text" class="form-control bg-light" value="{{ logsheet.code }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Status</label>
+                                <div>
+                                    {% if logsheet.status == 'Draft' %}
+                                    <span class="badge bg-secondary fs-6 mt-1"><i class="bi bi-pencil"></i> Draft</span>
+                                    {% elif logsheet.status == 'Submitted' %}
+                                    <span class="badge bg-warning text-dark fs-6 mt-1"><i class="bi bi-send"></i> Submitted</span>
+                                    {% elif logsheet.status == 'Approved' %}
+                                    <span class="badge bg-success fs-6 mt-1"><i class="bi bi-check-circle"></i> Approved</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Date</label>
+                                <input type="text" class="form-control bg-light" value="{{ logsheet.date.strftime('%d %b %Y') if logsheet.date else '-' }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Schedule</label>
+                                <input type="text" class="form-control bg-light" value="{{ logsheet.logsheet_schedule.name if logsheet.logsheet_schedule else '-' }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Filled By</label>
+                                <input type="text" class="form-control bg-light" value="{{ logsheet.filled_by.name if logsheet.filled_by else '-' }}" readonly>
+                            </div>
+                            {% if logsheet.notes %}
+                            <div class="col-12 mt-4">
+                                <label class="form-label text-muted">Notes</label>
+                                <textarea class="form-control bg-light" rows="4" readonly>{{ logsheet.notes }}</textarea>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Checklist Tab -->
+                    <div class="tab-pane fade" id="checklist_panel" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
+                            <h6 class="fw-bold mb-0">Checklist Data Collection</h6>
+                            <div>
+                                <span class="badge bg-warning text-dark rounded-pill px-3">{{ logsheet.entries.count() }} Parameters</span>
+                            </div>
+                        </div>
+
+                        {% if logsheet.entries.count() > 0 %}
+                        <div class="table-responsive mb-4">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 35%">Parameter</th>
+                                        <th style="width: 25%">Standard</th>
+                                        <th style="width: 20%">Value</th>
+                                        <th style="width: 20%" class="text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in logsheet.entries.order_by('position').all() %}
+                                    <tr>
+                                        <td class="fw-bold text-dark">{{ entry.parameter_name or entry.description }}</td>
+                                        <td>
+                                            {% if entry.entry_type == 'reading' and (entry.standard_min is not none or entry.standard_max is not none) %}
+                                            <span class="badge bg-light text-dark border">
+                                                <i class="bi bi-bullseye text-warning me-1"></i>
+                                                {% if entry.standard_min is not none %}{{ entry.standard_min }}{% endif %} - {% if entry.standard_max is not none %}{{ entry.standard_max }}{% endif %} {{ entry.unit or '' }}
+                                            </span>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if entry.entry_type == 'reading' %}
+                                                {% if entry.value %}
+                                                    {% set val = entry.value|float if entry.value|trim != '' else none %}
+                                                    {% if val is not none and entry.standard_min is not none and entry.standard_max is not none %}
+                                                        {% if val >= entry.standard_min and val <= entry.standard_max %}
+                                                        <span class="text-success fw-bold">{{ entry.value }} {{ entry.unit or '' }}</span>
+                                                        {% else %}
+                                                        <span class="text-danger fw-bold">{{ entry.value }} {{ entry.unit or '' }}</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="fw-bold">{{ entry.value }} {{ entry.unit or '' }}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                <span class="text-muted">-</span>
+                                                {% endif %}
+                                            {% else %}
+                                                {% if entry.is_completed %}
+                                                <span class="badge bg-success"><i class="bi bi-check"></i> Done</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">Pending</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if entry.entry_type == 'reading' %}
+                                                {% if entry.value %}
+                                                    {% set val = entry.value|float if entry.value|trim != '' else none %}
+                                                    {% if val is not none and entry.standard_min is not none and entry.standard_max is not none %}
+                                                        {% if val >= entry.standard_min and val <= entry.standard_max %}
+                                                        <i class="bi bi-check-lg text-success fs-5"></i>
+                                                        {% else %}
+                                                        <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <i class="bi bi-check-lg text-success fs-5"></i>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <i class="bi bi-dash text-muted"></i>
+                                                {% endif %}
+                                            {% else %}
+                                                {% if entry.is_completed %}
+                                                <i class="bi bi-check-lg text-success fs-5"></i>
+                                                {% else %}
+                                                <i class="bi bi-dash text-muted"></i>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-secondary">No checklist parameters found.</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Signature Tab -->
+                    <div class="tab-pane fade" id="signature" role="tabpanel">
+                        <form action="{{ url_for('logsheet_save_signatures', id=logsheet.id) }}" method="POST" id="signatureForm">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <div class="row g-4 mb-4 mt-2">
+                                <!-- Operator Signature -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm border-0 bg-light h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title fw-bold">Operator / Pihak Pertama</h6>
+                                            {% set op_sig = logsheet.signatures.filter_by(signature_type='operator').first() %}
+                                            <div class="mb-2">
+                                                <input type="text" class="form-control form-control-sm mb-2" name="operator_name" placeholder="Name" value="{{ op_sig.signed_name if op_sig else (logsheet.filled_by.name if logsheet.filled_by else '') }}">
+                                                <input type="text" class="form-control form-control-sm" value="Operator" readonly>
+                                            </div>
+                                            <div class="border bg-white rounded mb-2" style="height: 150px; position: relative;">
+                                                {% if op_sig and op_sig.signature_data %}
+                                                <img src="{{ op_sig.signature_data }}" class="img-fluid" style="height: 150px; width: 100%; object-fit: contain;">
+                                                <input type="hidden" name="operator_signature" id="operator_signature_input" value="{{ op_sig.signature_data }}">
+                                                {% else %}
+                                                <canvas id="operatorSignaturePad" style="width: 100%; height: 100%; touch-action: none;"></canvas>
+                                                <input type="hidden" name="operator_signature" id="operator_signature_input">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary position-absolute bottom-0 end-0 m-1" onclick="if(operatorPad) operatorPad.clear();">Clear</button>
+                                                {% endif %}
+                                            </div>
+                                            {% if op_sig %}
+                                            <div class="small text-muted mt-1"><i class="bi bi-check-circle text-success me-1"></i> Signed on {{ op_sig.signed_at.strftime('%d %b %Y %H:%M') if op_sig.signed_at else '-' }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Supervisor Signature -->
+                                <div class="col-md-6">
+                                    <div class="card shadow-sm border-0 bg-light h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title fw-bold">Supervisor / Pihak Kedua</h6>
+                                            {% set sup_sig = logsheet.signatures.filter_by(signature_type='supervisor').first() %}
+                                            <div class="mb-2">
+                                                <input type="text" class="form-control form-control-sm mb-2" name="supervisor_name" placeholder="Name" value="{{ sup_sig.signed_name if sup_sig else (logsheet.site.name if logsheet.site else '') }}">
+                                                <input type="text" class="form-control form-control-sm" value="Supervisor" readonly>
+                                            </div>
+                                            <div class="border bg-white rounded mb-2" style="height: 150px; position: relative;">
+                                                {% if sup_sig and sup_sig.signature_data %}
+                                                <img src="{{ sup_sig.signature_data }}" class="img-fluid" style="height: 150px; width: 100%; object-fit: contain;">
+                                                <input type="hidden" name="supervisor_signature" id="supervisor_signature_input" value="{{ sup_sig.signature_data }}">
+                                                {% else %}
+                                                <canvas id="supervisorSignaturePad" style="width: 100%; height: 100%; touch-action: none;"></canvas>
+                                                <input type="hidden" name="supervisor_signature" id="supervisor_signature_input">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary position-absolute bottom-0 end-0 m-1" onclick="if(supervisorPad) supervisorPad.clear();">Clear</button>
+                                                {% endif %}
+                                            </div>
+                                            {% if sup_sig %}
+                                            <div class="small text-muted mt-1"><i class="bi bi-check-circle text-success me-1"></i> Signed on {{ sup_sig.signed_at.strftime('%d %b %Y %H:%M') if sup_sig.signed_at else '-' }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                            </div>
+                            
+                            <!-- Save Signatures Button -->
+                            <div class="text-end mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                                    <i class="bi bi-save me-2"></i> Save Signatures
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Footer in Signature -->
+                        <div class="mt-5 pt-3 border-top text-center">
+                            <small class="text-muted d-block mb-1">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Dokumen Resmi PT Jaya Teknik Indonesia
+                            </small>
+                            <small class="text-muted">
+                                Generated: {{ now.strftime('%d %b %Y %H:%M') if now else '-' }}
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Work Log Tab -->
+                    <div class="tab-pane fade" id="log" role="tabpanel">
+                        <div class="timeline mt-3">
+                            {% if logsheet.logs and logsheet.logs.count() > 0 %}
+                            {% for log in logsheet.logs %}
+                            <div class="timeline-item d-flex gap-3 mb-4">
+                                <div class="timeline-icon bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 mt-1" style="width: 40px; height: 40px;">
+                                    {% if log.action == 'Dibuat' %}
+                                    <i class="bi bi-plus-lg"></i>
+                                    {% elif log.action == 'Submitted' %}
+                                    <i class="bi bi-send"></i>
+                                    {% elif log.action == 'Verified' %}
+                                    <i class="bi bi-check-circle"></i>
+                                    {% else %}
+                                    <i class="bi bi-circle"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="timeline-content border p-3 rounded bg-light flex-grow-1">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <h6 class="mb-0 fw-bold">{{ log.action }}</h6>
+                                        <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ log.created_at.strftime('%d %b %Y, %H:%M') if log.created_at else '-' }}</small>
+                                    </div>
+                                    <div class="small text-muted mb-2">
+                                        <i class="bi bi-person me-1"></i> Oleh: <strong>{{ log.user.name if log.user else 'System' }}</strong>
+                                    </div>
+                                    {% if log.note %}
+                                    <p class="mb-0 small text-dark">{{ log.note }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="text-center py-5">
+                                <div class="alert alert-light border d-inline-block">
+                                    <i class="bi bi-info-circle me-2"></i> Belum ada catatan log aktivitas.
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/signature_pad.umd.min.js') }}"></script>
+<script>
+    if (typeof SignaturePad === 'undefined') {
+        var s = document.createElement('script');
+        s.src = "https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js";
+        document.head.appendChild(s);
+    }
+</script>
+<script>
+    var operatorPad = null, supervisorPad = null;
+
+    function resizeLogPad(canvas, pad) {
+        if (!canvas) return;
+        var rect = canvas.getBoundingClientRect();
+        if (!rect || rect.width <= 0 || rect.height <= 0) return;
+
+        var ratio = Math.max(window.devicePixelRatio || 1, 1);
+        var expectedWidth = Math.round(rect.width * ratio);
+        var expectedHeight = Math.round(rect.height * ratio);
+
+        if (canvas.width === expectedWidth && canvas.height === expectedHeight) {
+            return;
+        }
+
+        var data = (pad && !pad.isEmpty()) ? pad.toData() : null;
+        canvas.width = expectedWidth;
+        canvas.height = expectedHeight;
+        var ctx = canvas.getContext("2d");
+        ctx.scale(ratio, ratio);
+
+        if (pad) {
+            pad.clear();
+            if (data && data.length > 0) {
+                pad.fromData(data);
+            }
+        }
+    }
+
+    function initOrResizeLogSignatures() {
+        if (typeof SignaturePad === 'undefined') return;
+
+        var opCanvas = document.getElementById('operatorSignaturePad');
+        if (opCanvas && opCanvas.offsetParent !== null) {
+            if (!operatorPad) {
+                operatorPad = new SignaturePad(opCanvas, {
+                    backgroundColor: 'rgba(255, 255, 255, 0)',
+                    penColor: 'rgb(0, 0, 0)'
+                });
+            }
+            resizeLogPad(opCanvas, operatorPad);
+        }
+
+        var supCanvas = document.getElementById('supervisorSignaturePad');
+        if (supCanvas && supCanvas.offsetParent !== null) {
+            if (!supervisorPad) {
+                supervisorPad = new SignaturePad(supCanvas, {
+                    backgroundColor: 'rgba(255, 255, 255, 0)',
+                    penColor: 'rgb(0, 0, 0)'
+                });
+            }
+            resizeLogPad(supCanvas, supervisorPad);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        initOrResizeLogSignatures();
+
+        window.addEventListener("resize", function() {
+            initOrResizeLogSignatures();
+        });
+
+        if (window.ResizeObserver) {
+            var sigPane = document.getElementById('signature');
+            if (sigPane) {
+                var ro = new ResizeObserver(function() {
+                    initOrResizeLogSignatures();
+                });
+                ro.observe(sigPane);
+            }
+        }
+        
+        var triggerTabList = [].slice.call(document.querySelectorAll('#logsheetTabs button'));
+        triggerTabList.forEach(function (triggerEl) {
+            triggerEl.addEventListener('shown.bs.tab', function (event) {
+                if (event.target.id === 'signature-tab') {
+                    setTimeout(initOrResizeLogSignatures, 50);
+                }
+            });
+        });
+
+        var sForm = document.getElementById('signatureForm');
+        if (sForm) {
+            sForm.addEventListener('submit', function() {
+                if (operatorPad && !operatorPad.isEmpty()) {
+                    document.getElementById('operator_signature_input').value = operatorPad.toDataURL('image/png');
+                }
+                if (supervisorPad && !supervisorPad.isEmpty()) {
+                    document.getElementById('supervisor_signature_input').value = supervisorPad.toDataURL('image/png');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

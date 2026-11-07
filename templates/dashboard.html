@@ -1,0 +1,1043 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <h3 class="mb-0 text-dark fw-bold me-3">Dashboard</h3>
+    
+    <div class="btn-group bg-white rounded-pill shadow-sm border p-1 me-3" role="group">
+        <a href="{{ url_for('dashboard', **request.args) }}" class="btn btn-sm rounded-pill btn-primary fw-bold px-3">
+            Internal
+        </a>
+        <a href="{{ url_for('reports.client_report', **request.args) }}" class="btn btn-sm rounded-pill btn-light text-muted border-0 bg-transparent px-3">
+            Client
+        </a>
+    </div>
+    
+    <form action="{{ url_for('dashboard') }}" method="GET" class="d-inline-flex align-items-center bg-white border rounded-pill px-3 shadow-sm py-1 me-2" id="dashboardFilterForm">
+        <!-- Site Filter -->
+        {% if available_sites %}
+        <div class="d-inline-flex align-items-center me-3 border-end pe-3">
+            <i class="bi bi-funnel text-muted me-2"></i>
+            <select name="site_id" class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark" style="min-width: 130px; box-shadow: none;" onchange="document.getElementById('dashboardFilterForm').submit();">
+                <option value="">All Sites</option>
+                {% for site in available_sites %}
+                    <option value="{{ site.id }}" {% if selected_site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        
+        <!-- Time Range Filter -->
+        <div class="d-inline-flex align-items-center">
+            <i class="bi bi-calendar3 text-muted me-2"></i>
+            <select name="time_range" id="timeRangeSelect" class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark" style="min-width: 140px; box-shadow: none;" onchange="handleTimeRangeChange()">
+                <option value="today" {% if time_range == 'today' %}selected{% endif %}>Hari Ini</option>
+                <option value="this_month" {% if time_range == 'this_month' %}selected{% endif %}>Bulan Ini</option>
+                <option value="last_month" {% if time_range == 'last_month' %}selected{% endif %}>Bulan Lalu</option>
+                <option value="this_year" {% if time_range == 'this_year' %}selected{% endif %}>Tahun Ini</option>
+                <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Custom Range</option>
+            </select>
+            
+            <div id="customDateRange" class="d-inline-flex align-items-center ms-2" style="{% if time_range != 'custom' %}display: none !important;{% endif %}">
+                <input type="date" name="start_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ start_date_str }}" style="width: 110px;">
+                <span class="mx-1 text-muted">-</span>
+                <input type="date" name="end_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ end_date_str }}" style="width: 110px;">
+                <button type="submit" class="btn btn-sm btn-primary rounded-pill ms-2"><i class="bi bi-search"></i></button>
+            </div>
+        </div>
+    </form>
+    
+    <script>
+        function handleTimeRangeChange() {
+            var val = document.getElementById('timeRangeSelect').value;
+            if (val === 'custom') {
+                document.getElementById('customDateRange').style.setProperty('display', 'inline-flex', 'important');
+            } else {
+                document.getElementById('customDateRange').style.setProperty('display', 'none', 'important');
+                document.getElementById('dashboardFilterForm').submit();
+            }
+        }
+    </script>
+    
+    <!-- Customize Dashboard Toggle -->
+    <div class="d-flex gap-2">
+        {% if current_user.role == 'Admin' %}
+        <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm" id="tvModeBtn" onclick="toggleTVMode()">
+            <i class="bi bi-tv me-1"></i> <span class="d-none d-md-inline">TV Mode</span>
+        </button>
+        {% endif %}
+        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" id="editModeBtn" onclick="toggleEditMode()">
+            <i class="bi bi-pencil-square me-1"></i> <span class="d-none d-md-inline">Customize</span>
+        </button>
+    </div>
+    
+{% endblock %}
+
+{% block content %}
+<style>
+    /* Premium Dashboard General Styling */
+    .widget-container .card {
+        border-radius: 20px !important;
+        box-shadow: 0 10px 30px -5px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04) !important;
+        border: none !important;
+        background: linear-gradient(145deg, #ffffff, #f8fafc) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+    }
+    .widget-container .card:hover {
+        box-shadow: 0 20px 40px -5px rgba(79, 70, 229, 0.15) !important;
+        transform: translateY(-4px);
+    }
+    .widget-container .card-header {
+        background-color: transparent !important;
+        border-bottom: 1px solid rgba(0,0,0,0.04) !important;
+        padding: 1.5rem 1.5rem 1rem !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.02em;
+        color: #0f172a !important;
+    }
+    .widget-container .list-group-item {
+        border-color: rgba(0,0,0,0.03) !important;
+        padding: 1rem 1.5rem !important;
+        transition: background-color 0.2s ease;
+    }
+    .widget-container .list-group-item:hover {
+        background-color: rgba(248,250,252,0.8) !important;
+    }
+    .soft-badge-danger { background-color: #fee2e2 !important; color: #dc2626 !important; font-weight: 600; }
+    .soft-badge-warning { background-color: #fef3c7 !important; color: #d97706 !important; font-weight: 600; }
+    .soft-badge-info { background-color: #e0f2fe !important; color: #0284c7 !important; font-weight: 600; }
+    .soft-badge-secondary { background-color: #f1f5f9 !important; color: #475569 !important; font-weight: 600; }
+    .soft-badge-success { background-color: #dcfce7 !important; color: #16a34a !important; font-weight: 600; }
+    
+    /* Premium FullCalendar Styling */
+    .fc { font-family: 'Inter', sans-serif; }
+    .fc-theme-standard .fc-scrollgrid {
+        border: none !important;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .fc-theme-standard th {
+        border: none !important;
+        background-color: #f8f9fa;
+        color: #495057;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        padding: 10px 0;
+    }
+    .fc-theme-standard td, .fc-theme-standard th {
+        border-color: #f1f3f5 !important;
+    }
+    .fc .fc-day-today {
+        background-color: rgba(45, 97, 174, 0.05) !important;
+    }
+    .fc .fc-toolbar-title {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 1.35rem;
+    }
+    .fc .fc-button-primary {
+        background-color: #2d61ae;
+        border-color: #2d61ae;
+        text-transform: capitalize;
+        font-weight: 500;
+        border-radius: 8px;
+        padding: 6px 14px;
+        box-shadow: 0 2px 4px rgba(45, 97, 174, 0.2);
+    }
+    .fc .fc-button-primary:hover, .fc .fc-button-primary:not(:disabled).fc-button-active {
+        background-color: #1e4279;
+        border-color: #1e4279;
+    }
+    .fc-event {
+        border-radius: 6px;
+        border: none;
+        padding: 2px 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        cursor: pointer;
+    }
+
+    /* Widget Edit Mode */
+    .widget-container { transition: opacity 0.3s ease, transform 0.3s ease; } /* Fix drag-resize lag by removing width/all transition */
+    .widget-container .widget-edit-toolbar { display: none; }
+    
+    body.edit-mode .widget-container {
+        border: 2px dashed rgba(79, 70, 229, 0.3);
+        border-radius: 16px;
+        padding: 4px;
+        position: relative;
+    }
+    body.edit-mode .widget-container .widget-edit-toolbar {
+        display: flex !important;
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 10;
+        gap: 6px;
+        align-items: center;
+    }
+    body.edit-mode .widget-container:hover { 
+        border-color: var(--color-primary);
+        box-shadow: 0 0 20px rgba(79, 70, 229, 0.1);
+    }
+    body.edit-mode .widget-container.sortable-ghost {
+        opacity: 0.4;
+        border-color: var(--color-primary);
+        background: rgba(79, 70, 229, 0.05);
+    }
+    body.edit-mode .widget-container.sortable-drag {
+        box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+    }
+
+    .widget-edit-toolbar .drag-handle {
+        cursor: grab;
+        padding: 4px 8px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 8px;
+        color: #64748b;
+        font-size: 1.1rem;
+    }
+    .widget-edit-toolbar .drag-handle:active { cursor: grabbing; }
+    .widget-edit-toolbar .btn-remove-widget {
+        border: none;
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border-radius: 8px;
+        padding: 4px 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .widget-edit-toolbar .btn-remove-widget:hover {
+        background: #ef4444;
+        color: white;
+    }
+
+    /* Drag-to-resize: a visible corner grip */
+    .widget-resize-grip {
+        display: none;
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 24px;
+        height: 24px;
+        cursor: nwse-resize;
+        z-index: 20;
+        background: var(--color-primary, #4f46e5);
+        border-radius: 0 0 12px 0;
+        opacity: 0.7;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+    body.edit-mode .widget-resize-grip { display: block; }
+    .widget-resize-grip:hover, .widget-resize-grip.active {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+    .widget-resize-grip::before {
+        content: '';
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        width: 10px;
+        height: 10px;
+        border-right: 2px solid white;
+        border-bottom: 2px solid white;
+    }
+    .widget-resize-grip::after {
+        content: '';
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        width: 5px;
+        height: 5px;
+        border-right: 2px solid white;
+        border-bottom: 2px solid white;
+    }
+    .dash-size-indicator {
+        display: none; position: fixed; padding: 6px 14px; border-radius: 10px;
+        background: #1e293b; color: white; font-size: 0.85rem; font-weight: 700;
+        z-index: 9999; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+
+    /* Edit Mode Controls Bar */
+    .edit-controls-bar {
+        display: none;
+        background: linear-gradient(135deg, #f8fafc, #eef2ff);
+        border: 1px solid rgba(79, 70, 229, 0.2);
+        border-radius: 16px;
+        padding: 16px 24px;
+        margin-bottom: 20px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        animation: slideDown 0.3s ease;
+    }
+    body.edit-mode .edit-controls-bar { display: flex; }
+    
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Widget Catalog in Offcanvas */
+    .widget-catalog-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: 8px;
+    }
+    .widget-catalog-item:hover {
+        border-color: var(--color-primary);
+        background: rgba(79, 70, 229, 0.03);
+        transform: translateX(4px);
+    }
+    .widget-catalog-item.already-added {
+        opacity: 0.5;
+        pointer-events: none;
+        background: #f1f5f9;
+    }
+    .widget-catalog-item i.widget-icon {
+        font-size: 1.3rem;
+        color: var(--color-primary);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(79, 70, 229, 0.1);
+        border-radius: 10px;
+    }
+</style>
+
+<!-- Edit Mode Controls -->
+<div class="edit-controls-bar" id="editControlsBar">
+    <div class="d-flex align-items-center gap-3">
+        <i class="bi bi-palette2 text-primary fs-4"></i>
+        <div>
+            <h6 class="mb-0 fw-bold text-dark">Mode Customize</h6>
+            <small class="text-muted">Drag ikon ☰ untuk pindahkan, tarik pinggir kanan widget untuk resize</small>
+        </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="openWidgetCatalog()">
+            <i class="bi bi-plus-circle me-1"></i> Tambah Widget
+        </button>
+        <button class="btn btn-sm btn-outline-warning rounded-pill px-3" onclick="resetLayout()">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+        </button>
+        <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" onclick="saveLayout()">
+            <i class="bi bi-check-lg me-1"></i> Simpan
+        </button>
+        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="toggleEditMode()">
+            <i class="bi bi-x-lg me-1"></i> Batal
+        </button>
+    </div>
+</div>
+
+<div id="dashSizeIndicator" class="dash-size-indicator"></div>
+
+<!-- Dynamic Widget Grid -->
+<div class="row g-4" id="widgetGrid">
+    {% for widget in user_widgets %}
+    <div class="col-lg-{{ widget.col_span }} col-12 widget-container" data-widget-key="{{ widget.widget_key }}" data-col-span="{{ widget.col_span }}">
+        <div class="widget-wrapper position-relative">
+            <!-- Edit toolbar (visible in edit mode only) -->
+            <div class="widget-edit-toolbar">
+                <span class="drag-handle" title="Drag untuk reorder"><i class="bi bi-grip-vertical"></i></span>
+                <button class="btn-remove-widget" onclick="removeWidget(this)" title="Hapus widget">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            {% set wkey = widget.widget_key %}
+            {% if wkey == 'kpi_cards' %}
+                {% include 'dashboard/widgets/kpi_cards.html' %}
+            {% elif wkey == 'wo_status_chart' %}
+                {% include 'dashboard/widgets/wo_status_chart.html' %}
+            {% elif wkey == 'top_downtime' %}
+                {% include 'dashboard/widgets/top_downtime.html' %}
+            {% elif wkey == 'cpi_table' %}
+                {% include 'dashboard/widgets/cpi_table.html' %}
+            {% elif wkey == 'calendar' %}
+                {% include 'dashboard/widgets/calendar.html' %}
+            {% elif wkey == 'low_stock' %}
+                {% include 'dashboard/widgets/low_stock.html' %}
+            {% elif wkey == 'pending_prs' %}
+                {% include 'dashboard/widgets/pending_prs.html' %}
+            {% elif wkey == 'overdue_wos' %}
+                {% include 'dashboard/widgets/overdue_wos.html' %}
+            {% elif wkey == 'upcoming_wos' %}
+                {% include 'dashboard/widgets/upcoming_wos.html' %}
+            {% elif wkey == 'wo_today' %}
+                {% include 'dashboard/widgets/wo_today.html' %}
+            {% elif wkey == 'expiring_assets' %}
+                {% include 'dashboard/widgets/expiring_assets.html' %}
+            {% endif %}
+        </div>
+        <div class="widget-resize-grip"></div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Widget Catalog Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="widgetCatalogPanel" aria-labelledby="widgetCatalogLabel">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold" id="widgetCatalogLabel">
+            <i class="bi bi-grid-1x2 text-primary me-2"></i> Widget Catalog
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <p class="text-muted small mb-3">Klik widget untuk menambahkannya ke dashboard Anda.</p>
+        <div id="catalogList">
+            {% for w in widget_catalog %}
+            <div class="widget-catalog-item {% if w.key in active_keys %}already-added{% endif %}" 
+                 data-widget-key="{{ w.key }}" data-default-col="{{ w.default_col }}"
+                 onclick="addWidgetFromCatalog(this)">
+                <i class="bi {{ w.icon }} widget-icon"></i>
+                <div class="flex-grow-1">
+                    <div class="fw-bold small">{{ w.label }}</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Default: {{ w.default_col }} kolom</div>
+                </div>
+                <i class="bi bi-plus-circle text-primary"></i>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    // === Chart.js & FullCalendar Init ===
+    document.addEventListener("DOMContentLoaded", function() {
+        // WO Status Chart
+            const chartEl = document.getElementById('woStatusChart');
+        if (chartEl) {
+            const ctx = chartEl.getContext('2d');
+            const wo_labels = {{ wo_status_labels | tojson | safe }};
+            const wo_data = {{ wo_status_data | tojson | safe }};
+            const wo_colors = {{ wo_status_colors | tojson | safe }};
+            
+            // Calculate total WOs
+            const totalWOs = wo_data.reduce((a, b) => a + b, 0);
+
+            // Center text plugin
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw: function(chart) {
+                    if (chart.config.options.elements.center) {
+                        const ctx = chart.ctx;
+                        const centerConfig = chart.config.options.elements.center;
+                        const text = centerConfig.text;
+                        const color = centerConfig.color || '#333';
+                        const sidePadding = centerConfig.sidePadding || 20;
+                        const sidePaddingCalculated = (sidePadding / 100) * (chart.innerRadius * 2);
+
+                        ctx.save();
+                        ctx.font = "bold 30px 'Inter', sans-serif";
+                        ctx.fillStyle = color;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
+                        const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+                        
+                        // Main text
+                        ctx.fillText(text, centerX, centerY - 10);
+                        
+                        // Sub text
+                        ctx.font = "normal 14px 'Inter', sans-serif";
+                        ctx.fillStyle = '#64748b';
+                        ctx.fillText("Total WO", centerX, centerY + 15);
+                        ctx.restore();
+                    }
+                }
+            };
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                plugins: [centerTextPlugin],
+                data: {
+                    labels: wo_labels,
+                    datasets: [{
+                        data: wo_data,
+                        backgroundColor: wo_colors,
+                        borderWidth: 0,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    elements: {
+                        center: {
+                            text: totalWOs.toString(),
+                            color: '#1e293b'
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    family: "'Inter', sans-serif",
+                                    size: 13
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#1e293b',
+                            bodyColor: '#475569',
+                            borderColor: 'rgba(0,0,0,0.05)',
+                            borderWidth: 1,
+                            padding: 10,
+                            boxPadding: 5,
+                            usePointStyle: true,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed !== null) label += context.parsed;
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // FullCalendar
+        var calendarEl = document.getElementById('calendar');
+        if (calendarEl) {
+            var calendarEvents = {{ calendar_events | tojson | safe }};
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                height: 'auto',
+                contentHeight: 'auto',
+                editable: true,
+                events: calendarEvents,
+                eventDrop: function(info) {
+                    updateEventSchedule(info.event, info.revert);
+                },
+                eventResize: function(info) {
+                    updateEventSchedule(info.event, info.revert);
+                },
+                eventClick: function(info) {
+                    if(info.event.url) {
+                        window.location.href = info.event.url;
+                        info.jsEvent.preventDefault();
+                    }
+                }
+            });
+            calendar.render();
+
+            function updateEventSchedule(event, revertFunc) {
+                var data = {
+                    id: event.id,
+                    start: event.start ? event.start.toISOString() : null,
+                    end: event.end ? event.end.toISOString() : null,
+                    allDay: event.allDay
+                };
+                
+                document.body.style.cursor = 'wait';
+                
+                fetch('{{ url_for("schedule.api_update_event") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.body.style.cursor = 'default';
+                    if(!data.success) {
+                        alert('Failed to update schedule block.');
+                        if (revertFunc) revertFunc();
+                    }
+                })
+                .catch(error => {
+                    document.body.style.cursor = 'default';
+                    console.error('Error updating event:', error);
+                    alert('Error updating schedule.');
+                    if (revertFunc) revertFunc();
+                });
+            }
+        }
+    });
+
+    // === Edit Mode & SortableJS ===
+    let sortableInstance = null;
+    let isEditMode = false;
+
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        document.body.classList.toggle('edit-mode', isEditMode);
+        
+        const btn = document.getElementById('editModeBtn');
+        if (isEditMode) {
+            btn.innerHTML = '<i class="bi bi-x-lg me-1"></i> <span class="d-none d-md-inline">Keluar</span>';
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-danger');
+            initSortable();
+        } else {
+            btn.innerHTML = '<i class="bi bi-pencil-square me-1"></i> <span class="d-none d-md-inline">Customize</span>';
+            btn.classList.remove('btn-danger');
+            btn.classList.add('btn-outline-primary');
+            if (sortableInstance) {
+                sortableInstance.destroy();
+                sortableInstance = null;
+            }
+        }
+    }
+
+    function initSortable() {
+        const grid = document.getElementById('widgetGrid');
+        if (sortableInstance) sortableInstance.destroy();
+        sortableInstance = Sortable.create(grid, {
+            animation: 250,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        });
+        initResizeHandles();
+    }
+
+    function removeWidget(btn) {
+        const container = btn.closest('.widget-container');
+        const key = container.dataset.widgetKey;
+        container.style.transition = 'all 0.3s ease';
+        container.style.opacity = '0';
+        container.style.transform = 'scale(0.8)';
+        setTimeout(() => {
+            container.remove();
+            // Un-dim in catalog
+            const catalogItem = document.querySelector(`.widget-catalog-item[data-widget-key="${key}"]`);
+            if (catalogItem) catalogItem.classList.remove('already-added');
+        }, 300);
+    }
+
+    const COL_SIZES = [3, 4, 5, 6, 7, 8, 12];
+
+    function initResizeHandles() {
+        document.querySelectorAll('.widget-resize-grip').forEach(grip => {
+            // Clone to remove old listeners
+            const newGrip = grip.cloneNode(true);
+            grip.parentNode.replaceChild(newGrip, grip);
+
+            newGrip.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const container = this.closest('.widget-container');
+                if (!container) return;
+                const grid = document.getElementById('widgetGrid');
+                const gridWidth = grid.offsetWidth;
+                const indicator = document.getElementById('dashSizeIndicator');
+
+                this.classList.add('active');
+                indicator.style.display = 'block';
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+
+                const onMouseMove = (ev) => {
+                    const colLeft = container.getBoundingClientRect().left;
+                    const widthPx = ev.clientX - colLeft;
+                    const ratio = widthPx / gridWidth;
+                    let rawCols = Math.round(ratio * 12);
+                    // clamp
+                    if (rawCols < 3) rawCols = 3;
+                    if (rawCols > 12) rawCols = 12;
+
+                    let best = 6;
+                    let bestDist = 999;
+                    COL_SIZES.forEach(s => {
+                        const d = Math.abs(rawCols - s);
+                        if (d < bestDist) { bestDist = d; best = s; }
+                    });
+
+                    COL_SIZES.forEach(s => container.classList.remove(`col-lg-${s}`));
+                    container.classList.add(`col-lg-${best}`);
+                    container.dataset.colSpan = best;
+                    
+                    // Vertical resize
+                    const card = container.querySelector('.card');
+                    if (card) {
+                        const top = card.getBoundingClientRect().top;
+                        let heightPx = ev.clientY - top;
+                        if (heightPx < 150) heightPx = 150; // min height
+                        card.classList.remove('h-100'); 
+                        card.style.height = heightPx + 'px';
+                        
+                        const cardBody = card.querySelector('.card-body');
+                        if (cardBody) {
+                            cardBody.style.overflowY = 'auto';
+                            cardBody.style.minHeight = '0';
+                        }
+                    }
+
+                    indicator.textContent = `${best}/12 kolom`;
+                    indicator.style.left = (ev.clientX + 15) + 'px';
+                    indicator.style.top = (ev.clientY - 15) + 'px';
+                };
+
+                const onMouseUp = () => {
+                    newGrip.classList.remove('active');
+                    indicator.style.display = 'none';
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    
+                    // Save height to localStorage
+                    const card = container.querySelector('.card');
+                    if (card && card.style.height) {
+                        localStorage.setItem('widget_height_{{ current_user.id }}_' + container.dataset.widgetKey, card.style.height);
+                    }
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        });
+    }
+
+    function openWidgetCatalog() {
+        const offcanvas = new bootstrap.Offcanvas(document.getElementById('widgetCatalogPanel'));
+        offcanvas.show();
+    }
+
+    function addWidgetFromCatalog(el) {
+        if (el.classList.contains('already-added')) return;
+        
+        const key = el.dataset.widgetKey;
+        const colSpan = el.dataset.defaultCol;
+        
+        // We can't dynamically include Jinja partials client-side,
+        // so we save the layout and reload the page
+        el.classList.add('already-added');
+        
+        // Build current layout + new widget
+        const layout = getCurrentLayout();
+        layout.push({
+            widget_key: key,
+            position: layout.length,
+            col_span: parseInt(colSpan),
+            is_visible: true
+        });
+        
+        // Save and reload
+        fetch('/api/dashboard/layout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({layout: layout})
+        }).then(r => r.json()).then(data => {
+            window.location.reload();
+        });
+    }
+
+    function getCurrentLayout() {
+        const containers = document.querySelectorAll('#widgetGrid .widget-container');
+        const layout = [];
+        containers.forEach((el, idx) => {
+            layout.push({
+                widget_key: el.dataset.widgetKey,
+                position: idx,
+                col_span: parseInt(el.dataset.colSpan) || 6,
+                is_visible: true
+            });
+        });
+        return layout;
+    }
+
+    function saveLayout() {
+        const layout = getCurrentLayout();
+        fetch('/api/dashboard/layout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({layout: layout})
+        }).then(r => r.json()).then(data => {
+            // Show success toast
+            showToast('Layout berhasil disimpan!', 'success');
+            toggleEditMode();
+        }).catch(err => {
+            showToast('Gagal menyimpan layout.', 'danger');
+        });
+    }
+
+    function resetLayout() {
+        if (!confirm('Reset dashboard ke layout default?')) return;
+        fetch('/api/dashboard/layout/reset', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        }).then(r => r.json()).then(data => {
+            window.location.reload();
+        });
+    }
+
+    function showToast(message, type) {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} alert-dismissible fade show position-fixed shadow-lg`;
+        toast.style.cssText = 'bottom: 100px; right: 24px; z-index: 9999; min-width: 280px; border-radius: 12px; animation: slideDown 0.3s ease;';
+        toast.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.remove(); }, 3000);
+    }
+
+    // === Fit to Screen (1 frame) Feature ===
+    let isFitFrame = false;
+    let frameResizeObserver = null;
+    let adjustScaleFn = null;
+
+    function toggleFitFrame() {
+        isFitFrame = !isFitFrame;
+        const btn = document.getElementById('fitFrameBtn');
+        const gridWrapper = document.getElementById('widgetGrid');
+        
+        if (isFitFrame) {
+            btn.classList.add('active', 'btn-secondary');
+            btn.classList.remove('btn-outline-secondary');
+            btn.innerHTML = '<i class="bi bi-arrows-expand me-1"></i> <span class="d-none d-md-inline">Batal 1 Frame</span>';
+            enableFitFrame(gridWrapper);
+        } else {
+            btn.classList.remove('active', 'btn-secondary');
+            btn.classList.add('btn-outline-secondary');
+            btn.innerHTML = '<i class="bi bi-arrows-collapse me-1"></i> <span class="d-none d-md-inline">Fit 1 Frame</span>';
+            disableFitFrame(gridWrapper);
+        }
+    }
+
+    function enableFitFrame(grid) {
+        document.body.style.overflow = 'hidden';
+        
+        adjustScaleFn = () => {
+            if (!isFitFrame) return;
+            grid.style.transform = 'none';
+            grid.style.transformOrigin = 'top center';
+            
+            const toolbar = document.querySelector('.top-toolbar');
+            const toolbarHeight = toolbar ? toolbar.offsetHeight : 70;
+            // Subtract padding to fit perfectly inside the viewport
+            const availableHeight = window.innerHeight - toolbarHeight - 60; 
+            const trueHeight = grid.scrollHeight;
+            
+            if (trueHeight > availableHeight && availableHeight > 0) {
+                // scale down with a slight 2% margin to avoid touching bottom edges
+                const scale = availableHeight / trueHeight * 0.98;
+                grid.style.transform = `scale(${scale})`;
+                // Collapse the empty space caused by scaling
+                grid.style.marginBottom = `-${trueHeight * (1 - scale)}px`; 
+            } else {
+                grid.style.transform = 'none';
+                grid.style.marginBottom = '0';
+            }
+        };
+        
+        adjustScaleFn();
+        window.addEventListener('resize', adjustScaleFn);
+        if (!frameResizeObserver) {
+            // Using a timeout inside observer to prevent 'ResizeObserver loop limit exceeded' error
+            frameResizeObserver = new ResizeObserver(() => {
+                setTimeout(adjustScaleFn, 0);
+            });
+        }
+        frameResizeObserver.observe(grid);
+    }
+
+    function disableFitFrame(grid) {
+        document.body.style.overflow = '';
+        grid.style.transform = 'none';
+        grid.style.marginBottom = '0';
+        
+        if (adjustScaleFn) {
+            window.removeEventListener('resize', adjustScaleFn);
+        }
+        if (frameResizeObserver) {
+            frameResizeObserver.disconnect();
+        }
+    }
+
+    // Load custom heights from localStorage
+    window.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.widget-container').forEach(container => {
+            const key = container.dataset.widgetKey;
+            const savedHeight = localStorage.getItem('widget_height_{{ current_user.id }}_' + key);
+            if (savedHeight) {
+                const card = container.querySelector('.card');
+                if (card) {
+                    card.classList.remove('h-100');
+                    card.style.height = savedHeight;
+                    const cardBody = card.querySelector('.card-body');
+                    if (cardBody) {
+                        cardBody.style.overflowY = 'auto';
+                        cardBody.style.minHeight = '0';
+                    }
+                }
+            }
+        });
+    });
+
+    // TV Mode Logic - Iframe Based for True Fullscreen
+    let tvModeContainer = null;
+    let tvModeIframe = null;
+    let tvModeTitle = null;
+    let tvModeSites = [];
+    let tvModeCurrentIndex = 0;
+    
+    function toggleTVMode() {
+        const select = document.querySelector('select[name="site_id"]');
+        if (!select) return;
+        
+        // Get all actual sites (exclude empty 'All Sites' if desired, but we can include all options that have a value)
+        tvModeSites = Array.from(select.options).filter(o => o.value !== '').map(o => ({
+            id: o.value,
+            name: o.textContent
+        }));
+        
+        if (tvModeSites.length === 0) {
+            alert("Tidak ada site untuk ditampilkan.");
+            return;
+        }
+        
+        tvModeCurrentIndex = 0;
+        
+        // Create Fullscreen Overlay Container
+        tvModeContainer = document.createElement('div');
+        tvModeContainer.id = 'tvModeContainer';
+        tvModeContainer.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:#f8fafc; z-index:999999; display:flex; flex-direction:column;';
+        
+        // Header Signage
+        const header = document.createElement('div');
+        header.style.cssText = 'background: #1e293b; color: white; padding: 15px 30px; display:flex; justify-content:space-between; align-items:center; font-size: 26px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 10;';
+        
+        tvModeTitle = document.createElement('div');
+        header.appendChild(tvModeTitle);
+        
+        const exitBtn = document.createElement('button');
+        exitBtn.innerHTML = '<i class="bi bi-x-circle me-2"></i> Keluar TV Mode';
+        exitBtn.className = 'btn btn-danger btn-lg rounded-pill px-4 shadow';
+        exitBtn.onclick = exitTVMode;
+        header.appendChild(exitBtn);
+        
+        tvModeContainer.appendChild(header);
+        
+        // Iframe for Dashboard Content
+        tvModeIframe = document.createElement('iframe');
+        tvModeIframe.style.cssText = 'flex-grow: 1; border: none; width: 100%;';
+        tvModeContainer.appendChild(tvModeIframe);
+        
+        document.body.appendChild(tvModeContainer);
+        
+        // Request Real Fullscreen on the container
+        if (tvModeContainer.requestFullscreen) {
+            tvModeContainer.requestFullscreen().catch(err => console.log(err));
+        }
+        
+        // Load first site
+        loadTVSite();
+    }
+    
+    function loadTVSite() {
+        const site = tvModeSites[tvModeCurrentIndex];
+        tvModeTitle.innerHTML = `<i class="bi bi-tv me-2 text-info"></i> Menampilkan Data: <span class="text-warning">${site.name}</span>`;
+        // Pass tv_mode=1 parameter
+        let url = new URL(window.location.href);
+        url.searchParams.set('site_id', site.id);
+        url.searchParams.set('tv_mode', '1');
+        tvModeIframe.src = url.toString();
+    }
+    
+    function exitTVMode() {
+        if (document.exitFullscreen && document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+        if (tvModeContainer) {
+            tvModeContainer.remove();
+            tvModeContainer = null;
+        }
+    }
+    
+    // Listen for scroll completion message from iframe
+    window.addEventListener('message', function(event) {
+        if (event.data === 'tv_scroll_done') {
+            tvModeCurrentIndex = (tvModeCurrentIndex + 1) % tvModeSites.length;
+            loadTVSite();
+        }
+    });
+
+    // Code for INSIDE the iframe when tv_mode=1 is present
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tv_mode') === '1') {
+        document.body.classList.add('tv-mode-iframe');
+        
+        // Hide sidebar and toolbar
+        const sidebar = document.getElementById('sidebar');
+        const toolbar = document.querySelector('.top-toolbar');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (sidebar) sidebar.style.setProperty('display', 'none', 'important');
+        if (toolbar) toolbar.style.setProperty('display', 'none', 'important');
+        if (mainContent) {
+            mainContent.style.setProperty('margin-left', '0', 'important');
+            mainContent.style.setProperty('padding-top', '20px', 'important');
+        }
+        
+        // Auto scroll loop inside iframe
+        let scrollPos = 0;
+        let direction = 1;
+        
+        setTimeout(() => {
+            const scrollInterval = setInterval(() => {
+                const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+                if (maxScroll > 0) {
+                    scrollPos += direction;
+                    window.scrollTo(0, scrollPos);
+                    
+                    if (scrollPos >= maxScroll) {
+                        clearInterval(scrollInterval);
+                        // Wait a moment at the bottom, then notify parent to switch site
+                        setTimeout(() => {
+                            window.parent.postMessage('tv_scroll_done', '*');
+                        }, 2000);
+                    }
+                } else {
+                    // Not scrollable, wait 8 seconds then switch site
+                    clearInterval(scrollInterval);
+                    setTimeout(() => {
+                        window.parent.postMessage('tv_scroll_done', '*');
+                    }, 8000);
+                }
+            }, 30);
+        }, 2000); // 2 second pause at top before scrolling
+    }
+</script>
+
+{% endblock %}

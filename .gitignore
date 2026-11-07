@@ -1,0 +1,47 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Databases & Database Dumps
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sql
+*.bak
+*.gz
+instance/
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+
+# Uploads & User Media (keep directory)
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Temporary & Test Scratch Files
+scratch/
+tmp_*
+_audit_tmp*
+_check_attrs.py
+_patch.py
+_t*.py
+bugtest*
+_TVE9B~8.DB
+*.log
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+.claude/
+.opencode/
+.qwen/

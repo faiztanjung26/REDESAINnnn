@@ -1,0 +1,1154 @@
+{% extends "base.html" %}
+
+{% block title %}Client Report Dashboard{% endblock %}
+
+{% block toolbar_left %}
+    <h3 class="mb-0 text-dark fw-bold me-3">Client Report</h3>
+    
+    <div class="btn-group bg-white rounded-pill shadow-sm border p-1 me-3" role="group">
+        <a href="{{ url_for('dashboard', **request.args) }}" class="btn btn-sm rounded-pill btn-light text-muted border-0 bg-transparent px-3">
+            Internal
+        </a>
+        <a href="{{ url_for('reports.client_report', **request.args) }}" class="btn btn-sm rounded-pill btn-primary fw-bold px-3">
+            Client
+        </a>
+    </div>
+    
+    <form action="{{ url_for('reports.client_report') }}" method="GET" class="d-inline-flex align-items-center bg-white border rounded-pill px-3 py-1 shadow-sm ms-2 gap-2" id="reportFilterForm">
+        <!-- Site Filter -->
+        {% if sites|length == 1 %}
+        <div class="d-inline-flex align-items-center me-3 border-end pe-3">
+            <i class="bi bi-geo-alt-fill text-muted me-2"></i>
+            <span class="fw-bold text-dark">{{ sites[0].name }}</span>
+            <input type="hidden" name="site_id" value="{{ sites[0].id }}">
+        </div>
+        {% elif sites %}
+        <div class="d-inline-flex align-items-center me-3 border-end pe-3">
+            <i class="bi bi-funnel text-muted me-2"></i>
+            <select name="site_id" class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark" style="min-width: 130px; box-shadow: none;" onchange="document.getElementById('reportFilterForm').submit();">
+                <option value="">All Sites</option>
+                {% for site in sites %}
+                    <option value="{{ site.id }}" {% if selected_site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        
+        <!-- Time Range Filter -->
+        <div class="d-inline-flex align-items-center">
+            <i class="bi bi-calendar3 text-muted me-2"></i>
+            <select name="time_range" id="timeRangeSelect" class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark" style="min-width: 140px; box-shadow: none;" onchange="handleTimeRangeChange()">
+                <option value="today" {% if time_range == 'today' %}selected{% endif %}>Hari Ini</option>
+                <option value="this_month" {% if time_range == 'this_month' %}selected{% endif %}>Bulan Ini</option>
+                <option value="last_month" {% if time_range == 'last_month' %}selected{% endif %}>Bulan Lalu</option>
+                <option value="this_year" {% if time_range == 'this_year' %}selected{% endif %}>Tahun Ini</option>
+                <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Custom Range</option>
+            </select>
+            
+            <div id="customDateRange" class="d-inline-flex align-items-center ms-2" style="{% if time_range != 'custom' %}display: none !important;{% endif %}">
+                <input type="date" name="start_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ start_date_str }}" style="width: 110px;">
+                <span class="mx-1 text-muted">-</span>
+                <input type="date" name="end_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ end_date_str }}" style="width: 110px;">
+                <button type="submit" class="btn btn-sm btn-primary rounded-pill ms-2"><i class="bi bi-search"></i></button>
+            </div>
+        </div>
+    </form>
+    
+    <script>
+        function handleTimeRangeChange() {
+            var val = document.getElementById('timeRangeSelect').value;
+            if (val === 'custom') {
+                document.getElementById('customDateRange').style.setProperty('display', 'inline-flex', 'important');
+            } else {
+                document.getElementById('customDateRange').style.setProperty('display', 'none', 'important');
+                document.getElementById('reportFilterForm').submit();
+            }
+        }
+    </script>
+{% endblock %}
+
+{% block content %}
+
+{% macro render_wo_table(wos_list, is_closed) %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 datatable-instance" style="width:100%">
+        <thead>
+            <tr>
+                <th class="ps-4">Kode WO</th>
+                <th>Aset</th>
+                <th>Tipe</th>
+                <th>Status</th>
+                <th>Tanggal Buat</th>
+                <th>Tenggat Waktu</th>
+                <th>Alasan / Kendala</th>
+                <th class="d-print-none text-center">Bukti</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for wo in wos_list %}
+                {% set closed = wo.current_status and wo.current_status.control_type == 'Closed' %}
+                {% if (is_closed and closed) or (not is_closed and not closed) %}
+            <tr>
+                <td class="ps-4">
+                    <a href="{{ url_for('work_orders.edit', id=wo.id) }}" class="fw-bold text-decoration-none">{{ wo.code }}</a>
+                    <div class="small text-muted text-truncate" style="max-width: 200px;">{{ wo.description }}</div>
+                </td>
+                <td>{{ wo.asset.name if wo.asset else '-' }}</td>
+                <td><span class="badge bg-secondary">{{ wo.maintenance_type }}</span></td>
+                <td>
+                    {% if wo.current_status %}
+                        {% if wo.current_status.control_type == 'Draft' %}
+                            <span class="badge bg-secondary">{{ wo.current_status.name }}</span>
+                        {% elif wo.current_status.control_type in ['Pending', 'On Hold'] %}
+                            <span class="badge bg-warning text-dark">{{ wo.current_status.name }}</span>
+                        {% elif wo.current_status.control_type == 'Active' %}
+                            <span class="badge bg-primary">{{ wo.current_status.name }}</span>
+                        {% elif wo.current_status.control_type == 'Closed' or wo.current_status.name == 'Completed' %}
+                            <span class="badge bg-success">{{ wo.current_status.name }}</span>
+                        {% else %}
+                            <span class="badge bg-light text-dark border">{{ wo.current_status.name }}</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="badge bg-light text-dark border">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ wo.date_created.strftime('%d %b %Y') }}</td>
+                <td>
+                    {% if wo.suggested_completion_date %}
+                        {% set is_overdue = wo.suggested_completion_date < current_month_start and (not wo.current_status or wo.current_status.control_type != 'Closed') %}
+                        <span class="{% if is_overdue %}text-danger fw-bold{% endif %}">
+                            {{ wo.suggested_completion_date.strftime('%d %b %Y') }}
+                            {% if is_overdue %}<i class="bi bi-exclamation-circle ms-1" title="Overdue"></i>{% endif %}
+                        </span>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if is_closed %}
+                        <div class="text-center text-muted">-</div>
+                    {% else %}
+                    <div class="d-flex align-items-center">
+                        {% set hold_reason = namespace(value='') %}
+                        {% if wo.current_status and wo.current_status.name in ['On Hold', 'Hold'] %}
+                            {% for log in wo.logs.all() %}
+                                {% if not hold_reason.value and 'Moved to Hold. Reason: ' in log.log_text %}
+                                    {% set hold_reason.value = log.log_text.split('Moved to Hold. Reason: ')[1] %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                        
+                        {% if hold_reason.value %}
+                            <span id="reason-text-{{ wo.id }}" class="me-2 text-danger fw-bold"><i class="bi bi-pause-circle me-1"></i>{{ hold_reason.value }}</span>
+                        {% elif wo.current_status and wo.current_status.name == 'Solved' %}
+                            <span id="reason-text-{{ wo.id }}" class="me-2 text-info fst-italic">Tasklist dan checklist telah dilakukan, namun belum diberi approve oleh supervisor</span>
+                        {% elif wo.current_status and wo.current_status.name == 'In Progress' %}
+                            <span id="reason-text-{{ wo.id }}" class="me-2 text-primary fst-italic">Pengecekan sedang dilakukan oleh teknisi</span>
+                        {% else %}
+                            <span id="reason-text-{{ wo.id }}" class="me-2">{{ wo.delay_reason or '-' }}</span>
+                        {% endif %}
+                        {% if current_user.role in ['Admin', 'Supervisor'] %}
+                        <button class="btn btn-sm btn-link text-primary p-0 text-decoration-none d-print-none" onclick="editReason({{ wo.id }}, this)" data-reason="{{ wo.delay_reason or '' }}">
+                            <i class="bi bi-pencil-square"></i> Edit
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </td>
+                <td class="d-print-none text-center">
+                    <button class="btn btn-sm btn-outline-primary rounded-pill py-1 px-2" onclick="showProof({{ wo.id }})" title="Bukti Pekerjaan">
+                        <i class="bi bi-card-checklist"></i>
+                    </button>
+                    <!-- Hidden proof data for this WO -->
+                    <div id="proof-data-{{ wo.id }}" class="d-none">
+                        <div class="row">
+                            {% set procedures = wo.procedures.all() %}
+                            {% set checklists = wo.checklist_parameters.all() %}
+                            {% set attachments = wo.attachments.all() %}
+                            <div class="col-md-6 mb-3">
+                                <h6 class="fw-bold border-bottom pb-2">Tasklist (Prosedur)</h6>
+                                {% if procedures %}
+                                <div style="max-height: 350px; overflow-y: auto; padding-right: 5px;" class="custom-scrollbar">
+                                    <ul class="list-group list-group-flush small">
+                                        {% for p in procedures %}
+                                        <li class="list-group-item px-0 py-1 border-0">
+                                            <i class="bi {% if p.is_completed %}bi-check-circle-fill text-success{% else %}bi-circle text-muted{% endif %} me-2"></i> {{ p.name }}
+                                            {% if p.attachment_path %}
+                                            <div class="mt-1 ms-4 d-flex flex-wrap gap-1">
+                                                {% for img_path in p.attachment_path.split('|') %}
+                                                {% if img_path %}
+                                                <a href="{{ url_for('static', filename=img_path) }}" target="_blank">
+                                                    <img src="{{ url_for('static', filename=img_path) }}" alt="Foto Task {{ loop.index }}" class="img-thumbnail rounded" style="height: 60px; width: 60px; object-fit: cover;">
+                                                </a>
+                                                {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% else %}
+                                <p class="text-muted small fst-italic mb-0">Tidak ada tasklist</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="fw-bold border-bottom pb-2">Checklist (Parameter)</h6>
+                                {% if checklists %}
+                                <div style="max-height: 350px; overflow-y: auto; padding-right: 5px;" class="custom-scrollbar">
+                                    <table class="table table-sm table-borderless small mb-0">
+                                        <thead class="sticky-top bg-white">
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Standard</th>
+                                                <th>Actual</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for c in checklists %}
+                                            <tr>
+                                                <td>{{ c.parameter }}</td>
+                                                <td>{{ c.standard }}</td>
+                                                <td>
+                                                    {% if c.value %}
+                                                        <span class="badge bg-light text-dark border">{{ c.value }}</span>
+                                                    {% else %}
+                                                        <span class="text-muted fst-italic">-</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <p class="text-muted small fst-italic mb-0">Tidak ada checklist parameter</p>
+                                {% endif %}
+                            </div>
+                            {% if attachments %}
+                            <div class="col-12 mt-3">
+                                <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-paperclip text-primary me-1"></i> Foto & Catatan Lampiran Berkas (Attachments Note)</h6>
+                                <div class="row g-3">
+                                    {% for att in attachments %}
+                                    <div class="col-12">
+                                        <div class="card border shadow-sm">
+                                            <div class="card-header bg-secondary text-white text-center fw-bold py-1" style="font-size: 0.95rem;">
+                                                Note {% if att.file_name %}({{ att.file_name }}){% endif %}
+                                            </div>
+                                            <div class="card-body text-center py-3">
+                                                {% if att.description %}
+                                                <p class="card-text mb-3 text-dark fs-6">{{ att.description }}</p>
+                                                {% else %}
+                                                <p class="card-text text-muted fst-italic mb-3 small">(Tidak ada catatan)</p>
+                                                {% endif %}
+                                                
+                                                {% if att.file_name and att.file_name.endswith(('.jpg', '.png', '.jpeg', '.gif', '.webp')) %}
+                                                <div class="d-flex justify-content-center mt-2">
+                                                    <a href="{{ url_for('static', filename=att.file_path) }}" target="_blank">
+                                                        <img src="{{ url_for('static', filename=att.file_path) }}" alt="{{ att.file_name }}" class="img-fluid rounded border shadow-sm" style="max-height: 380px; width: auto; object-fit: contain;">
+                                                    </a>
+                                                </div>
+                                                {% else %}
+                                                <div class="mt-2">
+                                                    <a href="{{ url_for('static', filename=att.file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                                        <i class="bi bi-file-earmark-pdf text-danger me-1"></i> Buka Berkas ({{ att.file_name }})
+                                                    </a>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="card-footer bg-light text-muted small text-end py-1">
+                                                Tgl Upload: {{ att.upload_date|to_jakarta('%d/%m/%Y %H:%M') if att.upload_date else '-' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+                {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+<style>
+    /* Custom Scrollbar for Modal */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Micro-interactions & 8pt Grid */
+    .btn { transition: all 0.25s ease; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+    .btn:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    
+    .form-control, .form-select { transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+    .form-control:focus, .form-select:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15); }
+    
+    /* Main CTA Styling */
+    .btn-print-cta {
+        background: linear-gradient(135deg, #4f46e5, #3b82f6);
+        color: white;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border: none;
+        box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
+    }
+    .btn-print-cta:hover {
+        background: linear-gradient(135deg, #4338ca, #2563eb);
+        color: white;
+    }
+    
+    /* Filter Bar */
+    .filter-bar {
+        background-color: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+        padding: 16px 24px;
+        margin-bottom: 40px;
+    }
+    
+    /* Section Whitespace */
+    .section-spacing { margin-bottom: 48px; }
+    
+    /* Card Hover */
+    .kpi-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .kpi-card:hover { transform: translateY(-6px); box-shadow: 0 12px 28px rgba(0,0,0,0.15) !important; }
+    
+    /* Table Whitespace */
+    .table > :not(caption) > * > * {
+        padding: 16px 24px; /* 8pt grid */
+        border-bottom-color: #f1f5f9;
+        vertical-align: middle;
+    }
+    .table thead th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    /* DataTables tweaks */
+    .dataTables_wrapper > .row:first-child { padding: 24px 24px 16px 24px; margin: 0; align-items: center; }
+    .dataTables_wrapper > .row:last-child { padding: 16px 24px 24px 24px; margin: 0; align-items: center; }
+    .dataTables_length select { border-radius: 8px; padding: 6px 32px 6px 12px; border: 1px solid #e2e8f0; color: #475569; }
+    .dataTables_filter input { border-radius: 8px; padding: 8px 16px; border: 1px solid #e2e8f0; background-color: #f8fafc; transition: all 0.2s; }
+    .dataTables_filter input:focus { background-color: #fff; border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15); outline: none; }
+    .dataTables_info, .dataTables_length { color: #64748b; font-size: 0.875rem; }
+</style>
+<div class="container-fluid py-4 px-lg-4">
+
+    <!-- Print Header -->
+    <div class="d-none d-print-block mb-4 text-center">
+        <h3 class="fw-bold mb-1" style="text-transform: uppercase;">Laporan Work Order</h3>
+        <h5 class="text-muted mb-3">Jaya Teknik</h5>
+        <div style="border-top: 2px solid #000; margin-bottom: 1rem;"></div>
+        <div class="row text-start mt-3" style="font-size: 0.9rem;">
+            <div class="col-6">
+                <p class="mb-1"><strong>Periode:</strong> 
+                    {% if time_range == 'today' %}
+                        Hari Ini
+                    {% elif time_range == 'custom' %}
+                        {{ start_date_str }} s/d {{ end_date_str }}
+                    {% elif time_range == 'last_month' %}
+                        Bulan Lalu
+                    {% elif time_range == 'this_year' %}
+                        Tahun Ini
+                    {% else %}
+                        Bulan Ini
+                    {% endif %}
+                </p>
+                <p class="mb-1"><strong>Dicetak Pada:</strong> <script>document.write(new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}));</script></p>
+            </div>
+            <div class="col-6 text-end">
+                <p class="mb-1"><strong>Site:</strong> 
+                    {% if selected_site_id %}
+                        {% for site in sites %}{% if site.id|string == selected_site_id|string %}{{ site.name }}{% endif %}{% endfor %}
+                    {% else %}
+                        Semua Site
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <div style="border-top: 1px solid #ddd; margin-top: 1rem; margin-bottom: 2rem;"></div>
+    </div>
+
+    <!-- KPIs Section -->
+    <div class="d-print-none">
+        <div class="mb-4 d-flex align-items-center">
+            <h5 class="mb-0 fw-bold text-dark me-3">Key Performance Indicators</h5>
+        <div class="flex-grow-1 border-bottom" style="opacity: 0.2;"></div>
+    </div>
+    <div class="row g-3 row-cols-2 row-cols-md-3 row-cols-xl-5 section-spacing">
+        <!-- Dikerjakan -->
+        <div class="col">
+            <div class="card h-100 border rounded-4 overflow-hidden kpi-card bg-white" style="box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                <div class="card-body p-4 position-relative">
+                    <h6 class="fw-bold text-uppercase text-muted mb-2" style="font-size: 0.75rem; letter-spacing: 0.5px;">% Selesai</h6>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <h3 class="mb-0 fw-bolder text-dark" style="font-size: clamp(1.5rem, 2vw, 2.2rem);">{{ perc_completed }}%</h3>
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: rgba(16, 185, 129, 0.15); color: #10b981;">
+                            <i class="bi bi-check2-circle fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center fw-semibold mt-2" style="font-size: 0.8rem; color: #10b981;">
+                        <i class="bi bi-journal-check me-2"></i><span>{{ count_completed }} / {{ count_total }} WO</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Terkendala -->
+        <div class="col">
+            <div class="card h-100 border rounded-4 overflow-hidden kpi-card bg-white" style="box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                <div class="card-body p-4 position-relative">
+                    <h6 class="fw-bold text-uppercase text-muted mb-2" style="font-size: 0.75rem; letter-spacing: 0.5px;">% Terkendala</h6>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <h3 class="mb-0 fw-bolder text-dark" style="font-size: clamp(1.5rem, 2vw, 2.2rem);">{{ perc_constrained }}%</h3>
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                            <i class="bi bi-pause-circle fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center fw-semibold mt-2" style="font-size: 0.8rem; color: #f59e0b;">
+                        <i class="bi bi-hourglass-split me-2"></i><span>{{ count_constrained }} / {{ count_total }} WO</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Overdue -->
+        <div class="col">
+            <div class="card h-100 border rounded-4 overflow-hidden kpi-card bg-white" style="box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                <div class="card-body p-4 position-relative">
+                    <h6 class="fw-bold text-uppercase text-muted mb-2" style="font-size: 0.75rem; letter-spacing: 0.5px;">% Overdue</h6>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <h3 class="mb-0 fw-bolder text-dark" style="font-size: clamp(1.5rem, 2vw, 2.2rem);">{{ perc_overdue }}%</h3>
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                            <i class="bi bi-exclamation-octagon fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center fw-semibold mt-2" style="font-size: 0.8rem; color: #ef4444;">
+                        <i class="bi bi-clock-history me-2"></i><span>{{ count_overdue }} / {{ count_total }} WO</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- MTTR -->
+        <div class="col">
+            <div class="card h-100 border rounded-4 overflow-hidden kpi-card bg-white" style="box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                <div class="card-body p-4 position-relative">
+                    <h6 class="fw-bold text-uppercase text-muted mb-2" style="font-size: 0.75rem; letter-spacing: 0.5px;">MTTR (Jam)</h6>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <h3 class="mb-0 fw-bolder text-dark" style="font-size: clamp(1.5rem, 2vw, 2.2rem);">{{ mttr }}</h3>
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                            <i class="bi bi-tools fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center fw-semibold mt-2" style="font-size: 0.8rem; color: #3b82f6;">
+                        <i class="bi bi-speedometer2 me-2"></i><span>Rata-rata perbaikan</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- MTBF -->
+        <div class="col">
+            <div class="card h-100 border rounded-4 overflow-hidden kpi-card bg-white" style="box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                <div class="card-body p-4 position-relative">
+                    <h6 class="fw-bold text-uppercase text-muted mb-2" style="font-size: 0.75rem; letter-spacing: 0.5px;">MTBF (Jam)</h6>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <h3 class="mb-0 fw-bolder text-dark text-truncate" style="font-size: clamp(1.5rem, 2vw, 2.2rem);" title="{{ mtbf }}">{{ mtbf }}</h3>
+                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background-color: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
+                            <i class="bi bi-activity fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center fw-semibold mt-2" style="font-size: 0.8rem; color: #8b5cf6;">
+                        <i class="bi bi-graph-up me-2"></i><span>Waktu operasi</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- End KPIs Section -->
+
+    <!-- AI Insight Container -->
+    <div id="ai-insight-container" class="mb-4 d-print-none d-none">
+        <div class="card border-0 rounded-4 shadow-lg overflow-hidden" style="background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.4);">
+            <div class="card-header bg-transparent border-bottom py-3 px-4 d-flex align-items-center justify-content-between" style="border-color: rgba(0,0,0,0.05) !important;">
+                <h5 class="mb-0 fw-bold" style="background: linear-gradient(45deg, #4f46e5, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    <i class="bi bi-stars text-primary me-2" style="-webkit-text-fill-color: initial;"></i> Executive Summary (AI Analyst)
+                </h5>
+                <button type="button" class="btn-close" onclick="document.getElementById('ai-insight-container').classList.add('d-none')"></button>
+            </div>
+            <div class="card-body p-4" id="ai-insight-content">
+                <!-- Loading State -->
+                <div id="ai-loading" class="text-center py-4">
+                    <div class="spinner-grow text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h6 class="text-muted fw-bold">AI sedang menyusun laporan eksekutif...</h6>
+                    <p class="text-muted small">Menganalisis performa, kepatuhan PM, dan bottleneck...</p>
+                </div>
+                
+                <!-- Markdown Result -->
+                <div id="ai-result" class="d-none" style="font-size: 0.95rem; line-height: 1.6; color: #334155;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table Section -->
+    <div class="mb-4 d-flex align-items-center d-print-none">
+        <h5 class="mb-0 fw-bold text-dark me-3">Rincian Data</h5>
+        <div class="flex-grow-1 border-bottom" style="opacity: 0.2;"></div>
+    </div>
+    
+    <div class="card shadow-sm border-0 rounded-4 mb-5 overflow-hidden print-card-override">
+        <div class="card-header bg-white border-bottom-0 py-4 px-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center d-print-none">
+            <div class="d-flex align-items-center mb-3 mb-md-0">
+                <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex flex-shrink-0 align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                    <i class="bi bi-list-task fs-4"></i>
+                </div>
+                <div>
+                    <h5 class="card-title mb-1 fw-bold">Daftar Work Order</h5>
+                    <p class="text-muted mb-0 small">Semua data riwayat pemeliharaan pada periode ini</p>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-primary px-4 py-2 rounded-pill d-print-none fw-bold" style="border-color: #6366f1; color: #4f46e5; background: rgba(99, 102, 241, 0.05);" onclick="generateAiSummary()">
+                    <i class="bi bi-magic me-2"></i>AI Insight
+                </button>
+                <button class="btn btn-print-cta px-4 py-2 rounded-pill" onclick="generateCustomPdf()">
+                    <i class="bi bi-file-earmark-pdf me-2"></i>Export PDF
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <!-- Active Section -->
+            <div class="px-4 py-3 border-bottom d-flex align-items-center" style="background: linear-gradient(to right, rgba(79, 70, 229, 0.05), transparent);">
+                <div class="badge rounded-pill bg-primary bg-opacity-10 text-primary px-3 py-2 fw-bold d-flex align-items-center" style="font-size: 0.85rem;">
+                    <i class="bi bi-activity me-2 fs-6"></i> Work Order Aktif / Terkendala
+                </div>
+            </div>
+            {{ render_wo_table(wos, False) }}
+            
+            <!-- Completed Section -->
+            <div class="px-4 py-3 border-bottom border-top mt-2 d-flex align-items-center" style="background: linear-gradient(to right, rgba(22, 163, 74, 0.05), transparent);">
+                <div class="badge rounded-pill bg-success bg-opacity-10 text-success px-3 py-2 fw-bold d-flex align-items-center" style="font-size: 0.85rem;">
+                    <i class="bi bi-check2-all me-2 fs-6"></i> Work Order Selesai
+                </div>
+            </div>
+            {{ render_wo_table(wos, True) }}
+
+</div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Reason Modal -->
+<div class="modal fade" id="editReasonModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Alasan / Kendala</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editReasonWoId">
+        <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">Penjelasan untuk Klien</label>
+            <div class="input-group">
+                <input type="text" class="form-control" id="editReasonText" placeholder="Ketik alasan baru atau pilih dari daftar...">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"></button>
+                <ul class="dropdown-menu dropdown-menu-end w-100">
+                    {% if existing_reasons %}
+                        {% for r in existing_reasons %}
+                        <li><a class="dropdown-item" href="#" onclick="document.getElementById('editReasonText').value=this.innerText; event.preventDefault();">{{ r|escape }}</a></li>
+                        {% endfor %}
+                    {% else %}
+                        <li><span class="dropdown-item text-muted">Belum ada riwayat alasan</span></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-primary" onclick="saveReason()">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Proof Modal -->
+<div class="modal fade" id="proofModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom-0 bg-light rounded-top-4 py-3">
+        <h5 class="modal-title fw-bold text-dark"><i class="bi bi-card-checklist text-primary me-2"></i> Bukti Pekerjaan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="proofModalContent">
+        <!-- Content gets injected here -->
+      </div>
+      <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/datatables.net-buttons@2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net-buttons@2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+    .dt-buttons { display: none !important; }
+</style>
+
+<script>
+    var reasonModal;
+    var timeRange = "{{ time_range }}";
+    var periodText = "{% if time_range == 'today' %}Hari Ini{% elif time_range == 'custom' %}{{ start_date_str }} s/d {{ end_date_str }}{% elif time_range == 'this_year' %}Tahun Ini{% elif time_range == 'last_month' %}Bulan Lalu{% else %}Bulan Ini{% endif %}";
+    
+    if (timeRange === 'this_month' || timeRange === '') {
+        periodText = "Bulan " + new Date().toLocaleDateString('id-ID', {month: 'long', year: 'numeric'});
+    } else if (timeRange === 'last_month') {
+        let lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        periodText = "Bulan " + lastMonth.toLocaleDateString('id-ID', {month: 'long', year: 'numeric'});
+    }
+    
+    var siteText = "{% if selected_site_id %}{% for site in sites %}{% if site.id|string == selected_site_id|string %}{{ site.name|escape }}{% endif %}{% endfor %}{% else %}Semua Site{% endif %}";
+
+    $(document).ready(function() {
+        window.dtTable = $('.datatable-instance').DataTable({
+            pageLength: 25,
+            dom: '<"row align-items-center mb-3"<"col-md-6"l><"col-md-6 text-end"f>>rt<"row align-items-center mt-3"<"col-md-6"i><"col-md-6"p>>',
+            buttons: [
+                {
+                    extend: 'pdfHtml5',
+                    title: 'LAPORAN KINERJA PEMELIHARAAN (WORK ORDER)',
+                    filename: 'Laporan_WO_Jaya_Teknik',
+                    orientation: 'landscape',
+                    pageSize: 'A4',
+                    pageSize: 'A4',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4, 5, 6],
+                        format: {
+                            body: function ( data, row, column, node ) {
+                                if (column === 0) {
+                                    return $(node).find('a').text().trim() + '\n' + $(node).find('.text-muted').text().trim();
+                                }
+                                if (column === 6) {
+                                    return $(node).find('span[id^="reason-text-"]').text().trim() || '-';
+                                }
+                                return $(node).text().trim();
+                            }
+                        }
+                    },
+                    customize: function (doc) {
+                        doc.defaultStyle.fontSize = 9;
+                        doc.styles.tableHeader.fontSize = 10;
+                        doc.styles.tableHeader.fillColor = '#2c3e50';
+                        doc.styles.tableHeader.color = 'white';
+                        doc.styles.title.fontSize = 16;
+                        doc.styles.title.alignment = 'center';
+                        doc.styles.title.bold = true;
+                        doc.styles.title.color = '#2c3e50';
+                        
+                        doc.content[0].margin = [0, 0, 0, 5];
+                        
+                        var subHeader = {
+                            text: 'Dokumen Rekapitulasi untuk Penagihan & Laporan Klien',
+                            alignment: 'center',
+                            fontSize: 11,
+                            color: '#7f8c8d',
+                            margin: [0, 0, 0, 20]
+                        };
+                        
+                        var reportInfo = {
+                            columns: [
+                                {
+                                    width: '50%',
+                                    text: [
+                                        {text: 'INFORMASI KLIEN & PERIODE\n', fontSize: 11, bold: true, color: '#2c3e50', margin: [0,0,0,5]},
+                                        {text: 'Nama Klien:\t\t', bold: true}, 'Jaya Teknik\n',
+                                        {text: 'Lokasi / Site:\t', bold: true}, siteText + '\n',
+                                        {text: 'Periode:\t\t\t', bold: true}, periodText + '\n',
+                                        {text: 'Tanggal Cetak:\t', bold: true}, new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) + '\n'
+                                    ],
+                                    margin: [0, 0, 0, 20]
+                                },
+                                {
+                                    width: '50%',
+                                    text: [
+                                        {text: 'RINGKASAN PENCAPAIAN (KPI)\n', fontSize: 11, bold: true, color: '#2c3e50', margin: [0,0,0,5]},
+                                        {text: 'Total Work Order:\t\t\t', bold: true}, '{{ count_total }} WO\n',
+                                        {text: 'Diselesaikan:\t\t\t\t', bold: true}, '{{ count_completed }} WO ({{ perc_completed }}%)\n',
+                                        {text: 'Terkendala / Tertunda:\t', bold: true}, '{{ count_constrained }} WO ({{ perc_constrained }}%)\n',
+                                        {text: 'Kepatuhan PM:\t\t\t', bold: true}, '{{ count_pm_compliant }} / {{ count_pm_total }} ({{ pm_compliance }}%)\n',
+                                        {text: 'MTTR (Rata2 Perbaikan):\t', bold: true}, '{{ mttr }} Jam\n'
+                                    ],
+                                    alignment: 'left',
+                                    margin: [40, 0, 0, 20]
+                                }
+                            ]
+                        };
+                        
+                        doc.content.splice(1, 0, subHeader);
+                        doc.content.splice(2, 0, reportInfo);
+                        
+                        // Check if AI Summary is generated and visible
+                        var aiResult = document.getElementById('ai-result');
+                        var aiInsertIndex = 3;
+                        if (aiResult && !aiResult.classList.contains('d-none') && aiResult.innerText.trim() !== '') {
+                            var aiText = aiResult.innerText.trim();
+                            var aiSummaryBlock = {
+                                text: [
+                                    {text: 'EXECUTIVE SUMMARY (AI ANALYST)\n', fontSize: 11, bold: true, color: '#4f46e5', margin: [0,0,0,5]},
+                                    {text: aiText + '\n', fontSize: 9, color: '#334155', margin: [0,0,0,10]}
+                                ],
+                                margin: [0, 0, 0, 15]
+                            };
+                            doc.content.splice(aiInsertIndex, 0, aiSummaryBlock);
+                            aiInsertIndex++;
+                        }
+                        
+                        doc.content[aiInsertIndex].table.widths = ['12%', '14%', '10%', '10%', '12%', '12%', '30%'];
+                        doc.content[aiInsertIndex].layout = {
+                            hLineWidth: function(i, node) { return (i === 0 || i === node.table.body.length) ? 1 : 0.5; },
+                            vLineWidth: function(i, node) { return 0; },
+                            hLineColor: function(i, node) { return '#bdc3c7'; },
+                            paddingLeft: function(i, node) { return 4; },
+                            paddingRight: function(i, node) { return 4; },
+                            paddingTop: function(i, node) { return 6; },
+                            paddingBottom: function(i, node) { return 6; }
+                        };
+                        
+                        doc.content.push({
+                            margin: [0, 40, 0, 0],
+                            columns: [
+                                {
+                                    width: '50%',
+                                    alignment: 'center',
+                                    text: [
+                                        'Diterima Oleh,\n(Pihak Klien)\n\n\n\n\n\n',
+                                        '___________________________\n',
+                                        'Nama Terang & Tanda Tangan'
+                                    ]
+                                },
+                                {
+                                    width: '50%',
+                                    alignment: 'center',
+                                    text: [
+                                        'Diserahkan Oleh,\n(Manajemen Jaya Teknik)\n\n\n\n\n\n',
+                                        '___________________________\n',
+                                        'Manajer Operasional'
+                                    ]
+                                }
+                            ]
+                        });
+                    }
+                }
+            ],
+            language: {
+                search: "",
+                searchPlaceholder: "Cari data..."
+            }
+        });
+        reasonModal = new bootstrap.Modal(document.getElementById('editReasonModal'));
+    });
+
+    function editReason(woId, btn) {
+        var currentReason = btn.getAttribute('data-reason');
+        document.getElementById('editReasonWoId').value = woId;
+        document.getElementById('editReasonText').value = currentReason;
+        reasonModal.show();
+    }
+
+    function saveReason() {
+        var woId = document.getElementById('editReasonWoId').value;
+        var reason = document.getElementById('editReasonText').value;
+
+        fetch('{{ url_for("reports.update_delay_reason", id=0) }}'.replace('0', woId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ delay_reason: reason })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('reason-text-' + woId).innerText = reason ? reason : '-';
+                var btn = document.querySelector(`button[onclick^="editReason(${woId},"]`);
+                if (btn) btn.setAttribute('data-reason', reason);
+                reasonModal.hide();
+            } else {
+                alert('Gagal menyimpan alasan.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan jaringan.');
+        });
+    }
+
+    var proofModal;
+    function showProof(woId) {
+        if (!proofModal) {
+            proofModal = new bootstrap.Modal(document.getElementById('proofModal'));
+        }
+        var dataHtml = document.getElementById('proof-data-' + woId).innerHTML;
+        document.getElementById('proofModalContent').innerHTML = dataHtml;
+        proofModal.show();
+    }
+
+    function generateAiSummary() {
+        document.getElementById('ai-insight-container').classList.remove('d-none');
+        document.getElementById('ai-loading').classList.remove('d-none');
+        document.getElementById('ai-result').classList.add('d-none');
+        
+        let realReasons = [];
+        window.dtTable.rows().every(function() {
+            let node = this.node();
+            let alasan = $(node).find('span[id^="reason-text-"]').text().trim();
+            if (alasan && alasan !== '-' && !alasan.includes('Tasklist dan checklist') && !alasan.includes('Pengecekan sedang dilakukan')) {
+                if (!realReasons.includes(alasan)) {
+                    realReasons.push(alasan);
+                }
+            }
+        });
+        
+        const payload = {
+            period: periodText,
+            site: siteText,
+            total: {{ count_total }},
+            completed_count: {{ count_completed }},
+            completed_perc: "{{ perc_completed }}%",
+            constrained_count: {{ count_constrained }},
+            constrained_perc: "{{ perc_constrained }}%",
+            mttr: {{ mttr }},
+            mtbf: {{ mtbf }},
+            real_reasons: realReasons
+        };
+        
+        fetch('{{ url_for("reports.ai_summary") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('ai-loading').classList.add('d-none');
+            const resultDiv = document.getElementById('ai-result');
+            resultDiv.classList.remove('d-none');
+            
+            if (data.success) {
+                let mdText = data.report;
+                resultDiv.innerHTML = marked.parse(mdText);
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> Gagal menghasilkan laporan: ${data.message}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('ai-loading').classList.add('d-none');
+            const resultDiv = document.getElementById('ai-result');
+            resultDiv.classList.remove('d-none');
+            resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-wifi-off me-2"></i> Terjadi kesalahan jaringan saat menghubungi AI.</div>`;
+        });
+    }
+
+    function generateCustomPdf() {
+        // Collect WO data
+        let woRowsHtml = '';
+        window.dtTable.rows().every(function(rowIdx, tableLoop, rowLoop){
+            let data = this.data();
+            let kode = data[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            let aset = data[1].replace(/<[^>]+>/g, '').trim();
+            let tipe = data[2].replace(/<[^>]+>/g, '').trim();
+            let status = data[3].replace(/<[^>]+>/g, '').trim();
+            let tgl = data[4].replace(/<[^>]+>/g, '').trim();
+            let tenggat = data[5].replace(/<[^>]+>/g, '').trim();
+            
+            let node = this.node();
+            let alasan = $(node).find('span[id^="reason-text-"]').text().trim() || '-';
+            
+            let statusColor = status.toLowerCase() === 'solved' ? '#16a34a' : (status.toLowerCase().includes('progress') ? '#2563eb' : (status.toLowerCase().includes('hold') ? '#ca8a04' : '#475569'));
+
+            woRowsHtml += `
+                <tr>
+                    <td><strong>${kode}</strong></td>
+                    <td>${aset}</td>
+                    <td>${tipe}</td>
+                    <td style="color: ${statusColor}; font-weight: 600;">${status}</td>
+                    <td>${tgl}</td>
+                    <td>${tenggat}</td>
+                    <td>${alasan}</td>
+                </tr>
+            `;
+        });
+
+        // We will replace the formal letter content if AI insight is present
+        let letterContentHtml = `
+        Yth. Manajemen / Pemilik Fasilitas <strong>${siteText}</strong>,<br><br>
+        Dengan hormat,<br><br>
+        Sebagai mitra pemeliharaan fasilitas Anda, bersama ini kami dari tim <strong>PT Jaya Teknik Indonesia</strong> menyampaikan laporan pelaksanaan (<i>progress report</i>) secara menyeluruh terkait pekerjaan <i>Work Order</i> (WO) untuk periode <strong>${periodText}</strong> di lingkungan operasional <strong>${siteText}</strong>.<br><br>
+        
+        Laporan ini disusun dengan tujuan untuk memberikan transparansi dan visibilitas kepada pihak manajemen gedung/site mengenai efektivitas pelayanan tim teknis kami di lapangan, optimalisasi waktu penyelesaian masalah (<i>response & repair time</i>), serta status keandalan aset saat ini. Seluruh pekerjaan, baik yang bersifat korektif (<i>corrective maintenance</i>) maupun pencegahan (<i>preventive maintenance</i>), telah kami catat secara terukur melalui sistem CMMS kami.<br><br>
+        
+        Secara garis besar, dokumentasi yang kami lampirkan dalam laporan ini mencakup beberapa indikator performa pelayanan kami, antara lain:<br>
+        <ol style="margin-top: 5px; margin-bottom: 10px; padding-left: 20px;">
+            <li><strong>Status Rekapitulasi Work Order:</strong> Sepanjang periode ini, kami telah menangani sejumlah <strong>${ {{count_total}} } WO</strong>, di mana <strong>${ {{count_completed}} } pekerjaan</strong> telah berhasil diselesaikan dengan baik (Closed/Completed), dan sisanya masih dalam pengawalan ketat tim kami.</li>
+            <li><strong>Evaluasi Pekerjaan Tertunda (Pending/Hold):</strong> Terdapat <strong>${ {{count_constrained}} } WO</strong> yang saat ini mengalami penundaan. Hal ini disebabkan oleh kendala operasional seperti proses tunggu suku cadang (<i>waiting for spare parts</i>), koordinasi dengan vendor terkait, maupun penyesuaian jadwal akses ke area kerja.</li>
+            <li><strong>Performa Tim & Mitigasi:</strong> Tim teknis kami terus berupaya memastikan seluruh sistem dan fasilitas beroperasi pada tingkat keandalan yang optimal (<i>high availability</i>) dengan mencatatkan rata-rata waktu perbaikan (MTTR) di angka <strong>${ {{mttr}} } Jam</strong>. Kami juga telah menyiapkan jadwal prioritas untuk menyelesaikan sisa pekerjaan secepatnya.</li>
+        </ol>
+
+        Kami berkomitmen untuk terus meningkatkan kualitas layanan teknis demi mendukung kelancaran kegiatan operasional di fasilitas Anda. Kami sangat mengharapkan arahan, masukan, maupun evaluasi dari Bapak/Ibu selaku pemilik/manajemen sebagai bahan penyempurnaan kualitas layanan kami ke depannya.<br><br>
+        
+        Demikian laporan kinerja pemeliharaan ini kami sampaikan. Atas kepercayaan, dukungan, dan kerja sama baik yang telah terjalin selama ini, kami ucapkan terima kasih.<br><br>
+        
+        ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}<br>
+        Hormat kami,<br><br><br>
+        <strong>Tim Operasional PT Jaya Teknik Indonesia</strong>
+        `;
+        let aiResultDiv = document.getElementById('ai-result');
+        if (aiResultDiv && !aiResultDiv.classList.contains('d-none') && aiResultDiv.innerHTML.trim() !== '') {
+            // Replace the static text with AI text
+            letterContentHtml = aiResultDiv.innerHTML;
+        }
+
+        // Build Full HTML
+        let printHtml = `
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Laporan Kinerja Pemeliharaan - Jaya Teknik</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @page { size: A4 portrait; margin: 15mm; }
+        @page wo_landscape { size: A4 landscape; margin: 15mm; }
+        @page title_page { size: A4 portrait; margin: 0; }
+        .title-page {
+            page: title_page;
+            page-break-after: always;
+            width: 100%;
+            height: 290mm; /* A4 height approx */
+            background-image: url("{{ url_for('static', filename='images/judul.png') }}");
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            position: relative;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .title-page-text {
+            position: absolute;
+            bottom: 35mm;
+            left: 20mm;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000000;
+        }
+        .title-page-text h1 { font-size: 26px; font-weight: 700; margin: 0 0 5px 0; line-height: 1.2;}
+        .title-page-text h2 { font-size: 18px; font-weight: 700; margin: 0 0 20px 0; line-height: 1.2;}
+        .title-page-text p { font-size: 16px; font-weight: 700; margin: 0 0 5px 0; text-transform: uppercase; }
+        
+        .letter-page { page-break-after: always; }
+        
+        .section-title { font-size: 15px; font-weight: 700; color: #000000; margin: 20px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #000000; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* KPI Grid */
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; text-align: center; }
+        .kpi-title { font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 600; margin-bottom: 5px; }
+        .kpi-value { font-size: 18px; font-weight: 700; color: #3b82f6; }
+        .kpi-sub { font-size: 9px; color: #94a3b8; margin-top: 3px; }
+        
+        /* AI Summary Box */
+        .ai-summary { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 15px; border-radius: 0 8px 8px 0; margin-bottom: 25px; page-break-inside: avoid;}
+        .ai-summary h3 { margin: 0 0 10px 0; font-size: 12px; color: #166534; display: flex; align-items: center; }
+        .ai-summary-content { font-size: 10px; color: #15803d; }
+        .ai-summary-content p { margin-top: 0; margin-bottom: 8px; }
+        .ai-summary-content p:last-child { margin-bottom: 0; }
+        .ai-summary-content ul { margin-top: 0; padding-left: 20px; margin-bottom: 8px;}
+        .ai-summary-content strong { color: #14532d; }
+        
+        /* Table */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px; }
+        th { background: #e2e8f0; color: #000000; text-align: left; padding: 10px 8px; font-weight: 600; border: 1px solid #000000;}
+        td { padding: 8px; border: 1px solid #000000; vertical-align: top; }
+        tr:nth-child(even) td { background: #f8fafc; }
+        
+        /* Signatures */
+        .signatures { display: flex; justify-content: space-between; margin-top: 50px; page-break-inside: avoid; }
+        .sign-box { width: 200px; text-align: center; }
+        .sign-title { font-weight: 600; font-size: 11px; color: #475569; margin-bottom: 70px; }
+        .sign-line { border-top: 1px solid #cbd5e1; padding-top: 5px; font-weight: 600; color: #1e293b; }
+        
+        .text-success { color: #16a34a; }
+        .text-danger { color: #dc2626; }
+        .text-warning { color: #ca8a04; }
+    </style>
+</head>
+<body>
+    <div class="title-page">
+        <div class="title-page-text">
+            <h1>LAPORAN KINERJA PEMELIHARAAN</h1>
+            <h2>SISTEM MANAJEMEN PEMELIHARAAN (CMMS)</h2>
+            <p>JAYA TEKNIK INDONESIA</p>
+            <p>${siteText}</p>
+            <p>PERIODE: ${periodText}</p>
+        </div>
+    </div>
+
+    <div class="letter-page">
+    
+    <div id="formal-letter-content" style="margin-bottom: 25px; font-size: 13px; line-height: 1.6; color: #000000; text-align: justify;">
+        ${letterContentHtml}
+    </div>
+    </div> <!-- End Letter Page -->
+
+    <div class="landscape-section">
+    <div class="section-title" style="margin-top: 0;">Ringkasan Pencapaian (KPI)</div>
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-title">Total Pekerjaan</div>
+            <div class="kpi-value">${ {{count_total}} } WO</div>
+            <div class="kpi-sub">Periode ini</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Penyelesaian</div>
+            <div class="kpi-value text-success">${ {{count_completed}} } WO</div>
+            <div class="kpi-sub">${ "{{perc_completed}}" }% dari total</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">MTTR</div>
+            <div class="kpi-value" style="color: #0ea5e9;">${ {{mttr}} } Jam</div>
+            <div class="kpi-sub">Rata-rata Waktu Perbaikan</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">MTBF</div>
+            <div class="kpi-value" style="color: #8b5cf6;">${ {{mtbf}} } Jam</div>
+            <div class="kpi-sub">Rata-rata Waktu Operasi</div>
+        </div>
+    </div>
+    
+    <div class="section-title">Daftar Rincian Work Order</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 12%">Kode WO</th>
+                <th style="width: 15%">Aset</th>
+                <th style="width: 10%">Tipe</th>
+                <th style="width: 10%">Status</th>
+                <th style="width: 12%">Tgl Buat</th>
+                <th style="width: 12%">Tenggat</th>
+                <th style="width: 29%">Alasan / Kendala</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${woRowsHtml}
+        </tbody>
+    </table>
+    
+    <div class="signatures">
+        <div class="sign-box">
+            <div class="sign-title">Diterima Oleh,<br>(Pihak Klien)</div>
+            <div class="sign-line">Nama Terang & Tanda Tangan</div>
+        </div>
+        <div class="sign-box">
+            <div class="sign-title">Diserahkan Oleh,<br>(Manajemen Jaya Teknik)</div>
+            <div class="sign-line">Manajer Operasional</div>
+        </div>
+    </div>
+    </div> <!-- End Landscape Section -->
+</body>
+</html>
+        `;
+
+        let iframe = document.getElementById('hidden-print-iframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'hidden-print-iframe';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = 'none';
+            document.body.appendChild(iframe);
+        }
+
+        let printDoc = iframe.contentWindow.document;
+        printDoc.open();
+        printDoc.write(printHtml);
+        printDoc.close();
+        
+        // Wait for images and fonts to load before printing
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        }, 800);
+    }
+</script>
+
+<style>
+    @media print {
+        .navbar, .sidebar, .bottom-nav, .btn, form, .toolbar-left {
+            display: none !important;
+        }
+        .container-fluid {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        div.card.print-card-override {
+            box-shadow: none !important;
+            border: none !important;
+            overflow: visible !important;
+        }
+        .table-responsive {
+            overflow: visible !important;
+        }
+        .dataTables_length, .dataTables_filter, .dataTables_info, .dataTables_paginate {
+            display: none !important;
+        }
+        table {
+            border: 1px solid #dee2e6 !important;
+            width: 100% !important;
+            page-break-inside: auto;
+        }
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+        th, td {
+            border: 1px solid #dee2e6 !important;
+            color: #000 !important;
+            padding: 8px !important;
+        }
+        .badge {
+            border: 1px solid #000 !important;
+            color: #000 !important;
+            background: none !important;
+        }
+    }
+</style>
+{% endblock %}

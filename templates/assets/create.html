@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('assets.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0 mx-auto" style="max-width: 800px;">
+    <div class="card-header bg-white">
+        <h4 class="mb-0">{% if asset %}Edit Asset: {{ asset.code }}{% else %}New Asset{% endif %}</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Asset Name *</label>
+                    <input type="text" class="form-control" name="name" value="{{ asset.name if asset else '' }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Asset Code *</label>
+                    <input type="text" class="form-control" name="code" value="{{ asset.code if asset else '' }}" required>
+                </div>
+                <div class="col-12">
+                    <label class="form-label text-muted small fw-bold">Description</label>
+                    <textarea class="form-control" name="description" rows="2">{{ asset.description if asset else '' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Site *</label>
+                    <select class="form-select" name="site_id" id="site_select" required>
+                        <option value="" data-project-code="">-- Select Site --</option>
+                        {% for site in sites %}
+                            <option value="{{ site.id }}" data-project-code="{{ site.project_code or '' }}" {% if asset and asset.site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Location</label>
+                    <input type="text" name="location_input" id="location_input" list="location_list" class="form-control" placeholder="-- Type or Select --" value="{{ asset.location.name if asset and asset.location else '' }}">
+                    <datalist id="location_list"></datalist>
+                    <select id="hidden_location_select" style="display:none;">
+                        {% for loc in locations %}
+                            <option value="{{ loc.name }}" data-site="{{ loc.site_id }}"></option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Category *</label>
+                    <input type="text" name="category_input" id="category_input" list="category_list" class="form-control" placeholder="-- Type or Select --" value="{{ asset.category.name if asset and asset.category else '' }}" required>
+                    <datalist id="category_list">
+                        {% for cat in categories %}
+                            <option value="{{ cat.name }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Subcategory</label>
+                    <input type="text" name="subcategory_input" id="subcategory_input" list="subcategory_list" class="form-control" placeholder="-- Type or Select --" value="{{ asset.subcategory.name if asset and asset.subcategory else '' }}">
+                    <datalist id="subcategory_list"></datalist>
+                    <select id="hidden_subcategory_select" style="display:none;">
+                        {% for subcat in subcategories %}
+                            <option value="{{ subcat.name }}" data-category="{{ subcat.category.name }}"></option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Project Code</label>
+                    <select class="form-select" name="project_code" id="project_code_select">
+                        <option value="">-- None --</option>
+                        {% for proj in project_codes %}
+                            <option value="{{ proj.code }}" {% if asset and asset.project_code == proj.code %}selected{% endif %}>{{ proj.code }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Status</label>
+                    <select class="form-select" name="status">
+                        <option value="Online" {% if asset and asset.status == 'Online' %}selected{% endif %}>Online</option>
+                        <option value="Offline" {% if asset and asset.status == 'Offline' %}selected{% endif %}>Offline</option>
+                        <option value="In Repair" {% if asset and asset.status == 'In Repair' %}selected{% endif %}>In Repair</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Criticality</label>
+                    <select class="form-select" name="criticality">
+                        <option value="Low" {% if asset and asset.criticality == 'Low' %}selected{% endif %}>Low</option>
+                        <option value="Medium" {% if not asset or asset.criticality == 'Medium' %}selected{% endif %}>Medium</option>
+                        <option value="High" {% if asset and asset.criticality == 'High' %}selected{% endif %}>High</option>
+                        <option value="Critical" {% if asset and asset.criticality == 'Critical' %}selected{% endif %}>Critical</option>
+                    </select>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">Equipment Details</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Make</label>
+                    <input type="text" class="form-control" name="make" value="{{ asset.make if asset else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Model</label>
+                    <input type="text" class="form-control" name="model" value="{{ asset.model if asset else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Serial Number</label>
+                    <input type="text" class="form-control" name="serial_number" value="{{ asset.serial_number if asset else '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Barcode</label>
+                    <input type="text" class="form-control" name="barcode" value="{{ asset.barcode if asset else '' }}">
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">IoT Integration</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4 d-flex align-items-center">
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="is_chiller" name="is_chiller" value="1" {% if asset and asset.is_chiller %}checked{% endif %}>
+                        <label class="form-check-label fw-bold small text-muted" for="is_chiller">Apakah ini Chiller?</label>
+                    </div>
+                </div>
+                <div class="col-md-8" id="chiller_id_container" style="{% if not asset or not asset.is_chiller %}display: none;{% endif %}">
+                    <label class="form-label text-muted small fw-bold">Chiller ID (IoT Mapping)</label>
+                    <input type="text" class="form-control" name="api_chiller_id" placeholder="e.g., bxc2_sqc_1" value="{{ asset.api_chiller_id if asset else '' }}">
+                    <small class="text-muted" style="font-size: 0.7em;">ID ini digunakan untuk menyambungkan Asset ke Dashboard Monitoring IoT.</small>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2">Storage Information</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Storage Aisle</label>
+                    <input type="text" class="form-control" name="storage_aisle" value="{{ asset.storage_aisle if asset else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Storage Row</label>
+                    <input type="text" class="form-control" name="storage_row" value="{{ asset.storage_row if asset else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Storage Bin</label>
+                    <input type="text" class="form-control" name="storage_bin" value="{{ asset.storage_bin if asset else '' }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label text-muted small fw-bold">Internal Notes</label>
+                    <textarea class="form-control" name="notes" rows="2">{{ asset.notes if asset else '' }}</textarea>
+                </div>
+            </div>
+            
+            <hr>
+            <div class="text-end">
+                <a href="{{ url_for('assets.index') }}" class="btn btn-light me-2">Cancel</a>
+                <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save"></i> Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const categoryInput = document.getElementById('category_input');
+        const subcategoryInput = document.getElementById('subcategory_input');
+        const subcategoryList = document.getElementById('subcategory_list');
+        const hiddenSubcategorySelect = document.getElementById('hidden_subcategory_select');
+
+        function filterSubcategories() {
+            const selectedCategory = categoryInput.value;
+            subcategoryList.innerHTML = '';
+            
+            Array.from(hiddenSubcategorySelect.options).forEach(opt => {
+                if (opt.getAttribute('data-category') === selectedCategory) {
+                    const newOpt = document.createElement('option');
+                    newOpt.value = opt.value;
+                    subcategoryList.appendChild(newOpt);
+                }
+            });
+        }
+
+        // Initialize on load
+        filterSubcategories();
+
+        // Listen for changes
+        categoryInput.addEventListener('input', filterSubcategories);
+        categoryInput.addEventListener('change', filterSubcategories);
+
+        // Site Dropdown Logic
+        const siteSelect = document.getElementById('site_select');
+        const locationInput = document.getElementById('location_input');
+        const locationList = document.getElementById('location_list');
+        const hiddenLocationSelect = document.getElementById('hidden_location_select');
+        const projectCodeSelect = document.getElementById('project_code_select');
+
+        function filterLocationsAndProject() {
+            const selectedSiteId = siteSelect.value;
+            locationList.innerHTML = '';
+            
+            Array.from(hiddenLocationSelect.options).forEach(opt => {
+                if (opt.getAttribute('data-site') === selectedSiteId) {
+                    const newOpt = document.createElement('option');
+                    newOpt.value = opt.value;
+                    locationList.appendChild(newOpt);
+                }
+            });
+
+            // Auto-select Project Code
+            if (projectCodeSelect) {
+                const selectedOption = siteSelect.options[siteSelect.selectedIndex];
+                const siteProjectCode = selectedOption ? selectedOption.getAttribute('data-project-code') : '';
+                if (siteProjectCode) {
+                    projectCodeSelect.value = siteProjectCode;
+                }
+            }
+        }
+
+        // Initialize on load
+        filterLocationsAndProject();
+        siteSelect.addEventListener('change', filterLocationsAndProject);
+
+        // Chiller Toggle
+        const isChillerCheckbox = document.getElementById('is_chiller');
+        const chillerIdContainer = document.getElementById('chiller_id_container');
+        if(isChillerCheckbox && chillerIdContainer) {
+            isChillerCheckbox.addEventListener('change', function() {
+                chillerIdContainer.style.display = this.checked ? 'block' : 'none';
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+<div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+    <h5 class="fw-bold text-primary mb-0">Documents & Files</h5>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addFileModal"><i class="bi bi-cloud-arrow-up"></i> Add File / URL</button>
+</div>
+
+<div class="row g-3">
+    {% for file in asset.files %}
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <div class="text-truncate ps-1">
+                        {% if file.is_url %}
+                        <i class="bi bi-link-45deg fs-4 text-primary"></i>
+                        {% else %}
+                        <i class="bi bi-file-earmark-text fs-4 text-success"></i>
+                        {% endif %}
+                    </div>
+                    <form action="{{ url_for('assets.remove_file', id=file.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-sm btn-light text-danger p-1 border-0" onclick="return confirm('Delete file record?');"><i class="bi bi-x"></i></button>
+                    </form>
+                </div>
+                <h6 class="fw-bold text-truncate mb-1" title="{{ file.file_name }}">{{ file.file_name }}</h6>
+                <p class="small text-muted mb-2 line-clamp-2">{{ file.notes or 'No description' }}</p>
+                
+                <a href="{{ file.file_path }}" {% if file.is_url %}target="_blank"{% else %}download{% endif %} class="btn btn-sm btn-outline-primary w-100">
+                    {% if file.is_url %}Open Link{% else %}Download{% endif %}
+                </a>
+            </div>
+            <div class="card-footer bg-light border-0 text-center py-1">
+                <small class="text-muted" style="font-size: 0.7rem;">Added: {{ file.upload_date.strftime('%b %d, %Y') }}</small>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 py-5 text-center text-muted">
+        <i class="bi bi-folder2-open display-4 text-light"></i>
+        <p class="mt-2">No documents, schematics, or photos attached.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal File -->
+<div class="modal fade" id="addFileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('assets.add_file', asset_id=asset.id) }}" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Attach Document</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-pills mb-3 nav-fill" id="fileTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#uploadTab" type="button">Upload File</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#urlTab" type="button">Web URL</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="uploadTab">
+                            <div class="mb-3">
+                                <label class="form-label">Select File</label>
+                                <input type="file" name="file_upload" class="form-control">
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="urlTab">
+                            <div class="mb-3">
+                                <label class="form-label">URL Address</label>
+                                <input type="url" name="file_url" class="form-control" placeholder="https://...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Display Name</label>
+                        <input type="text" name="file_name" class="form-control" placeholder="E.g. Safety Manual PDF" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <input type="text" name="notes" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Document</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

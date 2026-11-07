@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+<a href="{{ url_for('logsheet_management', tab='schedules') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+<h5 class="mb-0 ms-3 d-flex align-items-center">
+    New Logsheet Schedule
+</h5>
+{% endblock %}
+
+{% block toolbar_right %}
+    <button type="button" class="btn btn-sm btn-primary" onclick="submitLogsheet();"><i class="bi bi-save"></i> Save Schedule</button>
+{% endblock %}
+
+{% block content %}
+<style>
+    .form-card {
+        background: #ffffff;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        border: none;
+        overflow: hidden;
+    }
+    .card-header-custom {
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+        color: white;
+        padding: 1.5rem 2rem;
+        border-bottom: none;
+    }
+    .tech-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: var(--color-bg);
+        border: 1px solid var(--color-border);
+        color: var(--color-text-main);
+        border-radius: 50px;
+        padding: 0.35rem 0.85rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin: 0.25rem 0.25rem 0.25rem 0;
+        transition: all 0.2s ease;
+    }
+    .tech-chip:hover {
+        background: var(--color-primary);
+        color: white;
+        border-color: var(--color-primary);
+    }
+    .tech-chip:hover i {
+        color: white !important;
+    }
+    .param-row {
+        background: var(--color-surface);
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        margin-bottom: 0.75rem;
+        border: 1px solid var(--color-border);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+    }
+    .param-row:hover {
+        box-shadow: var(--shadow-md);
+        border-color: rgba(79, 70, 229, 0.3);
+    }
+    .param-num {
+        width: 32px;
+        height: 32px;
+        background: rgba(79, 70, 229, 0.1);
+        color: var(--color-primary);
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+    .form-label {
+        font-weight: 600;
+        color: var(--color-text-main);
+        font-size: 0.85rem;
+        margin-bottom: 0.4rem;
+    }
+    .form-control, .form-select {
+        border-radius: var(--radius-sm);
+        padding: 0.6rem 1rem;
+        font-size: 0.95rem;
+        border-color: var(--color-border);
+        background-color: var(--color-bg);
+    }
+    .form-control:focus, .form-select:focus {
+        background-color: var(--color-surface);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+    .empty-state {
+        background: var(--color-bg);
+        border-radius: var(--radius-md);
+        border: 2px dashed var(--color-border);
+        padding: 3rem 1.5rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .empty-state:hover {
+        border-color: var(--color-primary);
+        background: rgba(79, 70, 229, 0.02);
+    }
+</style>
+
+<form method="POST" action="{{ url_for('logsheet_schedule_create') }}" id="scheduleForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="parameters_json" id="parametersJson" value="[]"/>
+
+    <div class="row g-4">
+        
+        <!-- Left Column: Asset Info -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0 fw-bold">Asset Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold">Site *</label>
+                        <select class="form-select" name="site_id" id="siteSelect" onchange="filterBySite(this.value)" required>
+                            <option value="">-- Pilih Site --</option>
+                            {% for site in sites %}
+                            <option value="{{ site.id }}">{{ site.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="text-start">
+                        <label class="form-label text-muted small fw-bold">Target Asset *</label>
+                        <select class="form-select" name="asset_id" id="assetSelect" onchange="handleAssetChange()" required>
+                            <option value="">-- Pilih Asset --</option>
+                            {% for asset in assets %}
+                            <option value="{{ asset.id }}" data-site-id="{{ asset.site_id }}">
+                                {{ asset.name }} ({{ asset.code }}){% if asset.site %} - {{ asset.site.name }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <p class="text-muted small mt-2 text-info"><i class="bi bi-info-circle me-1"></i>Pilih aset untuk melampirkan logsheet. Parameter checklist akan otomatis dimuat dari metering aset.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Form Tabs -->
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white p-0 border-bottom-0">
+                    <ul class="nav nav-tabs px-3 pt-3" id="logsheetTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active text-dark fw-semibold" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab"><i class="bi bi-card-text me-1"></i> General</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link text-dark fw-semibold" id="checklist-tab" data-bs-toggle="tab" data-bs-target="#checklist" type="button" role="tab"><i class="bi bi-list-check me-1"></i> Checklists</button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="tab-content" id="logsheetTabsContent">
+                        
+                        <!-- General Tab -->
+                        <div class="tab-pane fade show active" id="general" role="tabpanel">
+                            <div class="mb-4">
+                                <label class="form-label text-muted small fw-bold">Nama Jadwal *</label>
+                                <input type="text" class="form-control" name="name" placeholder="Contoh: Daily Chiller Check" required>
+                            </div>
+                            
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Tanggal *</label>
+                                    <input type="date" class="form-control" name="scheduled_date" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Jam Eksekusi</label>
+                                    <input type="time" class="form-control" name="scheduled_time" value="08:00">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label text-muted small fw-bold mb-0">Teknisi Bertugas</label>
+                                </div>
+                                <div id="techniciansContainer" class="d-flex flex-column gap-2">
+                                    <!-- Technician rows will go here -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addTechnicianRow()">
+                                    <i class="bi bi-plus-lg"></i> Tambah Teknisi
+                                </button>
+                                <input type="hidden" name="technicians" id="techniciansInput" value=""/>
+                            </div>
+                        </div>
+
+                        <!-- Checklists Tab -->
+                        <div class="tab-pane fade" id="checklist" role="tabpanel">
+                            <label class="form-label text-muted small fw-bold text-warning"><i class="bi bi-list-check"></i> Standard Checklist</label>
+                            <select class="form-select border-warning mb-3" id="logsheetTemplateSelect" onchange="loadLogsheetTemplate(this.value)">
+                                <option value="">-- Muat dari Master Template --</option>
+                                {% set grouped_checklists = checklists|groupby('project_code_group') %}
+                                {% for group in grouped_checklists %}
+                                    <optgroup label="{{ group.grouper if group.grouper else 'General (No Project Code)' }}">
+                                        {% for cl in group.list %}
+                                        <option value="{{ cl.id }}">{{ cl.name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            </select>
+                            
+                            <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                                <label class="form-label text-muted small fw-bold mb-0">Checklist Parameters</label>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-info shadow-sm bg-white" style="font-size: 0.75rem;" onclick="loadAssetMeters()" id="btnLoadMeters">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Dari Metering
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary shadow-sm bg-white" style="font-size: 0.75rem;" onclick="addParameter()">
+                                        <i class="bi bi-plus-lg me-1"></i> Tambah
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="parametersContainer" class="mt-3">
+                                <!-- Parameters will be added here -->
+                            </div>
+
+                            <div class="text-center empty-state mt-2" id="emptyParams" onclick="addParameter()">
+                                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 rounded-circle mb-3" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-plus-lg text-primary fs-4"></i>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Belum ada parameter</h6>
+                                <div class="text-muted small">Klik untuk menambahkan parameter pengecekan baru</div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+    function submitLogsheet() {
+        prepareSubmit();
+        if(document.getElementById('scheduleForm').reportValidity()) {
+            document.getElementById('scheduleForm').submit();
+        }
+    }
+
+    let parameters = [];
+
+    function addParameter(name = '', type = 'reading', unit = '', min = '', max = '') {
+        const idx = parameters.length;
+        parameters.push({ name, entry_type: type, unit, min, max });
+
+        document.getElementById('emptyParams').style.display = 'none';
+
+        const container = document.getElementById('parametersContainer');
+        const html = `
+            <div class="param-row" id="param-${idx}">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="param-num flex-shrink-0 mt-1">${idx + 1}</div>
+                    <div class="flex-grow-1">
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-12">
+                                <input type="text" class="form-control" placeholder="Nama parameter atau instruksi (contoh: Cek Suhu Chiller)"
+                                       value="${name}" onchange="updateParam(${idx}, 'name', this.value)" required>
+                            </div>
+                        </div>
+                        <div class="row g-3" id="param-bounds-${idx}">
+                            <div class="col-md-4">
+                                <input type="text" class="form-control form-control-sm" placeholder="Satuan (opsional)"
+                                       value="${unit}" onchange="updateParam(${idx}, 'unit', this.value)">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="number" step="any" class="form-control form-control-sm" placeholder="Batas Bawah (Min)"
+                                       value="${min}" onchange="updateParam(${idx}, 'min', this.value)">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="number" step="any" class="form-control form-control-sm" placeholder="Batas Atas (Max)"
+                                       value="${max}" onchange="updateParam(${idx}, 'max', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline-danger border-0 rounded-circle p-2 mt-1" onclick="removeParam(${idx})" title="Hapus Parameter">
+                        <i class="bi bi-trash fs-5"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    function toggleParamType(idx, type) {
+        const boundsRow = document.getElementById(`param-bounds-${idx}`);
+        if (boundsRow) {
+            if (type === 'reading') {
+                boundsRow.style.display = 'flex';
+            } else {
+                boundsRow.style.display = 'none';
+                // Reset values for non-reading
+                updateParam(idx, 'unit', '');
+                updateParam(idx, 'min', '');
+                updateParam(idx, 'max', '');
+                boundsRow.querySelectorAll('input').forEach(input => input.value = '');
+            }
+        }
+    }
+
+    function updateParam(idx, field, value) {
+        if(parameters[idx]) {
+            parameters[idx][field === 'type' ? 'entry_type' : field] = value;
+        }
+    }
+
+    function removeParam(idx) {
+        parameters[idx] = null; // Mark as null instead of splice to preserve DOM IDs
+        const el = document.getElementById(`param-${idx}`);
+        if(el) el.remove();
+        
+        const activeParams = parameters.filter(p => p !== null);
+        if (activeParams.length === 0) {
+            document.getElementById('emptyParams').style.display = 'block';
+        }
+        
+        // Re-number visible items
+        let visibleCount = 1;
+        document.querySelectorAll('.param-num').forEach(el => {
+            el.textContent = visibleCount++;
+        });
+    }
+
+    function prepareSubmit() {
+        // Prepare parameters JSON (filter out removed ones)
+        const finalParams = parameters.filter(p => p !== null);
+        document.getElementById('parametersJson').value = JSON.stringify(finalParams);
+    }
+
+    // Dynamic Technician Selection
+    let techRowCount = 0;
+    
+    function addTechnicianRow() {
+        const container = document.getElementById('techniciansContainer');
+        const rowId = `tech-row-${techRowCount++}`;
+        const html = `
+            <div class="d-flex gap-2 align-items-center" id="${rowId}">
+                <select class="form-select technician-select" onchange="updateTechSelection()">
+                    <option value="">-- Pilih Teknisi --</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" data-site-id="{{ user.site_id }}">{{ user.name }} ({{ user.role }})</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="btn btn-outline-danger border-0" onclick="removeTechnicianRow('${rowId}')">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    function removeTechnicianRow(rowId) {
+        const row = document.getElementById(rowId);
+        if (row) {
+            row.remove();
+            updateTechSelection();
+        }
+    }
+
+    function updateTechSelection() {
+        const selects = document.querySelectorAll('.technician-select');
+        const selectedValues = [];
+        
+        selects.forEach(sel => {
+            if (sel.value) {
+                selectedValues.push(sel.value);
+            }
+        });
+        
+        document.getElementById('techniciansInput').value = selectedValues.join(',');
+    }
+
+    function filterBySite(siteId) {
+        // Filter Assets
+        const assetSelect = document.getElementById('assetSelect');
+        const assetOptions = assetSelect.querySelectorAll('option:not([value=""])');
+        assetSelect.value = ''; // Reset selection
+        assetOptions.forEach(opt => {
+            if (!siteId || opt.getAttribute('data-site-id') === siteId) {
+                opt.style.display = '';
+            } else {
+                opt.style.display = 'none';
+            }
+        });
+
+        // Filter existing Technicians
+        const techSelects = document.querySelectorAll('.technician-select');
+        techSelects.forEach(select => {
+            const techOptions = select.querySelectorAll('option:not([value=""])');
+            select.value = '';
+            techOptions.forEach(opt => {
+                if (!siteId || opt.getAttribute('data-site-id') === siteId) {
+                    opt.style.display = '';
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+        });
+        updateTechSelection();
+    }
+
+    function loadLogsheetTemplate(templateId) {
+        if (!templateId) return;
+        
+        if (parameters.length > 0) {
+            if (!confirm("Ini akan mengganti semua parameter yang sudah ada. Lanjutkan?")) {
+                document.getElementById('logsheetTemplateSelect').value = '';
+                return;
+            }
+        }
+        
+        const btn = document.getElementById('logsheetTemplateSelect');
+        const oldTxt = btn.options[btn.selectedIndex].text;
+        btn.options[btn.selectedIndex].text = "Memuat...";
+        
+        fetch('/work-orders/api/checklist/' + templateId)
+        .then(r => r.json())
+        .then(data => {
+            // Reset existing params
+            document.getElementById('parametersContainer').innerHTML = '';
+            parameters = [];
+            
+            // Add new params
+            data.forEach(p => {
+                let paramName = p.parameter;
+                if (p.standard) {
+                    paramName += " (Std: " + p.standard + ")";
+                }
+                addParameter(paramName, 'reading', '', '', '');
+            });
+            
+            document.getElementById('logsheetTemplateSelect').value = '';
+            btn.options[btn.selectedIndex].text = oldTxt;
+        })
+        .catch(err => {
+            alert("Gagal memuat template: " + err);
+            btn.options[btn.selectedIndex].text = oldTxt;
+        });
+    }
+
+    function handleAssetChange() {
+        const assetId = document.getElementById('assetSelect').value;
+        if (!assetId) return;
+        
+        // Auto load if parameters are empty
+        if (parameters.filter(p => p !== null).length === 0) {
+            loadAssetMeters(true);
+        }
+    }
+
+    function loadAssetMeters(silentEmpty = false) {
+        const assetId = document.getElementById('assetSelect').value;
+        if (!assetId) {
+            if(!silentEmpty) alert('Silakan pilih Target Asset terlebih dahulu!');
+            return;
+        }
+
+        const activeParams = parameters.filter(p => p !== null);
+        if (activeParams.length > 0) {
+            if (!confirm("Ini akan mengganti semua parameter yang sudah ada dengan parameter metering dari aset. Lanjutkan?")) {
+                return;
+            }
+        }
+
+        const btn = document.getElementById('btnLoadMeters');
+        const oldHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memuat...';
+        btn.disabled = true;
+
+        fetch('/dashboard/logsheet/api/asset/' + assetId + '/meters')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('parametersContainer').innerHTML = '';
+            parameters = [];
+            
+            if (data.length === 0) {
+                if(!silentEmpty) alert('Aset ini tidak memiliki parameter master metering.');
+            } else {
+                data.forEach(p => {
+                    addParameter(p.name, p.entry_type, p.unit, p.min, p.max);
+                });
+            }
+            
+            btn.innerHTML = oldHtml;
+            btn.disabled = false;
+            
+            // Show/hide empty state
+            if (parameters.length === 0) {
+                document.getElementById('emptyParams').style.display = 'block';
+            } else {
+                document.getElementById('emptyParams').style.display = 'none';
+            }
+        })
+        .catch(err => {
+            alert("Gagal memuat metering aset: " + err);
+            btn.innerHTML = oldHtml;
+            btn.disabled = false;
+        });
+    }
+
+    // Initialize with one empty row
+    document.addEventListener('DOMContentLoaded', () => {
+        addTechnicianRow();
+        const currentSite = document.getElementById('siteSelect').value;
+        if(currentSite) filterBySite(currentSite);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    #iframeContainer.is-fullscreen {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 999999 !important;
+        border-radius: 0 !important;
+    }
+    #iframeContainer:fullscreen {
+        width: 100vw !important;
+        height: 100vh !important;
+        border-radius: 0 !important;
+    }
+    #fullscreenFloatingBar {
+        opacity: 0.85;
+        transition: opacity 0.2s ease-in-out;
+    }
+    #fullscreenFloatingBar:hover {
+        opacity: 1;
+    }
+    .fade-out {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.4s ease-out;
+    }
+</style>
+
+<div class="d-flex flex-column" style="height: calc(100vh - 120px);">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div class="d-flex align-items-center">
+            <a href="{{ url_for('bas_monitoring.index') }}" class="btn btn-sm btn-outline-secondary me-3 rounded-circle shadow-sm" style="width: 36px; height: 36px; padding: 0; line-height: 34px; text-align: center;" title="Kembali">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h4 class="mb-0 fw-bold d-inline-block align-middle me-2">{{ frame.name }}</h4>
+                {% if frame.site %}
+                <span class="badge bg-info text-dark align-middle">{{ frame.site.name }}</span>
+                {% else %}
+                <span class="badge bg-secondary align-middle">Global</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" id="btnReload" class="btn btn-sm btn-outline-secondary shadow-sm" title="Muat ulang halaman monitor">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+            </button>
+            <button type="button" id="btnResetSession" class="btn btn-sm btn-outline-warning text-dark shadow-sm" title="Bersihkan sesi login dan muat ulang jika terjadi Forbidden/Error">
+                <i class="bi bi-arrow-repeat me-1"></i> Reset Sesi
+            </button>
+            <button type="button" id="btnFullscreen" class="btn btn-sm btn-outline-dark shadow-sm" title="Tampilkan monitor dalam layar penuh">
+                <i class="bi bi-arrows-fullscreen me-1"></i> Fullscreen
+            </button>
+            <a href="{{ frame.url }}" target="_blank" class="btn btn-sm btn-primary shadow-sm" title="Buka di tab baru">
+                <i class="bi bi-box-arrow-up-right me-1"></i> Buka di Tab Baru
+            </a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 flex-grow-1 overflow-hidden position-relative" id="iframeContainer" style="background-color: #0b1329;">
+        <!-- Floating controls when in fullscreen mode -->
+        <div id="fullscreenFloatingBar" class="position-absolute top-0 end-0 m-3 d-none gap-2" style="z-index: 99999;">
+            <button type="button" id="btnFloatingReload" class="btn btn-sm btn-dark bg-opacity-75 border-secondary text-white shadow-sm" title="Refresh Monitor">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button type="button" id="btnFloatingExitFullscreen" class="btn btn-sm btn-dark bg-opacity-75 border-secondary text-white shadow-sm" title="Keluar Layar Penuh (ESC)">
+                <i class="bi bi-fullscreen-exit me-1"></i> Keluar Fullscreen
+            </button>
+        </div>
+
+        <!-- Loading / Session Prep Overlay -->
+        <div id="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-light" style="z-index: 100; transition: opacity 0.3s ease;">
+            <div class="spinner-border text-primary mb-3" style="width: 2.8rem; height: 2.8rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h6 class="fw-bold text-dark mb-1" id="loadingTitle">Menghubungkan ke BAS Monitoring...</h6>
+            <p class="text-muted small mb-0" id="loadingSubtitle">Menyiapkan sesi & autentikasi monitor {{ frame.name }}</p>
+        </div>
+
+        <!-- Hidden container for background logout frames -->
+        <div id="logoutFrameContainer" style="display:none; width:0; height:0;"></div>
+
+        <div class="card-body p-0 d-flex flex-column h-100">
+            <iframe id="monitorFrame" src="about:blank" width="100%" height="100%" style="border:none; flex-grow: 1; min-height: 100%; display: block;" credentialless allow="fullscreen; autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rawTargetUrl = {{ frame.url | tojson }};
+    const monitorFrame = document.getElementById('monitorFrame');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingTitle = document.getElementById('loadingTitle');
+    const loadingSubtitle = document.getElementById('loadingSubtitle');
+    const logoutContainer = document.getElementById('logoutFrameContainer');
+    const container = document.getElementById('iframeContainer');
+    
+    const btnFullscreen = document.getElementById('btnFullscreen');
+    const btnReload = document.getElementById('btnReload');
+    const btnResetSession = document.getElementById('btnResetSession');
+    const btnFloatingReload = document.getElementById('btnFloatingReload');
+    const btnFloatingExitFullscreen = document.getElementById('btnFloatingExitFullscreen');
+    const floatingBar = document.getElementById('fullscreenFloatingBar');
+
+    function showLoading(title, subtitle) {
+        if (loadingTitle && title) loadingTitle.textContent = title;
+        if (loadingSubtitle && subtitle) loadingSubtitle.textContent = subtitle;
+        loadingOverlay.classList.remove('fade-out');
+        loadingOverlay.style.display = 'flex';
+    }
+
+    function hideLoading() {
+        loadingOverlay.classList.add('fade-out');
+        setTimeout(() => {
+            if (loadingOverlay.classList.contains('fade-out')) {
+                loadingOverlay.style.display = 'none';
+            }
+        }, 400);
+    }
+
+    // Determine target URL and protocol
+    function getCleanTargetUrl(url) {
+        // If current site is HTTPS and target is HTTP on basjti.com, upgrade to HTTPS to avoid mixed content
+        if (window.location.protocol === 'https:' && url.startsWith('http://basjti.com')) {
+            return url.replace('http://basjti.com', 'https://basjti.com');
+        }
+        return url;
+    }
+
+    // Clean session on basjti.com by hitting logout endpoint via hidden iframe
+    function clearSessionAndLoad(targetUrl) {
+        showLoading('Menyiapkan Sesi Monitor...', 'Membersihkan sesi lama agar tidak terjadi konflik hak akses (Forbidden)...');
+        logoutContainer.innerHTML = '';
+
+        // Check if URL is from basjti.com
+        const isBasJti = targetUrl.includes('basjti.com');
+
+        if (isBasJti) {
+            const logoutIframe = document.createElement('iframe');
+            logoutIframe.style.display = 'none';
+            // Use same protocol as target or current page
+            const logoutUrl = window.location.protocol === 'https:' ? 'https://basjti.com/logout' : 'http://basjti.com/logout';
+            logoutIframe.src = logoutUrl;
+            
+            let loaded = false;
+            const proceedWithLoad = () => {
+                if (loaded) return;
+                loaded = true;
+                showLoading('Memuat Monitor...', 'Menghubungkan ke server BAS...');
+                
+                // Add unique timestamp query parameter if needed to prevent browser frame caching
+                const separator = targetUrl.includes('?') ? '&' : '?';
+                const finalUrl = targetUrl + separator + '_r=' + Date.now();
+                monitorFrame.src = finalUrl;
+            };
+
+            logoutIframe.onload = () => {
+                setTimeout(proceedWithLoad, 200);
+            };
+
+            logoutIframe.onerror = () => {
+                proceedWithLoad();
+            };
+
+            // Failsafe timeout in case iframe onload doesn't fire
+            setTimeout(proceedWithLoad, 1000);
+            logoutContainer.appendChild(logoutIframe);
+        } else {
+            monitorFrame.src = targetUrl;
+        }
+    }
+
+    // Monitor frame loaded event
+    monitorFrame.addEventListener('load', function() {
+        if (monitorFrame.src && monitorFrame.src !== 'about:blank') {
+            hideLoading();
+        }
+    });
+
+    // Initialize loading
+    const targetUrl = getCleanTargetUrl(rawTargetUrl);
+    clearSessionAndLoad(targetUrl);
+
+    // Refresh action
+    function reloadFrame() {
+        showLoading('Memuat Ulang...', 'Memperbarui tampilan monitor...');
+        try {
+            monitorFrame.contentWindow.location.reload();
+        } catch(e) {
+            const separator = targetUrl.includes('?') ? '&' : '?';
+            monitorFrame.src = targetUrl + separator + '_r=' + Date.now();
+        }
+    }
+
+    btnReload.addEventListener('click', reloadFrame);
+    btnFloatingReload.addEventListener('click', reloadFrame);
+
+    // Reset session action
+    btnResetSession.addEventListener('click', function() {
+        clearSessionAndLoad(targetUrl);
+    });
+
+    // Fullscreen handling
+    function isFullscreenActive() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    }
+
+    function toggleFullscreen() {
+        if (!isFullscreenActive()) {
+            if (container.requestFullscreen) {
+                container.requestFullscreen();
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            } else if (container.mozRequestFullScreen) {
+                container.mozRequestFullScreen();
+            } else if (container.msRequestFullscreen) {
+                container.msRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+    }
+
+    function updateFullscreenUI() {
+        const isFull = isFullscreenActive();
+        if (isFull) {
+            btnFullscreen.innerHTML = '<i class="bi bi-fullscreen-exit me-1"></i> Exit Fullscreen';
+            btnFullscreen.classList.replace('btn-outline-dark', 'btn-dark');
+            floatingBar.classList.remove('d-none');
+            floatingBar.classList.add('d-flex');
+        } else {
+            btnFullscreen.innerHTML = '<i class="bi bi-arrows-fullscreen me-1"></i> Fullscreen';
+            btnFullscreen.classList.replace('btn-dark', 'btn-outline-dark');
+            floatingBar.classList.add('d-none');
+            floatingBar.classList.remove('d-flex');
+        }
+    }
+
+    btnFullscreen.addEventListener('click', toggleFullscreen);
+    btnFloatingExitFullscreen.addEventListener('click', toggleFullscreen);
+
+    document.addEventListener('fullscreenchange', updateFullscreenUI);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+    document.addEventListener('mozfullscreenchange', updateFullscreenUI);
+    document.addEventListener('MSFullscreenChange', updateFullscreenUI);
+});
+</script>
+{% endblock %}

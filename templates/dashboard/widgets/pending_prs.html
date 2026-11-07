@@ -1,0 +1,22 @@
+<!-- Pending Purchase Requests Widget -->
+<div class="card h-100">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-cart me-2"></i> Pending PRs</h6>
+        <span class="badge soft-badge-info rounded-pill">{{ pending_prs|length }}</span>
+    </div>
+    <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+            {% for pr in pending_prs %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('purchasing.view_po', id=pr.id) }}" class="fw-bold text-decoration-none text-primary small"><i class="bi bi-receipt me-1"></i>{{ pr.po_number }}</a>
+                <span class="badge soft-badge-warning rounded-pill px-2">{{ pr.status }}</span>
+            </li>
+            {% else %}
+            <li class="list-group-item text-center text-muted py-4 d-flex flex-column align-items-center">
+                <i class="bi bi-cart-check fs-3 text-secondary mb-2"></i>
+                <div class="small">No pending purchase requests.</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>

@@ -1,0 +1,135 @@
+# MANUAL PENGGUNAAN SISTEM CMMS (DETAIL PER ROLE DAN HALAMAN)
+
+Sistem CMMS ini membagi fungsionalitasnya berdasarkan 3 Role (Hak Akses) utama: ADMIN, TECHNICIAN, dan GUEST.
+Berikut adalah rincian fungsionalitas, kegunaan halaman, dan input yang dibutuhkan untuk masing-masing role.
+
+================================================================================
+BAGIAN 1: ROLE ADMIN
+(Memiliki akses penuh ke semua fitur, pengaturan sistem, dan laporan)
+================================================================================
+
+1. HALAMAN DASHBOARD (ADMIN)
+   - Fungsi: Memberikan ringkasan (overview) dari seluruh aktivitas pemeliharaan di semua lokasi.
+   - Fitur Utama: Grafik jumlah Work Order per status, daftar Work Order yang tertunda (backlog), peringatan stok gudang yang menipis, dan ringkasan Helpdesk.
+   - Input/Aksi:
+     * Filter berdasarkan Site (Lokasi) atau rentang waktu (Date Range).
+
+2. HALAMAN MANAJEMEN ASET (ASSETS)
+   - Fungsi: Pusat data untuk mendaftarkan dan melacak semua mesin atau fasilitas.
+   - Sub-Halaman & Input:
+     * [Daftar Aset]: Menampilkan tabel semua aset. Admin dapat memfilter dan mencari aset.
+     * [Tambah Aset Baru]: 
+       - Input Wajib: Asset Name, Asset Code (unik), Category (misal: HVAC, Listrik), Site, dan Status (Online/Offline).
+       - Input Opsional: Location (ruangan), Make/Model, Serial Number, Barcode, Criticality (Low/Medium/High/Critical).
+     * [Detail Aset]: Melihat riwayat kerusakan aset (WO History), spesifikasi teknis, daftar suku cadang yang cocok (BOM), dan dokumen/manual aset.
+     * [Edit/Hapus Aset]: Mengubah data aset jika ada kesalahan atau mutasi lokasi.
+
+3. HALAMAN WORK ORDERS (SURAT PERINTAH KERJA)
+   - Fungsi: Membuat, mendistribusikan, dan memantau tugas perbaikan/perawatan.
+   - Sub-Halaman & Input:
+     * [Daftar Work Order]: Melihat semua WO dari seluruh teknisi.
+     * [Buat Work Order Baru]:
+       - Input: Title (Judul tugas), Description (Detail kerusakan), Target Asset (Aset yang rusak), Priority (Tingkat prioritas), Assignee (Teknisi yang ditunjuk), Planned Start & End Date.
+     * [Review & Approve WO]: Ketika teknisi menyelesaikan WO, Admin dapat meninjaunya di halaman ini, mengecek jam kerja dan suku cadang yang digunakan, lalu mengubah statusnya menjadi "Approved/Closed".
+
+4. HALAMAN HELPDESK (LAYANAN KELUHAN)
+   - Fungsi: Menerima laporan dari pengguna umum (Guest) dan mengubahnya menjadi Work Order.
+   - Sub-Halaman & Input:
+     * [Daftar Tiket]: Melihat tiket dengan status Open, In Progress, Resolved.
+     * [Detail Tiket]: Admin dapat merespons (menulis komentar) kepada pelapor.
+     * [Convert to Work Order]: Tombol untuk mengubah tiket menjadi WO.
+       - Input: Memilih Teknisi (Assignee) dan menentukan Aset yang berkaitan.
+
+5. HALAMAN WAREHOUSE (GUDANG & SUKU CADANG)
+   - Fungsi: Mengelola stok inventaris, barang masuk, dan batas minimum stok.
+   - Sub-Halaman & Input:
+     * [Daftar Parts]: Menampilkan semua suku cadang.
+     * [Tambah Part Baru]:
+       - Input: Part Name, Part Number, Deskripsi, Kategori, Minimum Stock (Batas peringatan), dan Initial Quantity (Stok awal).
+     * [Log Transaksi Gudang]: Melihat riwayat barang masuk (In) dan keluar (Out).
+     * [Stock In (Barang Masuk)]:
+       - Input: Memilih Part, Jumlah (Qty) yang ditambahkan, Harga Beli, dan Catatan penerimaan.
+
+6. HALAMAN PREVENTIVE MAINTENANCE (JADWAL PERAWATAN)
+   - Fungsi: Membuat rutinitas perawatan yang akan menghasilkan WO secara otomatis.
+   - Sub-Halaman & Input:
+     * [Tambah Jadwal Baru]:
+       - Input: Task Name, Target Asset, Frequency (Harian/Mingguan/Bulanan), Instruksi Perawatan, dan Assigned Team/Technician.
+
+7. HALAMAN REPORTS & ANALYTICS (LAPORAN)
+   - Fungsi: Menghasilkan laporan performa untuk manajemen.
+   - Sub-Halaman & Input:
+     * [Filter Laporan]: 
+       - Input: Memilih jenis laporan (Kinerja Teknisi, Penggunaan Biaya/Parts, Waktu Henti Aset/Downtime), memilih Site, dan Rentang Waktu (Tanggal).
+     * [Export]: Tombol untuk mengunduh laporan ke format PDF atau Excel (.xlsx).
+
+8. HALAMAN SETTINGS (PENGATURAN SISTEM)
+   - Fungsi: Mengatur data dasar sistem dan pengguna.
+   - Sub-Halaman & Input:
+     * [Manajemen Pengguna]: Menambah/mengedit User. (Input: NRP/ID, Nama, Role, Password, Site).
+     * [Master Data]: Menambah daftar Site (Lokasi), Location (Ruangan), Category, dan Team (Regu Teknisi).
+
+
+================================================================================
+BAGIAN 2: ROLE TECHNICIAN (TEKNISI)
+(Fokus pada operasional, penyelesaian tugas, dan pengambilan barang)
+================================================================================
+
+1. HALAMAN DASHBOARD (TECHNICIAN)
+   - Fungsi: Menampilkan daftar tugas (Work Order) harian milik teknisi tersebut.
+   - Fitur Utama: Daftar "My Open Work Orders" dan peringatan tugas yang sudah melewati tenggat waktu (Overdue).
+
+2. HALAMAN WORK ORDERS
+   - Fungsi: Menerima tugas dan melaporkan hasil pekerjaan.
+   - Sub-Halaman & Input:
+     * [Daftar Pekerjaan Saya]: Hanya menampilkan WO yang di-assign ke teknisi tersebut.
+     * [Detail Work Order & Eksekusi]:
+       - Aksi: Mengubah status dari "Open" menjadi "In Progress" saat mulai bekerja.
+       - Input Penyelesaian (Saat WO selesai): 
+         1. Action Taken (Catatan perbaikan yang dilakukan).
+         2. Actual Hours (Total jam pengerjaan).
+         3. Parts Used (Menginput suku cadang apa saja yang dipakai dan berapa jumlahnya).
+         4. Lampiran (Mengunggah foto bukti perbaikan sebelum/sesudah).
+       - Aksi: Mengubah status menjadi "Completed/Closed".
+
+3. HALAMAN MANAJEMEN ASET
+   - Fungsi: Sebagai referensi saat melakukan perbaikan (Read-only / Akses Terbatas).
+   - Sub-Halaman & Input:
+     * [Cari Aset]: Teknisi dapat mencari aset menggunakan Barcode atau Nama untuk melihat spesifikasi, riwayat perbaikan sebelumnya, atau membaca dokumen manual. (Tidak dapat menghapus aset).
+
+4. HALAMAN WAREHOUSE
+   - Fungsi: Mengambil barang dari gudang untuk keperluan perbaikan.
+   - Sub-Halaman & Input:
+     * [Stock Out (Barang Keluar)]:
+       - Input: Memilih Part yang diambil, Jumlah (Qty), dan menautkannya dengan Nomor Work Order (agar biaya perbaikan dapat terlacak).
+
+5. HALAMAN HELPDESK
+   - Fungsi: Melihat detail keluhan asli dari pelapor (Read-only).
+   - Sub-Halaman & Input:
+     * Teknisi dapat memberikan balasan (Komentar) teknis kepada pelapor jika membutuhkan informasi tambahan terkait kerusakan.
+
+
+================================================================================
+BAGIAN 3: ROLE GUEST (PENGGUNA UMUM / KARYAWAN NON-TEKNIS)
+(Fokus pada pelaporan masalah dan pengecekan status laporan)
+================================================================================
+
+1. HALAMAN DASHBOARD (GUEST)
+   - Fungsi: Menampilkan status laporan (tiket) yang pernah mereka buat.
+   - Fitur Utama: Tombol cepat "Buat Laporan Baru" dan daftar "Tiket Saya".
+
+2. HALAMAN HELPDESK (BUAT TIKET BARU)
+   - Fungsi: Formulir untuk melaporkan kerusakan fasilitas atau mesin.
+   - Sub-Halaman & Input:
+     * [Form Laporan Baru]:
+       - Input Wajib: 
+         1. Subject (Judul ringkas masalah, contoh: "AC Ruang Meeting Mati").
+         2. Description (Penjelasan detail, contoh: "AC tidak dingin dan meneteskan air").
+         3. Location/Site (Tempat kejadian).
+       - Input Opsional: Urgensi (Normal/Urgent), dan Lampiran Foto Kerusakan.
+
+3. HALAMAN RIWAYAT TIKET (MY TICKETS)
+   - Fungsi: Memantau sejauh mana laporan diproses.
+   - Sub-Halaman & Input:
+     * Guest dapat melihat apakah tiket masih "Open" (Belum direspons), "In Progress" (Sedang dikerjakan teknisi), atau "Resolved" (Selesai).
+     * Jika tiket sudah "Resolved", Guest dapat memberikan input komentar konfirmasi (misal: "Terima kasih, AC sudah dingin kembali").

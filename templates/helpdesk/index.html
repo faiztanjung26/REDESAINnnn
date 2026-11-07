@@ -1,0 +1,691 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    :root {
+        --kanban-bg: #f8fafc;
+        --card-bg: #ffffff;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+        --shadow-md: 0 10px 25px -3px rgba(0,0,0,0.06), 0 4px 10px -2px rgba(0,0,0,0.03);
+        --prio-crit: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+        --prio-high: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+        --prio-med:  linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+        --prio-low:  linear-gradient(180deg, #64748b 0%, #475569 100%);
+    }
+    
+    .kanban-board {
+        display: flex;
+        overflow-x: auto;
+        padding: 5px 5px 20px 5px;
+        min-height: calc(100vh - 150px);
+        align-items: flex-start;
+        border-radius: 16px;
+    }
+    
+    .kanban-board::-webkit-scrollbar {
+        height: 8px;
+    }
+    .kanban-board::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .kanban-board::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 20px;
+    }
+
+    .kanban-column {
+        min-width: 320px;
+        max-width: 320px;
+        margin-right: 24px;
+        display: flex;
+        flex-direction: column;
+        background: transparent;
+    }
+    .kanban-header {
+        padding: 14px 18px;
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 14px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(145deg, #ffffff, #f8fafc);
+        border-radius: 14px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
+        border: 1px solid #f1f5f9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .kanban-header .badge {
+        background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+        color: #334155;
+        font-size: 13px;
+        border-radius: 20px;
+        padding: 5px 12px;
+        border: 1px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .kanban-cards-container {
+        flex: 1;
+        min-height: 150px;
+        padding-bottom: 20px;
+    }
+    .kanban-card {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 20px 22px 20px 26px; /* extra left padding for priority bar */
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-sm);
+        cursor: grab;
+        border: 1px solid #f1f5f9;
+        position: relative;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+    .kanban-card:active {
+        cursor: grabbing;
+    }
+    .kanban-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-md);
+        border-color: #e2e8f0;
+    }
+    
+    /* Priority Bar */
+    .kanban-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        background: var(--prio-med);
+    }
+    .kanban-card[data-priority="critical"]::before, .kanban-card[data-priority="safety"]::before { background: var(--prio-crit); }
+    .kanban-card[data-priority="high"]::before, .kanban-card[data-priority="high priority"]::before { background: var(--prio-high); }
+    .kanban-card[data-priority="low"]::before { background: var(--prio-low); }
+    
+    .kanban-card .ticket-id {
+        font-size: 11px;
+        font-weight: 800;
+        color: #64748b;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+    }
+    .kanban-card .ticket-subject {
+        font-size: 15px;
+        font-weight: 700;
+        margin: 10px 0;
+        color: #0f172a;
+        line-height: 1.4;
+    }
+    .kanban-card .ticket-badges span {
+        font-size: 11px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    .badge-mrt { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-custom1 { background-color: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+    .badge-custom2 { background-color: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    
+    .ticket-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px dashed #e2e8f0;
+    }
+    .ticket-dates {
+        font-size: 11px;
+        color: #94a3b8;
+    }
+    .ticket-dates .date-val {
+        font-size: 12px;
+        font-weight: 700;
+        color: #334155;
+        margin-top: 2px;
+    }
+    .assignee-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 800;
+        color: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        border: 2px solid #fff;
+    }
+    .assignee-color-1 { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+    .assignee-color-2 { background: linear-gradient(135deg, #10b981, #059669); }
+    .assignee-color-3 { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .assignee-color-4 { background: linear-gradient(135deg, #ec4899, #db2777); }
+    
+    /* Hide card links natively to not block drag */
+    .kanban-card a.stretched-link {
+        pointer-events: none;
+    }
+    
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+        .kanban-board {
+            flex-direction: column;
+            align-items: stretch;
+            padding-bottom: 20px;
+            scroll-snap-type: none;
+            padding-left: 0;
+            background-color: transparent;
+        }
+        .kanban-column {
+            min-width: 100%;
+            max-width: 100%;
+            margin-right: 0;
+            margin-bottom: 20px;
+            scroll-snap-align: none;
+        }
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+{% endblock %}
+
+{% block toolbar_left %}
+    <h5 class="mb-0 d-flex align-items-center">
+        Helpdesk 
+    </h5>
+{% endblock %}
+
+{% block toolbar_right %}
+    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mt-2 mt-md-0 w-100 w-md-auto">
+        <div class="btn-group shadow-sm bg-white rounded-pill p-1 border" role="group">
+            <button type="button" class="btn btn-sm btn-light border-0 rounded-pill text-muted px-2 px-md-3" id="btnViewKanban" title="Kanban View" onclick="switchView('kanban')"><i class="bi bi-kanban"></i></button>
+            <button type="button" class="btn btn-sm btn-light border-0 rounded-pill text-muted px-2 px-md-3" id="btnViewList" title="List View" onclick="switchView('list')"><i class="bi bi-list-ul"></i></button>
+            <button type="button" class="btn btn-sm btn-light border-0 rounded-pill text-muted px-2 px-md-3" id="btnViewPivot" title="Pivot View" onclick="switchView('pivot')"><i class="bi bi-table"></i></button>
+            <button type="button" class="btn btn-sm btn-light border-0 rounded-pill text-muted px-2 px-md-3" id="btnViewGraph" title="Graph View" onclick="switchView('graph')"><i class="bi bi-bar-chart-fill"></i></button>
+            <button type="button" class="btn btn-sm btn-light border-0 rounded-pill text-muted px-2 px-md-3" id="btnViewCalendar" title="Calendar View" onclick="switchView('calendar')"><i class="bi bi-calendar-event"></i></button>
+        </div>
+        <a href="{{ url_for('helpdesk.export_all') }}" class="btn btn-sm btn-outline-success rounded-pill shadow-sm px-3">
+            <i class="bi bi-download"></i> <span class="d-none d-sm-inline">Export</span>
+        </a>
+        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#importModal">
+            <i class="bi bi-upload"></i> <span class="d-none d-sm-inline">Import</span>
+        </button>
+        <a href="{{ url_for('helpdesk.create') }}" class="btn btn-sm btn-primary rounded-pill shadow-sm px-3">
+            <i class="bi bi-plus"></i> <span class="d-none d-sm-inline">New Ticket</span>
+        </a>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="px-3 mb-3 d-flex flex-wrap gap-2 align-items-center">
+    <div class="input-group input-group-sm" style="max-width: 250px;">
+        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+        <input type="text" id="kanbanSearchFilter" class="form-control border-start-0 ps-0" placeholder="Search ticket or subject...">
+    </div>
+    
+    <select id="kanbanPriorityFilter" class="form-select form-select-sm shadow-sm" style="max-width: 150px;">
+        <option value="">All Priorities</option>
+        <option value="critical">Critical</option>
+        <option value="high priority">High Priority</option>
+        <option value="normal">Normal</option>
+        <option value="low">Low</option>
+    </select>
+    
+    <select class="form-select form-select-sm shadow-sm" id="kanbanMaterialFilter" style="max-width: 150px;">
+            <option value="">All Material Type</option>
+            <option value="Material By JTI">Material By JTI</option>
+            <option value="Material By BM">Material By BM</option>
+            <option value="Material By Customer">Material By Customer</option>
+            <option value="No Material">No Material</option>
+        </select>
+</div>
+
+<div id="viewContainerKanban">
+<div class="kanban-board px-3">
+    {% for status in statuses %}
+    <div class="kanban-column">
+        <div class="kanban-header">
+            <span>{{ status }}</span>
+            {% set count = namespace(value=0) %}
+            {% for t in tickets %}
+                {% if (t.status == status) or (loop.first and not t.status and status == 'New') %}
+                    {% set count.value = count.value + 1 %}
+                {% endif %}
+            {% endfor %}
+            <span class="badge">{{ count.value }}</span>
+        </div>
+        <div class="kanban-cards-container" data-status="{{ status }}">
+            {% for t in tickets %}
+                {% if (t.status == status) or (loop.first and not t.status and status == 'New') %}
+                <div class="kanban-card" data-id="{{ t.id }}" data-priority="{{ (t.priority or 'Normal')|lower }}" data-type="{{ t.ticket_type or '' }}" data-search="{{ t.ticket_code|lower }} {{ (t.subject or '')|lower }} {{ (t.tags or '')|lower }}" ondblclick="window.location.href='{{ url_for('helpdesk.edit', id=t.id) }}'">
+                    
+                    <div class="ticket-id">#{{ t.ticket_code }} &bull; 
+                        <span class="{% if t.priority == 'Critical' or t.priority == 'High Priority' or t.priority == 'Safety' %}text-danger{% elif t.priority == 'Low' %}text-secondary{% else %}text-primary{% endif %}">
+                            {{ t.priority or 'Normal' }}
+                        </span>
+                    </div>
+                    
+                    <div class="ticket-subject">{{ t.subject or 'No Subject' }}</div>
+                    
+                    <div class="ticket-badges">
+                        {% if t.modul %}<span class="badge-mrt">{{ t.modul }}</span>{% endif %}
+                        {% if t.tags %}
+                            {% set tag_list = t.tags.split(',') %}
+                            {% for tg in tag_list %}
+                                <span class="{% if loop.index % 2 == 0 %}badge-custom1{% else %}badge-custom2{% endif %}">{{ tg.strip() }}</span>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="ticket-footer">
+                        <div class="ticket-dates">
+                            <i class="bi bi-clock text-muted"></i> Created
+                            <div class="date-val">{{ t.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="ticket-administrator text-muted mb-0">
+                                {{ t.assignee.name.split(' ')[0] if t.assignee else 'Admin' }}
+                            </div>
+                            {% set initial = (t.assignee.name[0] if t.assignee else 'A')|upper %}
+                            <div class="assignee-circle {% if initial in 'ABCDE' %}assignee-color-1{% elif initial in 'FGHIJ' %}assignee-color-2{% elif initial in 'KLMNO' %}assignee-color-3{% else %}assignee-color-4{% endif %}" title="{{ t.assignee.name if t.assignee else 'Administrator' }}">{{ initial }}</div>
+                        </div>
+                    </div>
+                    
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+</div> <!-- End viewContainerKanban -->
+
+<!-- LIST VIEW -->
+<div id="viewContainerList" style="display: none;" class="px-3">
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="ticketsListTable">
+                    <thead class="bg-light text-muted" style="font-size: 0.85rem; text-transform: uppercase;">
+                        <tr>
+                            <th class="ps-4 py-3">Code</th>
+                            <th class="py-3">Subject</th>
+                            <th class="py-3">Type</th>
+                            <th class="py-3">Priority</th>
+                            <th class="py-3">Status</th>
+                            <th class="py-3">Created</th>
+                            <th class="pe-4 py-3 text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rendered via JS to share the same data source -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PIVOT VIEW -->
+<div id="viewContainerPivot" style="display: none;" class="px-3">
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4">
+            <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-table text-primary me-2"></i> Ticket Matrix (Status vs Priority)</h6>
+        </div>
+        <div class="card-body px-4 pb-4">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped text-center align-middle" id="pivotTable">
+                    <thead class="bg-light text-dark" id="pivotHead">
+                        <!-- Rendered via JS -->
+                    </thead>
+                    <tbody id="pivotBody">
+                        <!-- Rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRAPH VIEW -->
+<div id="viewContainerGraph" style="display: none;" class="px-3">
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4">
+            <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-bar-chart-fill text-primary me-2"></i> Ticket Distribution by Status</h6>
+        </div>
+        <div class="card-body px-4 pb-4">
+            <div style="height: 400px; position: relative;">
+                <canvas id="helpdeskChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CALENDAR VIEW -->
+<div id="viewContainerCalendar" style="display: none;" class="px-3">
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <div id="helpdeskCalendar" style="min-height: 500px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('helpdesk.import_all') }}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importModalLabel"><i class="bi bi-upload"></i> Import Helpdesk Tickets</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Use the template to ensure correct data formatting.
+                        <div class="mt-2 text-center">
+                            <a href="{{ url_for('helpdesk.download_template') }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-file-earmark-excel"></i> Download Template
+                            </a>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Choose CSV or Excel File</label>
+                        <input class="form-control" type="file" id="file" name="file" accept=".csv, .xlsx, .xls" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Start Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Embed tickets data for frontend rendering
+    window.helpdeskTickets = {{ tickets_json | tojson | safe }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var containers = document.querySelectorAll('.kanban-cards-container');
+    
+    containers.forEach(function(container) {
+        new Sortable(container, {
+            group: 'kanban',
+            animation: 150,
+            ghostClass: 'bg-light',
+            delay: 100, // Small delay allows native scrolling / double clicking on cards smoothly
+            delayOnTouchOnly: true,
+            filter: '.ignore-elements', // elements that shouldn't trigger drag
+            onEnd: function (evt) {
+                var itemEl = evt.item;
+                var newStatus = evt.to.getAttribute('data-status');
+                var ticketId = itemEl.getAttribute('data-id');
+                
+                if (evt.from !== evt.to) {
+                    fetch('/helpdesk/' + ticketId + '/update_status_ajax', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({ status: newStatus })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if(!data.success) {
+                            alert('Failed to update status');
+                            var fromContainer = evt.from;
+                            fromContainer.insertBefore(itemEl, evt.from.children[evt.oldIndex]);
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        var fromContainer = evt.from;
+                        fromContainer.insertBefore(itemEl, evt.from.children[evt.oldIndex]);
+                    });
+                }
+            }
+        });
+    });
+    
+    // Filtering Logic
+    function applyKanbanFilters() {
+        const searchText = document.getElementById('kanbanSearchFilter').value.toLowerCase();
+        const priorityFilter = document.getElementById('kanbanPriorityFilter').value.toLowerCase();
+        const typeFilter = document.getElementById('kanbanMaterialFilter').value;
+
+        document.querySelectorAll('.kanban-card').forEach(card => {
+            const cardSearch = card.getAttribute('data-search') || '';
+            const cardPriority = card.getAttribute('data-priority') || 'normal';
+            const cardType = card.getAttribute('data-type') || '';
+            
+            let isMatch = true;
+            if (searchText && !cardSearch.includes(searchText)) {
+                isMatch = false;
+            }
+            if (priorityFilter && cardPriority !== priorityFilter) {
+                isMatch = false;
+            }
+            if (typeFilter && cardType !== typeFilter) {
+                isMatch = false;
+            }
+            
+            if (isMatch) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    document.getElementById('kanbanSearchFilter').addEventListener('input', applyKanbanFilters);
+    document.getElementById('kanbanPriorityFilter').addEventListener('change', applyKanbanFilters);
+    document.getElementById('kanbanMaterialFilter').addEventListener('change', applyKanbanFilters);
+
+    // --- Multi-View Logic ---
+    window.switchView = function(viewName) {
+        document.getElementById('viewContainerKanban').style.display = 'none';
+        document.getElementById('viewContainerList').style.display = 'none';
+        document.getElementById('viewContainerPivot').style.display = 'none';
+        document.getElementById('viewContainerGraph').style.display = 'none';
+        document.getElementById('viewContainerCalendar').style.display = 'none';
+        
+        document.querySelectorAll('#btnViewKanban, #btnViewList, #btnViewPivot, #btnViewGraph, #btnViewCalendar').forEach(btn => {
+            btn.classList.remove('btn-primary', 'text-white', 'shadow-sm');
+            btn.classList.add('btn-light', 'text-muted');
+        });
+        
+        let targetBtn = '';
+        if (viewName === 'kanban') {
+            document.getElementById('viewContainerKanban').style.display = 'block';
+            targetBtn = 'btnViewKanban';
+        } else if (viewName === 'list') {
+            document.getElementById('viewContainerList').style.display = 'block';
+            targetBtn = 'btnViewList';
+            renderListView();
+        } else if (viewName === 'pivot') {
+            document.getElementById('viewContainerPivot').style.display = 'block';
+            targetBtn = 'btnViewPivot';
+            renderPivotView();
+        } else if (viewName === 'graph') {
+            document.getElementById('viewContainerGraph').style.display = 'block';
+            targetBtn = 'btnViewGraph';
+            renderGraphView();
+        } else if (viewName === 'calendar') {
+            document.getElementById('viewContainerCalendar').style.display = 'block';
+            targetBtn = 'btnViewCalendar';
+            renderCalendarView();
+        }
+        
+        let btn = document.getElementById(targetBtn);
+        if (btn) {
+            btn.classList.remove('btn-light', 'text-muted');
+            btn.classList.add('btn-primary', 'text-white', 'shadow-sm');
+        }
+    };
+    
+    function renderListView() {
+        const tbody = document.querySelector('#ticketsListTable tbody');
+        tbody.innerHTML = '';
+        window.helpdeskTickets.forEach(t => {
+            let tr = document.createElement('tr');
+            let priorityBadge = 'bg-info';
+            if (t.priority.toLowerCase() === 'critical') priorityBadge = 'bg-danger';
+            else if (t.priority.toLowerCase() === 'high priority') priorityBadge = 'bg-warning';
+            
+            tr.innerHTML = `
+                <td class="ps-4 fw-bold text-primary"><a href="${t.url}" class="text-decoration-none">${t.code}</a></td>
+                <td class="fw-bold">${t.subject}</td>
+                <td><span class="badge bg-light text-dark border">${t.type}</span></td>
+                <td><span class="badge ${priorityBadge}">${t.priority}</span></td>
+                <td><span class="badge bg-secondary">${t.status}</span></td>
+                <td class="text-muted" style="font-size:0.85rem;">${t.created_at}</td>
+                <td class="pe-4 text-end">
+                    <a href="${t.url}" class="btn btn-sm btn-outline-primary rounded-pill px-3">View</a>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        if (window.helpdeskTickets.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No tickets found</td></tr>';
+        }
+    }
+    
+    function renderPivotView() {
+        let priorities = ['Critical', 'High priority', 'Normal', 'Low'];
+        let statuses = [...new Set(window.helpdeskTickets.map(t => t.status))];
+        
+        let matrix = {};
+        statuses.forEach(s => {
+            matrix[s] = {};
+            priorities.forEach(p => matrix[s][p] = 0);
+            matrix[s]['Total'] = 0;
+        });
+        
+        let colTotals = { 'Total': 0 };
+        priorities.forEach(p => colTotals[p] = 0);
+        
+        window.helpdeskTickets.forEach(t => {
+            let p = t.priority;
+            let s = t.status;
+            if (matrix[s] && matrix[s][p] !== undefined) {
+                matrix[s][p]++;
+                matrix[s]['Total']++;
+                colTotals[p]++;
+                colTotals['Total']++;
+            }
+        });
+        
+        let headHtml = `<tr><th class="bg-light ps-4 text-start" style="width: 20%;">Status \\ Priority</th>`;
+        priorities.forEach(p => headHtml += `<th class="bg-light">${p}</th>`);
+        headHtml += `<th class="bg-light">Total</th></tr>`;
+        document.getElementById('pivotHead').innerHTML = headHtml;
+        
+        let bodyHtml = '';
+        statuses.forEach(s => {
+            bodyHtml += `<tr><td class="fw-bold text-start ps-4 text-secondary">${s}</td>`;
+            priorities.forEach(p => {
+                bodyHtml += `<td>${matrix[s][p] > 0 ? '<span class="badge bg-primary rounded-pill px-2">' + matrix[s][p] + '</span>' : '-'}</td>`;
+            });
+            bodyHtml += `<td class="fw-bold bg-light">${matrix[s]['Total']}</td></tr>`;
+        });
+        
+        bodyHtml += `<tr class="fw-bold bg-light"><td class="text-start ps-4">Total</td>`;
+        priorities.forEach(p => bodyHtml += `<td>${colTotals[p]}</td>`);
+        bodyHtml += `<td>${colTotals['Total']}</td></tr>`;
+        
+        document.getElementById('pivotBody').innerHTML = bodyHtml;
+    }
+    
+    let helpdeskChartInstance = null;
+    function renderGraphView() {
+        let statuses = {};
+        window.helpdeskTickets.forEach(t => {
+            statuses[t.status] = (statuses[t.status] || 0) + 1;
+        });
+        
+        let labels = Object.keys(statuses);
+        let data = Object.values(statuses);
+        
+        let ctx = document.getElementById('helpdeskChart');
+        if (helpdeskChartInstance) {
+            helpdeskChartInstance.destroy();
+        }
+        
+        helpdeskChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Number of Tickets',
+                    data: data,
+                    backgroundColor: '#4e73df',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+    
+    let helpdeskCalendarInstance = null;
+    function renderCalendarView() {
+        let calendarEl = document.getElementById('helpdeskCalendar');
+        if (helpdeskCalendarInstance) {
+            setTimeout(() => helpdeskCalendarInstance.render(), 50);
+            return;
+        }
+        
+        let events = window.helpdeskTickets.filter(t => t.created_at).map(t => {
+            return {
+                id: t.id,
+                title: t.subject,
+                start: t.created_at.split(' ')[0], 
+                url: t.url,
+                color: t.priority.toLowerCase() === 'critical' ? '#e74a3b' : (t.priority.toLowerCase() === 'high priority' ? '#f6c23e' : '#4e73df')
+            };
+        });
+        
+        helpdeskCalendarInstance = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listWeek'
+            },
+            events: events,
+            eventClick: function(info) {
+                if(info.event.url) {
+                    window.location.href = info.event.url;
+                    info.jsEvent.preventDefault();
+                }
+            }
+        });
+        
+        setTimeout(() => helpdeskCalendarInstance.render(), 100);
+    }
+    
+    // Init default view
+    switchView('kanban');
+});
+</script>
+{% endblock %}

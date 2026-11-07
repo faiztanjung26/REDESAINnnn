@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Executive Dashboard{% endblock %}
+
+{% block toolbar_left %}
+    <h3 class="mb-0 text-dark fw-bold me-3">Dashboard Maintenance</h3>
+    
+    <form action="{{ url_for('dashboard') }}" method="GET" class="d-inline-flex align-items-center bg-white border rounded-pill px-3 shadow-sm py-1 me-2" id="dashboardFilterForm">
+        <input type="hidden" name="view" value="executive">
+        <!-- Site Filter -->
+        {% if available_sites %}
+        <div class="d-inline-flex align-items-center me-3 border-end pe-3">
+            <i class="bi bi-funnel text-muted me-2"></i>
+            <select name="site_id" class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark" style="min-width: 130px; box-shadow: none;" onchange="document.getElementById('dashboardFilterForm').submit();">
+                <option value="">All Sites</option>
+                {% for site in available_sites %}
+                    <option value="{{ site.id }}" {% if selected_site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        
+        <!-- Time Range Filter -->
+        <div class="d-inline-flex align-items-center">
+            <i class="bi bi-calendar3 text-muted me-2"></i>
+            <select name="time_range" id="timeRangeSelect" class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark" style="min-width: 140px; box-shadow: none;" onchange="handleTimeRangeChange()">
+                <option value="today" {% if time_range == 'today' %}selected{% endif %}>Hari Ini</option>
+                <option value="this_month" {% if time_range == 'this_month' %}selected{% endif %}>Bulan Ini</option>
+                <option value="last_month" {% if time_range == 'last_month' %}selected{% endif %}>Bulan Lalu</option>
+                <option value="this_year" {% if time_range == 'this_year' %}selected{% endif %}>Tahun Ini</option>
+                <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Custom Range</option>
+            </select>
+            
+            <div id="customDateRange" class="d-inline-flex align-items-center ms-2" style="{% if time_range != 'custom' %}display: none !important;{% endif %}">
+                <input type="date" name="start_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ start_date_str }}" style="width: 110px;">
+                <span class="mx-1 text-muted">-</span>
+                <input type="date" name="end_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ end_date_str }}" style="width: 110px;">
+                <button type="submit" class="btn btn-sm btn-primary rounded-pill ms-2"><i class="bi bi-search"></i></button>
+            </div>
+        </div>
+    </form>
+    
+    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm ms-2" onclick="toggleFullscreen()" title="Fullscreen Mode">
+        <i class="bi bi-arrows-fullscreen"></i>
+    </button>
+    
+    <script>
+        function handleTimeRangeChange() {
+            var val = document.getElementById('timeRangeSelect').value;
+            if (val === 'custom') {
+                document.getElementById('customDateRange').style.setProperty('display', 'inline-flex', 'important');
+            } else {
+                document.getElementById('customDateRange').style.setProperty('display', 'none', 'important');
+                document.getElementById('dashboardFilterForm').submit();
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        document.addEventListener('fullscreenchange', (event) => {
+            if (document.fullscreenElement) {
+                document.body.classList.add('is-fullscreen');
+            } else {
+                document.body.classList.remove('is-fullscreen');
+            }
+        });
+    </script>
+{% endblock %}
+
+{% block content %}
+<style>
+    /* Premium Dashboard General Styling */
+    .widget-container .card, .exec-card {
+        border-radius: 20px !important;
+        box-shadow: 0 10px 30px -5px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04) !important;
+        border: none !important;
+        background: linear-gradient(145deg, #ffffff, #f8fafc) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+    }
+    .widget-container .card:hover, .exec-card:hover {
+        box-shadow: 0 20px 40px -5px rgba(79, 70, 229, 0.15) !important;
+        transform: translateY(-4px);
+    }
+    .exec-card .card-header, .widget-container .card-header {
+        background-color: transparent !important;
+        border-bottom: 1px solid rgba(0,0,0,0.04) !important;
+        padding: 1.5rem 1.5rem 1rem !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.02em;
+        color: #0f172a !important;
+    }
+    .exec-card .list-group-item, .widget-container .list-group-item {
+        border-color: rgba(0,0,0,0.03) !important;
+        padding: 1rem 1.5rem !important;
+        transition: background-color 0.2s ease;
+    }
+    .exec-card .list-group-item:hover, .widget-container .list-group-item:hover {
+        background-color: rgba(248,250,252,0.8) !important;
+    }
+    .soft-badge-danger { background-color: #fee2e2 !important; color: #dc2626 !important; font-weight: 600; }
+    .soft-badge-warning { background-color: #fef3c7 !important; color: #d97706 !important; font-weight: 600; }
+    .soft-badge-info { background-color: #e0f2fe !important; color: #0284c7 !important; font-weight: 600; }
+    .soft-badge-secondary { background-color: #f1f5f9 !important; color: #475569 !important; font-weight: 600; }
+    .soft-badge-success { background-color: #dcfce7 !important; color: #16a34a !important; font-weight: 600; }
+    
+    /* Executive Container specific */
+    .exec-container {
+        padding: 1.5rem;
+    }
+    .soft-badge-purple { background-color: #f3e8ff !important; color: #9333ea !important; font-weight: 600; }
+
+    /* Fullscreen Mode Styles */
+    body.is-fullscreen .sidebar { display: none !important; }
+    body.is-fullscreen .top-toolbar { display: none !important; }
+    body.is-fullscreen .main-content { margin-left: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
+    body.is-fullscreen .exec-container { 
+        padding: 2rem !important; 
+        min-height: 100vh; 
+        background-color: #f8fafc; 
+    }
+    .exit-fs-btn { display: none; }
+    body.is-fullscreen .exit-fs-btn { 
+        display: flex; 
+        position: fixed; 
+        top: 1.5rem; 
+        right: 1.5rem; 
+        z-index: 9999; 
+    }
+</style>
+
+<div class="container-fluid px-4 py-3 exec-container position-relative">
+    <button class="btn btn-danger rounded-circle shadow exit-fs-btn align-items-center justify-content-center" style="width: 45px; height: 45px;" onclick="toggleFullscreen()" title="Exit Fullscreen">
+        <i class="bi bi-fullscreen-exit fs-5"></i>
+    </button>
+
+    <!-- KPI Row -->
+    <div class="mb-4">
+        <h6 class="mb-3 fw-bold text-dark fs-5">Key Performance Indicators</h6>
+        {% set total_wos = total_wos_count %}
+        {% set pct_selesai = (completed_wos_count / total_wos * 100)|round(1) if total_wos > 0 else 0 %}
+        {% set terkendala_count = total_wos - completed_wos_count %}
+        {% set pct_terkendala = (terkendala_count / total_wos * 100)|round(1) if total_wos > 0 else 0 %}
+        {% set pct_overdue = (overdue_wos_count / total_wos * 100)|round(1) if total_wos > 0 else 0 %}
+        
+        <div class="row row-cols-1 row-cols-md-3 row-cols-xl-5 g-3 widget-container">
+            <!-- % Selesai -->
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="text-secondary text-uppercase fw-bold mb-2" style="letter-spacing: 0.05em; font-size: 0.75rem;">% SELESAI</h6>
+                                <h2 class="mb-0 fs-2 fw-bold text-dark" style="letter-spacing: -1px;">{{ pct_selesai }}%</h2>
+                            </div>
+                            <div class="p-3 rounded-circle d-flex align-items-center justify-content-center soft-badge-success" style="width: 50px; height: 50px;">
+                                <i class="bi bi-check2-circle fs-4"></i>
+                            </div>
+                        </div>
+                        <small class="text-success fw-bold mt-1 d-block"><i class="bi bi-check-square me-1"></i> {{ completed_wos_count }} / {{ total_wos }} WO</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- % Terkendala -->
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="text-secondary text-uppercase fw-bold mb-2" style="letter-spacing: 0.05em; font-size: 0.75rem;">% TERKENDALA</h6>
+                                <h2 class="mb-0 fs-2 fw-bold text-dark" style="letter-spacing: -1px;">{{ pct_terkendala }}%</h2>
+                            </div>
+                            <div class="p-3 rounded-circle d-flex align-items-center justify-content-center soft-badge-warning" style="width: 50px; height: 50px;">
+                                <i class="bi bi-pause-circle fs-4"></i>
+                            </div>
+                        </div>
+                        <small class="text-warning fw-bold mt-1 d-block"><i class="bi bi-hourglass me-1"></i> {{ terkendala_count }} / {{ total_wos }} WO</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- % Overdue -->
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="text-secondary text-uppercase fw-bold mb-2" style="letter-spacing: 0.05em; font-size: 0.75rem;">% OVERDUE</h6>
+                                <h2 class="mb-0 fs-2 fw-bold text-dark" style="letter-spacing: -1px;">{{ pct_overdue }}%</h2>
+                            </div>
+                            <div class="p-3 rounded-circle d-flex align-items-center justify-content-center soft-badge-danger" style="width: 50px; height: 50px;">
+                                <i class="bi bi-exclamation-octagon fs-4"></i>
+                            </div>
+                        </div>
+                        <small class="text-danger fw-bold mt-1 d-block"><i class="bi bi-clock me-1"></i> {{ overdue_wos_count }} / {{ total_wos }} WO</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MTTR -->
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="text-secondary text-uppercase fw-bold mb-2" style="letter-spacing: 0.05em; font-size: 0.75rem;">MTTR (JAM)</h6>
+                                <h2 class="mb-0 fs-2 fw-bold text-dark" style="letter-spacing: -1px;">{{ mttr_hours }}</h2>
+                            </div>
+                            <div class="p-3 rounded-circle d-flex align-items-center justify-content-center soft-badge-info" style="width: 50px; height: 50px;">
+                                <i class="bi bi-tools fs-4"></i>
+                            </div>
+                        </div>
+                        <small class="text-info fw-bold mt-1 d-block"><i class="bi bi-wrench me-1"></i> Rata-rata perbaikan</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MTBF -->
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="text-secondary text-uppercase fw-bold mb-2" style="letter-spacing: 0.05em; font-size: 0.75rem;">MTBF (JAM)</h6>
+                                <h2 class="mb-0 fs-2 fw-bold text-dark" style="letter-spacing: -1px;">{{ mtbf_hours }}</h2>
+                            </div>
+                            <div class="p-3 rounded-circle d-flex align-items-center justify-content-center soft-badge-purple" style="width: 50px; height: 50px;">
+                                <i class="bi bi-activity fs-4"></i>
+                            </div>
+                        </div>
+                        <small class="soft-badge-purple bg-transparent fw-bold mt-1 d-block"><i class="bi bi-graph-up me-1"></i> Waktu operasi</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts and Lists Row -->
+    <div class="row g-4 widget-container">
+        <!-- WO Status Chart -->
+        <div class="col-lg-4 col-md-6 col-12">
+            {% include 'dashboard/widgets/wo_status_chart.html' %}
+        </div>
+
+        <!-- Overdue WOs -->
+        <div class="col-lg-4 col-md-6 col-12">
+            {% include 'dashboard/widgets/overdue_wos.html' %}
+        </div>
+
+        <!-- Upcoming WOs -->
+        <div class="col-lg-4 col-md-12 col-12">
+            {% include 'dashboard/widgets/upcoming_wos.html' %}
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // WO Status Chart
+        const chartEl = document.getElementById('woStatusChart');
+        if (chartEl) {
+            const ctx = chartEl.getContext('2d');
+            const wo_labels = {{ wo_status_labels | tojson | safe }};
+            const wo_data = {{ wo_status_data | tojson | safe }};
+            const wo_colors = {{ wo_status_colors | tojson | safe }};
+            
+            // Calculate total WOs
+            const totalWOs = wo_data.reduce((a, b) => a + b, 0);
+
+            // Center text plugin
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw: function(chart) {
+                    if (chart.config.options.elements.center) {
+                        const ctx = chart.ctx;
+                        const centerConfig = chart.config.options.elements.center;
+                        const text = centerConfig.text;
+                        const color = centerConfig.color || '#333';
+
+                        ctx.save();
+                        ctx.font = "bold 30px 'Inter', sans-serif";
+                        ctx.fillStyle = color;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
+                        const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+                        
+                        // Main text
+                        ctx.fillText(text, centerX, centerY - 10);
+                        
+                        // Sub text
+                        ctx.font = "normal 14px 'Inter', sans-serif";
+                        ctx.fillStyle = '#64748b';
+                        ctx.fillText("Total WO", centerX, centerY + 15);
+                        ctx.restore();
+                    }
+                }
+            };
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                plugins: [centerTextPlugin],
+                data: {
+                    labels: wo_labels,
+                    datasets: [{
+                        data: wo_data,
+                        backgroundColor: wo_colors,
+                        borderWidth: 0,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    elements: {
+                        center: {
+                            text: totalWOs.toString(),
+                            color: '#1e293b'
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                font: {
+                                    family: "'Inter', sans-serif",
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

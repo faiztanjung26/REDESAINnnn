@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('warehouse.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Warehouse</a>
+{% endblock %}
+
+{% block content %}
+<style>
+/* Premium Inventory Design */
+body { background-color: #f8fafc; }
+.inventory-card { background: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid rgba(0,0,0,0.04); margin-bottom: 1.5rem; overflow: hidden; }
+
+.table-modern { width: 100%; margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+.table-modern thead th { background-color: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; font-weight: 700; }
+.table-modern tbody td { padding: 1rem 1.25rem; vertical-align: middle; color: #334155; border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; }
+.table-modern tbody tr:last-child td { border-bottom: none; }
+.table-modern tbody tr:hover td { background-color: #f8fafc; }
+
+.part-icon-box { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); color: #475569; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+.badge-soft-success { background-color: #d1fae5; color: #065f46; font-weight: 700; }
+.badge-soft-danger { background-color: #fee2e2; color: #991b1b; font-weight: 700; }
+
+.btn-adjust { background-color: #f8fafc; border: 1px solid #e2e8f0; color: #10b981; font-weight: 600; border-radius: 8px; padding: 0.4rem 0.8rem; transition: all 0.2s; }
+.btn-adjust:hover { background-color: #10b981; color: white; border-color: #10b981; }
+.btn-delete { background-color: #f8fafc; border: 1px solid #e2e8f0; color: #ef4444; font-weight: 600; border-radius: 8px; padding: 0.4rem 0.8rem; transition: all 0.2s; }
+.btn-delete:hover { background-color: #ef4444; color: white; border-color: #ef4444; }
+</style>
+
+<div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h3 class="fw-bold text-dark mb-1" style="letter-spacing: -0.02em;"><i class="bi bi-inboxes text-primary me-2"></i>{{ site.name }}</h3>
+        <p class="text-muted mb-0">Manage and monitor stock levels for all parts in this facility.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <!-- Delete Selected Button -->
+        <button type="button" id="btnDeleteSelected" class="btn btn-danger shadow-sm rounded-pill px-3 d-none">
+            <i class="bi bi-trash me-1"></i> Hapus Terpilih
+        </button>
+        
+        <a href="{{ url_for('ppm.index', site_id=site.id) }}" class="btn btn-light border shadow-sm rounded-pill px-3"><i class="bi bi-file-earmark-text me-1"></i> PPM</a>
+        <a href="{{ url_for('warehouse.site_transactions', site_id=site.id) }}" class="btn btn-light border shadow-sm rounded-pill px-3"><i class="bi bi-clock-history me-1"></i> History</a>
+        
+        <!-- Export Dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-light border shadow-sm rounded-pill px-3 dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-download me-1"></i> Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
+                <li><a class="dropdown-item" href="{{ url_for('warehouse.export_site_inventory', site_id=site.id, format='excel') }}"><i class="bi bi-file-earmark-excel me-2 text-success"></i>Excel (.xlsx)</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('warehouse.export_site_inventory', site_id=site.id, format='csv') }}"><i class="bi bi-file-earmark-spreadsheet me-2 text-primary"></i>CSV (.csv)</a></li>
+            </ul>
+        </div>
+        
+        <!-- Import Button -->
+        <button class="btn btn-light border shadow-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#importModal">
+            <i class="bi bi-upload me-1"></i> Import
+        </button>
+        
+        <a href="{{ url_for('warehouse.incoming_goods', site_id=site.id) }}" class="btn btn-success shadow-sm rounded-pill px-4"><i class="bi bi-box-arrow-in-down me-1"></i> Masuk Barang (Baru)</a>
+        <a href="{{ url_for('warehouse.add_master_part', site_id=site.id) }}" class="btn btn-primary shadow-sm rounded-pill px-4"><i class="bi bi-plus-lg me-1"></i> Add Part</a>
+    </div>
+</div>
+
+<div class="inventory-card">
+    <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">Inventory List</h5>
+        <div class="search-box position-relative" style="width: 300px;">
+            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+            <input type="text" id="partSearchInput" class="form-control rounded-pill ps-5 bg-light border-0" placeholder="Search part name, code...">
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table-modern text-nowrap">
+            <thead>
+                <tr>
+                    <th style="width: 40px; text-align: center;"><input class="form-check-input" type="checkbox" id="selectAll"></th>
+                    <th>Part Information</th>
+                    <th>Current Stock</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for part, stock in parts %}
+                <tr class="part-row">
+                    <td style="text-align: center; vertical-align: middle;">
+                        <input class="form-check-input row-checkbox" type="checkbox" name="part_ids" value="{{ part.id }}">
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="part-icon-box me-3">
+                                <i class="bi bi-gear-wide-connected"></i>
+                            </div>
+                            <div>
+                                <a href="{{ url_for('settings.edit_part', id=part.id) }}" class="fw-bold text-decoration-none text-dark" style="font-size: 1rem;">{{ part.name }}</a>
+                                <div class="small text-muted mt-1">
+                                    <span class="bg-light border px-2 py-1 rounded" style="font-size: 0.75rem; font-family: monospace;">{{ part.code }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if stock.qty_on_hand > 0 %}
+                            <div class="d-flex align-items-center">
+                                <span class="badge badge-soft-success fs-6 rounded-pill px-3 py-2 me-2">{{ stock.qty_on_hand }}</span>
+                                <span class="text-muted small fw-medium">in stock</span>
+                            </div>
+                        {% else %}
+                            <div class="d-flex align-items-center">
+                                <span class="badge badge-soft-danger fs-6 rounded-pill px-3 py-2 me-2">0</span>
+                                <span class="text-danger small fw-medium">Out of stock</span>
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-2">
+                            <a href="{{ url_for('warehouse.adjust_stock', part_id=part.id, action='adjust', site_id=site.id) }}" class="btn-adjust text-decoration-none d-inline-block">
+                                <i class="bi bi-pencil-square"></i> Update / Adjust
+                            </a>
+                            <form action="{{ url_for('warehouse.delete_stock', site_id=site.id, part_id=part.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus part ini dari gudang site? Transaksi sebelumnya tetap tersimpan.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-delete text-decoration-none">
+                                    <i class="bi bi-trash"></i> Hapus
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" class="text-center py-5">
+                        <div class="text-muted mb-3"><i class="bi bi-inbox fs-1" style="color: #cbd5e1;"></i></div>
+                        <h5 class="fw-bold text-dark">No parts in inventory</h5>
+                        <p class="text-muted small">Click "Add Part" to bring master parts into your stock.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-light border-top p-3 d-flex justify-content-between align-items-center">
+        <small class="text-muted fw-semibold">{{ parts|length }} total items listed.</small>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel"><i class="bi bi-upload me-2 text-primary"></i>Import Site Inventory</h5>
+                <button type="button" class="btn-close" data-bs-close="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('warehouse.import_site_inventory', site_id=site.id) }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Select File (Excel or CSV) *</label>
+                        <input type="file" class="form-control" name="file" accept=".xlsx, .xls, .csv" required>
+                        <div class="form-text">Pastikan format kolom sesuai dengan template.</div>
+                    </div>
+                    <div class="bg-light p-3 rounded border mb-2">
+                        <h6 class="fw-bold text-dark mb-2" style="font-size: 0.85rem;">Cara Import:</h6>
+                        <ol class="small text-muted mb-0 ps-3">
+                            <li>Unduh file template Excel di bawah.</li>
+                            <li>Isi kode part (Part Code) yang sudah ada di sistem, beserta jumlah (Quantity) dan tanggal restock (Tanggal Masuk).</li>
+                            <li>Unggah kembali file tersebut ke form ini.</li>
+                            <li>Sistem akan menambahkan part baru ke site ini atau memperbarui kuantitas jika part sudah terdaftar di site.</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <a href="{{ url_for('warehouse.download_site_template', site_id=site.id) }}" class="btn btn-link text-decoration-none p-0 small"><i class="bi bi-file-earmark-arrow-down me-1"></i>Download Template</a>
+                    <div>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-close="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-sm px-3">Import</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Mass Delete Form -->
+<form id="massDeleteForm" action="{{ url_for('warehouse.mass_delete_stock', site_id=site.id) }}" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div id="massDeleteInputs"></div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Select all checkboxes
+    $('#selectAll').on('change', function() {
+        $('.row-checkbox').prop('checked', this.checked);
+        toggleDeleteButton();
+    });
+    
+    // Individual checkbox change
+    $('.row-checkbox').on('change', function() {
+        if ($('.row-checkbox:checked').length === $('.row-checkbox').length) {
+            $('#selectAll').prop('checked', true);
+        } else {
+            $('#selectAll').prop('checked', false);
+        }
+        toggleDeleteButton();
+    });
+    
+    function toggleDeleteButton() {
+        var checkedCount = $('.row-checkbox:checked').length;
+        if (checkedCount > 0) {
+            $('#btnDeleteSelected').removeClass('d-none');
+        } else {
+            $('#btnDeleteSelected').addClass('d-none');
+        }
+    }
+    
+    // Mass delete submit
+    $('#btnDeleteSelected').on('click', function() {
+        var checkedCount = $('.row-checkbox:checked').length;
+        if (checkedCount === 0) return;
+        
+        if (confirm('Yakin ingin menghapus ' + checkedCount + ' part terpilih dari gudang site? Transaksi sebelumnya tetap tersimpan.')) {
+            var $form = $('#massDeleteForm');
+            var $inputsDiv = $('#massDeleteInputs');
+            $inputsDiv.empty();
+            
+            $('.row-checkbox:checked').each(function() {
+                $inputsDiv.append('<input type="hidden" name="part_ids" value="' + $(this).val() + '">');
+            });
+            
+            $form.submit();
+        }
+    });
+    
+    // Part Search Filter
+    $('#partSearchInput').on('keyup', function() {
+        var value = $(this).val().toLowerCase();
+        $('.part-row').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+        });
+    });
+});
+</script>
+{% endblock %}

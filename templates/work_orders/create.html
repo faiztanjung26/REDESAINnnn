@@ -1,0 +1,1010 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('work_orders.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+    <h5 class="mb-0 ms-3 d-flex align-items-center">
+        {% if source_wo %}
+        New Work Order <span class="badge bg-secondary ms-2 fs-6"><i class="bi bi-copy me-1"></i> Salin dari {{ source_wo.code }}</span>
+        {% else %}
+        New Work Order
+        {% endif %}
+    </h5>
+{% endblock %}
+
+{% block toolbar_right %}
+    {% if recent_work_orders %}
+    <div class="dropdown d-inline-block me-2">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-copy"></i> Salin dari WO Lain
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow" style="max-height: 320px; overflow-y: auto;">
+            <li><h6 class="dropdown-header">Pilih WO Sumber untuk Disalin:</h6></li>
+            {% for rwo in recent_work_orders %}
+            <li><a class="dropdown-item small" href="{{ url_for('work_orders.create', copy_from=rwo.id) }}"><span class="fw-semibold">{{ rwo.code }}</span> <span class="text-muted">({{ rwo.asset.name if rwo.asset else '-' }})</span></a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    <button type="button" class="btn btn-sm btn-primary" onclick="validateAndSubmit();"><i class="bi bi-save"></i> Save</button>
+{% endblock %}
+
+{% block content %}
+{% if source_wo %}
+<div class="alert alert-info border-0 shadow-sm d-flex align-items-center justify-content-between mb-4 py-2 px-3 rounded-3">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-copy fs-4 text-primary me-3"></i>
+        <div>
+            <strong>Menyalin konfigurasi dari:</strong> <span class="badge bg-primary ms-1">{{ source_wo.code }}</span> <span class="text-muted">({{ source_wo.asset.name if source_wo.asset else 'No Asset' }})</span>
+            <div class="text-muted small mt-1">Checklist, Tasklist, Assignee teknisi, Jadwal, dan Notes telah otomatis disalin. Silakan pilih <strong>Asset</strong> baru di kolom kiri.</div>
+        </div>
+    </div>
+    <a href="{{ url_for('work_orders.create') }}" class="btn btn-sm btn-outline-secondary">Reset Form</a>
+</div>
+{% endif %}
+<form method="POST" action="" id="woForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    {% if ticket %}
+    <input type="hidden" name="helpdesk_ticket_id" value="{{ ticket.id }}">
+    {% endif %}
+    <div class="row g-4">
+        
+        <!-- Left Column: Asset Info -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0 fw-bold">Asset Information</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="text-start">
+                        <label class="form-label text-muted small fw-bold">Select Asset *</label>
+                        <select class="form-select" name="asset_id" id="asset_select" required>
+                            <option value="">-- Select Asset --</option>
+                            {% for asset in assets %}
+                                <option value="{{ asset.id }}">{{ asset.name }} ({{ asset.code }}){% if asset.site %} - {{ asset.site.name }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="text-muted small mt-2" id="asset_debug_info">Asset details will securely load here once saved.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Form Tabs -->
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white p-0 border-bottom-0">
+                    <ul class="nav nav-tabs px-3 pt-3" id="woTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active text-dark fw-semibold" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab"><i class="bi bi-card-text me-1"></i> General</button>
+                        </li>
+
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link text-dark fw-semibold" id="completion-tab" data-bs-toggle="tab" data-bs-target="#completion" type="button" role="tab"><i class="bi bi-check2-circle me-1"></i> Completion</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link text-dark fw-semibold" id="parts-tab" data-bs-toggle="tab" data-bs-target="#parts" type="button" role="tab"><i class="bi bi-box-seam me-1"></i> Parts</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link text-dark fw-semibold disabled" id="log-tab" data-bs-toggle="tab" data-bs-target="#log" type="button" role="tab" title="Save Work Order first"><i class="bi bi-journal-text me-1"></i> Work Log</button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="tab-content" id="woTabsContent">
+                        
+                        <!-- General Tab -->
+                        <div class="tab-pane fade show active" id="general" role="tabpanel">
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">WO Code</label>
+                                    <input type="text" class="form-control bg-light" name="code" id="wo_code_input" value="{{ initial_code }}" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Project Code</label>
+                                    {% set locked_project_code = current_user.site.project_code if current_user.site else None %}
+                                    {% set default_project_code = locked_project_code or (source_wo.project_code if source_wo else '') %}
+                                    <select class="form-select" name="project_code" id="project_code_select" onchange="updateWoCode()" {% if locked_project_code %}disabled{% endif %}>
+                                        <option value="">-- None --</option>
+                                        {% for proj in project_codes %}
+                                            <option value="{{ proj.code }}" {% if default_project_code == proj.code %}selected{% endif %}>{{ proj.code }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if locked_project_code %}
+                                    <input type="hidden" name="project_code" value="{{ locked_project_code }}">
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label text-muted small fw-bold">Description *</label>
+                                <textarea class="form-control" name="description" rows="2" required>{{ source_wo.description if source_wo else ('From Helpdesk Ticket #' ~ ticket.ticket_code ~ ': ' ~ ticket.subject ~ '\n\n' ~ ticket.description if ticket else '') }}</textarea>
+                            </div>
+                            
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-primary"><i class="bi bi-ui-checks"></i> Standard Tasklist</label>
+                                    <select class="form-select border-primary" name="tasklist_id" onchange="fetchTasklistTemplate(this.value)">
+                                        <option value="">-- No Tasklist --</option>
+                                        {% set grouped_tasklists = tasklists|groupby('project_code_group') %}
+                                        {% for group in grouped_tasklists %}
+                                            <optgroup label="{{ group.grouper if group.grouper else 'General (No Project Code)' }}">
+                                                {% for tl in group.list %}
+                                                <option value="{{ tl.id }}" {% if source_wo and source_wo.tasklist_id == tl.id %}selected{% endif %}>{{ tl.name }}</option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        {% endfor %}
+                                    </select>
+                                    
+                                    <!-- Dynamic Procedures Container -->
+                                    <div class="mt-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <button class="btn btn-sm btn-light border text-primary fw-bold shadow-sm d-flex align-items-center flex-grow-1 me-2 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProcContainer" aria-expanded="false" style="justify-content: space-between;">
+                                                <span><i class="bi bi-list-task me-1"></i> Task Procedures</span> 
+                                                <i class="bi bi-chevron-down toggle-icon" style="transition: transform 0.2s;"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary shadow-sm bg-white" style="font-size: 0.70rem;" data-bs-toggle="modal" data-bs-target="#addCustomProcModal"><i class="bi bi-plus-lg text-primary fw-bold"></i> Add</button>
+                                        </div>
+                                        <div class="collapse" id="collapseProcContainer">
+                                            <div class="mb-1" id="procListContainer">
+                                                <div class="text-center py-3 text-muted" style="font-size: 0.75rem;" id="emptyProcMsg">
+                                                    Select a template or add custom tasks.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" name="custom_procedures_json" id="custom_procedures_json" form="woForm" value="[]">
+                                    </div>
+                                    
+                                    <label class="form-label text-muted small fw-bold text-warning mt-4"><i class="bi bi-list-check"></i> Standard Checklist</label>
+                                    <select class="form-select border-warning" name="checklist_id" onchange="fetchChecklistTemplate(this.value)">
+                                        <option value="">-- No Checklist --</option>
+                                        {% set grouped_checklists = checklists|groupby('project_code_group') %}
+                                        {% for group in grouped_checklists %}
+                                            <optgroup label="{{ group.grouper if group.grouper else 'General (No Project Code)' }}">
+                                                {% for cl in group.list %}
+                                                <option value="{{ cl.id }}" {% if source_wo and source_wo.checklist_id == cl.id %}selected{% endif %}>{{ cl.name }}</option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        {% endfor %}
+                                    </select>
+                                    
+                                    <!-- Dynamic Checklist Container -->
+                                    <div class="mt-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <button class="btn btn-sm btn-light border text-warning text-dark fw-bold shadow-sm d-flex align-items-center flex-grow-1 me-2 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChkContainer" aria-expanded="false" style="justify-content: space-between;">
+                                                <span><i class="bi bi-ui-checks me-1"></i> Checklist Parameters</span> 
+                                                <i class="bi bi-chevron-down toggle-icon" style="transition: transform 0.2s;"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-warning text-dark shadow-sm bg-white" style="font-size: 0.70rem;" data-bs-toggle="modal" data-bs-target="#addCustomChkModal"><i class="bi bi-plus-lg text-dark fw-bold"></i> Add</button>
+                                        </div>
+                                        <div class="collapse" id="collapseChkContainer">
+                                            <div class="table-responsive mb-1">
+                                                <table class="table table-hover align-middle mb-0" style="font-size: 0.8rem;">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th style="width: 45%">Parameter</th>
+                                                            <th style="width: 35%">Standard</th>
+                                                            <th style="width: 20%" class="text-center">Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="chkListContainer">
+                                                        <tr id="emptyChkMsg">
+                                                            <td colspan="3" class="text-center py-3 text-muted">Select a template or add parameters.</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" name="custom_checklists_json" id="custom_checklists_json" form="woForm" value="[]">
+                                    </div>
+
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Custom Work Instructions / Notes</label>
+                                    <textarea class="form-control" name="work_instructions" rows="2" placeholder="Additional detailed steps or manuals...">{{ source_wo.work_instructions if source_wo and source_wo.work_instructions else '' }}</textarea>
+                                </div>
+                            </div>
+
+                            
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Maintenance Type</label>
+                                    <select class="form-select" name="maintenance_type" id="maint_type_select" onchange="updateWoCode()">
+                                        <option value="Preventive" {% if (source_wo and source_wo.maintenance_type == 'Preventive') or (not source_wo and not ticket) %}selected{% endif %}>Preventive</option>
+                                        <option value="Corrective" {% if source_wo and source_wo.maintenance_type == 'Corrective' %}selected{% endif %}>Corrective</option>
+                                        <option value="Handling" {% if (source_wo and source_wo.maintenance_type == 'Handling') or (not source_wo and ticket) %}selected{% endif %}>Handling</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Priority</label>
+                                    <select class="form-select" name="priority">
+                                        <option value="Highest" {% if source_wo and source_wo.priority == 'Highest' %}selected{% endif %}>Highest</option>
+                                        <option value="High" {% if source_wo and source_wo.priority == 'High' %}selected{% endif %}>High</option>
+                                        <option value="Medium" {% if (source_wo and source_wo.priority == 'Medium') or not source_wo %}selected{% endif %}>Medium</option>
+                                        <option value="Low" {% if source_wo and source_wo.priority == 'Low' %}selected{% endif %}>Low</option>
+                                        <option value="None" {% if source_wo and source_wo.priority == 'None' %}selected{% endif %}>None</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label text-muted small fw-bold"><i class="bi bi-people me-1"></i> Assigned Team</label>
+                                <select class="form-select mb-2" name="team_id" id="team_select" onchange="fetchTeamMembers(this.value)">
+                                    <option value="">-- No Team --</option>
+                                    {% for team in teams %}
+                                        <option value="{{ team.id }}" {% if source_wo and source_wo.team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                
+                                <label class="form-label text-muted small fw-bold">Assignees</label>
+                                <div id="assigneesContainer">
+                                    <div class="input-group mb-2 assignee-row">
+                                        <select class="form-select assignee-select" name="assigned_to" id="assigned_to_select">
+                                            <option value="">-- Unassigned --</option>
+                                            {% for user in users %}
+                                                <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button class="btn btn-outline-danger remove-assignee-btn" type="button" onclick="removeAssigneeRow(this)"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="addAssigneeRow()"><i class="bi bi-plus-lg"></i> Add Assignee</button>
+                            </div>
+                        </div>
+                        
+
+                        <!-- Completion Tab -->
+                        <div class="tab-pane fade" id="completion" role="tabpanel">
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Suggested Start Date *</label>
+                                    <input type="datetime-local" class="form-control" name="suggested_start_date" id="suggested_start_date" value="{{ source_wo.suggested_start_date|to_jakarta('%Y-%m-%dT%H:%M') if source_wo and source_wo.suggested_start_date else '' }}" required onchange="updateWoCode()">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Suggested End Date *</label>
+                                    <input type="datetime-local" class="form-control" name="suggested_completion_date" id="suggested_completion_date" value="{{ source_wo.suggested_completion_date|to_jakarta('%Y-%m-%dT%H:%M') if source_wo and source_wo.suggested_completion_date else '' }}" required>
+                                </div>
+                            </div>
+                            </div>
+                            
+                            <hr class="text-muted">
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Actual Start Date</label>
+                                    <input type="datetime-local" class="form-control bg-light" name="start_date" id="start_date" onchange="calculateHours()" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Actual End Date</label>
+                                    <input type="datetime-local" class="form-control bg-light" name="end_date" id="end_date" onchange="calculateHours()" readonly>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">Calculated Hours</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control bg-light" id="estimated_hours" value="0" readonly>
+                                        <span class="input-group-text">hrs</span>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Parts Tab -->
+                        <div class="tab-pane fade" id="parts" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <p class="text-muted small mb-0">Record parts intended for this maintenance task.</p>
+                                <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#addPartModal">
+                                    <i class="bi bi-plus-lg"></i> Add Part
+                                </button>
+                            </div>
+                            
+                            <div class="table-responsive border rounded mb-4">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light text-muted small">
+                                        <tr>
+                                            <th>Part Number</th>
+                                            <th>Part Name</th>
+                                            <th>Qty</th>
+                                            <th class="text-end">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="partsListContainer">
+                                        <tr id="emptyPartsMsg">
+                                            <td colspan="4" class="text-center py-4 text-muted small">No parts added yet.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <input type="hidden" name="custom_parts_json" id="custom_parts_json" form="woForm" value="[]">
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</form>
+
+
+
+<!-- Add Custom Procedure Modal -->
+<div class="modal fade" id="addCustomProcModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add Custom Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-start">
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">Task Name / Step *</label>
+                    <input type="text" class="form-control" id="custom_proc_name" placeholder="Ex: Clean the filter" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); pushCustomProcedure(); }">
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label text-muted small fw-bold">Duration (Minutes)</label>
+                        <input type="number" step="1" min="0" class="form-control" id="custom_proc_duration" placeholder="0" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); pushCustomProcedure(); }">
+                    </div>
+                    <div class="col-6 mb-3 d-flex align-items-end pb-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="custom_proc_req_photo">
+                            <label class="form-check-label text-muted small fw-bold ms-1" for="custom_proc_req_photo">Require Photo</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-primary fw-bold px-4" onclick="pushCustomProcedure()">Add Task</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Custom Checklist Modal -->
+<div class="modal fade" id="addCustomChkModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add Custom Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-start">
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">Parameter Name (Unit check) *</label>
+                    <input type="text" class="form-control" id="custom_chk_parameter" placeholder="Ex: Oil Pressure" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); pushCustomChecklist(); }">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">Standard Range / Expected Value *</label>
+                    <input type="text" class="form-control" id="custom_chk_standard" placeholder="Ex: 40-60 psi / OK" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); pushCustomChecklist(); }">
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-warning fw-bold px-4 text-dark" onclick="pushCustomChecklist()">Add Parameter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Part Modal -->
+<div class="modal fade" id="addPartModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add Part</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-start">
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">Select Part</label>
+                    <select class="form-select" id="custom_part_id" style="width: 100%;">
+                        <option value="">-- Choose Part --</option>
+                        {% for part in parts %}
+                            <option value="{{ part.id }}" data-name="{{ part.name }}" data-code="{{ part.part_number }}">{{ part.part_number }} - {{ part.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">Quantity Needed</label>
+                    <input type="number" step="0.01" min="0.01" class="form-control" id="custom_part_qty" placeholder="1" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); pushCustomPart(); }">
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-primary fw-bold px-4" onclick="pushCustomPart()">Add Part</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    const allAssets = {{ assets_json|safe }};
+    const allTasklists = {{ tasklists_json|safe }};
+    const allChecklists = {{ checklists_json|safe }};
+    let customProcedures = {{ source_procedures_json|safe if source_procedures_json else '[]' }};
+    let customChecklists = {{ source_checklists_json|safe if source_checklists_json else '[]' }};
+    let customParts = {{ source_parts_json|safe if source_parts_json else '[]' }};
+    
+    $(document).ready(function() {
+        $('#asset_select').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: '-- Select Asset --'
+        });
+
+        $('#project_code_select').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: '-- None --'
+        });
+
+        $('select[name="tasklist_id"]').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: '-- No Tasklist --'
+        });
+
+        $('select[name="checklist_id"]').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: '-- No Checklist --'
+        });
+
+        $('#team_select').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: '-- No Team --'
+        });
+
+        $('.assignee-select').each(function() {
+            initAssigneeSelect2($(this));
+        });
+        
+        $('#asset_select').on('change', function() {
+            var selectedAssetId = $(this).val();
+            if (selectedAssetId) {
+                var selectedAsset = allAssets.find(a => a.id == selectedAssetId);
+                if (selectedAsset) {
+                    var newCode = (selectedAsset.project_code || "").trim();
+                    var $projSelect = $('#project_code_select');
+                    
+                    if (newCode !== "") {
+                        if ($projSelect.find("option[value='" + newCode + "']").length === 0) {
+                            $projSelect.append(new Option(newCode, newCode, false, false));
+                        }
+                        if ($projSelect.val() !== newCode) {
+                            $projSelect.val(newCode).trigger('change', { fromAsset: true });
+                        }
+                    }
+                    
+                    $('#asset_debug_info').text("Site: " + (selectedAsset.site_name || "-") + " | Project Code: " + (selectedAsset.project_code || "None"));
+                }
+            } else {
+                $('#asset_debug_info').text("Asset details will securely load here once saved.");
+            }
+            updateWoCode();
+        });
+        
+        $('#project_code_select').on('change', function(e, extraData) {
+            var fromAsset = extraData && extraData.fromAsset;
+            var selectedCode = $(this).val();
+            
+            if (!fromAsset) {
+                var $assetSelect = $('#asset_select');
+                var currentVal = $assetSelect.val();
+                
+                $assetSelect.empty();
+                $assetSelect.append(new Option('-- Select Asset --', ''));
+                
+                allAssets.forEach(function(asset) {
+                    if (!selectedCode || asset.project_code === selectedCode) {
+                        var optionText = asset.name + ' (' + asset.code + ')' + (asset.site_name ? ' - ' + asset.site_name : '');
+                        // We cannot select securely inside dynamically added options without risking changing intended asset unless we do a check
+                        $assetSelect.append(new Option(optionText, asset.id, false, false));
+                    }
+                });
+                
+                // Try to re-apply the value if it still exists in the filtered options
+                if ($assetSelect.find("option[value='" + currentVal + "']").length) {
+                    $assetSelect.val(currentVal);
+                }
+                
+                $assetSelect.trigger('change');
+            }
+            
+            updateWoCode();
+            
+            // Filter Tasklists
+            var $tasklistSelect = $('select[name="tasklist_id"]');
+            var currentTlVal = $tasklistSelect.val();
+            $tasklistSelect.empty();
+            $tasklistSelect.append(new Option('-- No Tasklist --', ''));
+            allTasklists.forEach(function(tl) {
+                if (!selectedCode || !tl.project_code || tl.project_code === selectedCode) {
+                    $tasklistSelect.append(new Option(tl.name, tl.id, false, false));
+                }
+            });
+            if ($tasklistSelect.find("option[value='" + currentTlVal + "']").length) {
+                $tasklistSelect.val(currentTlVal);
+            } else {
+                $tasklistSelect.val('');
+            }
+            $tasklistSelect.trigger('change');
+            
+            // Filter Checklists
+            var $checklistSelect = $('select[name="checklist_id"]');
+            var currentClVal = $checklistSelect.val();
+            $checklistSelect.empty();
+            $checklistSelect.append(new Option('-- No Checklist --', ''));
+            allChecklists.forEach(function(cl) {
+                if (!selectedCode || !cl.project_code || cl.project_code === selectedCode) {
+                    $checklistSelect.append(new Option(cl.name, cl.id, false, false));
+                }
+            });
+            if ($checklistSelect.find("option[value='" + currentClVal + "']").length) {
+                $checklistSelect.val(currentClVal);
+            } else {
+                $checklistSelect.val('');
+            }
+            $checklistSelect.trigger('change');
+            
+            // Since it was bound in inline JS, we use this manual trigger or call the function directly
+        });
+        
+        {% if source_wo %}
+        // If duplicating from source_wo, trigger project_code filtering so only matching assets show
+        if ($('#project_code_select').val()) {
+            $('#project_code_select').trigger('change');
+        }
+        
+        // Populate assignees from source_wo
+        const sourceAssignees = {{ source_assignee_ids|tojson|safe if source_assignee_ids else '[]' }};
+        if (sourceAssignees && sourceAssignees.length > 0) {
+            sourceAssignees.forEach(function(uid) {
+                addAssigneeRow(uid);
+            });
+        }
+        
+        // If procedures, checklists, or parts were copied, render them and open their containers
+        if (customProcedures && customProcedures.length > 0) {
+            renderCustomProcedures();
+            let procCol = document.getElementById('collapseProcContainer');
+            if (procCol) {
+                new bootstrap.Collapse(procCol, {toggle: false}).show();
+            }
+        }
+        if (customChecklists && customChecklists.length > 0) {
+            renderCustomChecklists();
+            let chkCol = document.getElementById('collapseChkContainer');
+            if (chkCol) {
+                new bootstrap.Collapse(chkCol, {toggle: false}).show();
+            }
+        }
+        if (customParts && customParts.length > 0) {
+            renderCustomParts();
+        }
+        {% endif %}
+
+        updateWoCode();
+    });
+
+    function initAssigneeSelect2($el) {
+        $el.select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: '-- Unassigned --'
+        });
+    }
+
+    function removeAssigneeRow(btn) {
+        var row = $(btn).closest('.assignee-row');
+        if (row.length) {
+            row.find('.assignee-select').select2('destroy');
+            row.remove();
+        }
+    }
+
+    function addAssigneeRow(preSelectedId = null) {
+        var container = document.getElementById('assigneesContainer');
+        
+        // Prevent Adding duplicate rows for the same user if preSelectedId is given
+        if (preSelectedId) {
+            let exists = false;
+            container.querySelectorAll('.assignee-select').forEach(sel => {
+                if (sel.value == preSelectedId) exists = true;
+            });
+            if (exists) return;
+        }
+
+        // If the first row is empty/unassigned, use it instead of adding a new one
+        let firstRowSelect = container.querySelector('.assignee-select');
+        if (preSelectedId && firstRowSelect && !firstRowSelect.value) {
+            $(firstRowSelect).val(preSelectedId).trigger('change');
+            return;
+        }
+
+        var newRow = document.createElement('div');
+        newRow.className = 'input-group mb-2 assignee-row';
+        newRow.innerHTML = `
+            <select class="form-select assignee-select" name="assigned_to">
+                <option value="">-- Unassigned --</option>
+                {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.name }} ({{ user.role }})</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-outline-danger remove-assignee-btn" type="button" onclick="removeAssigneeRow(this)"><i class="bi bi-trash"></i></button>
+        `;
+        container.appendChild(newRow);
+        
+        var $newSelect = $(newRow).find('.assignee-select');
+        initAssigneeSelect2($newSelect);
+        
+        if (preSelectedId) {
+            $newSelect.val(preSelectedId).trigger('change');
+        }
+    }
+
+    function fetchTeamMembers(id) {
+        if (!id) return;
+        let apiUrl = "{{ url_for('work_orders.get_team_members_api', id=0) }}".replace('0', id);
+        fetch(apiUrl)
+            .then(res => res.json())
+            .then(data => {
+                data.forEach(user => {
+                    addAssigneeRow(user.id);
+                });
+            });
+    }
+</script>
+<script>
+    // Custom arrays (customProcedures, customChecklists, customParts) are declared above
+    
+    // AJAX Fetchers
+    function fetchTasklistTemplate(id) {
+        if (!id) {
+            customProcedures = [];
+            renderCustomProcedures();
+            return;
+        }
+        let apiUrl = "{{ url_for('work_orders.get_tasklist_api', id=0) }}".replace('0', id);
+        fetch(apiUrl)
+            .then(res => res.json())
+            .then(data => {
+                customProcedures = data;
+                renderCustomProcedures();
+                let collapseEl = document.getElementById('collapseProcContainer');
+                let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+                bsCollapse.show();
+            });
+    }
+
+    function fetchChecklistTemplate(id) {
+        if (!id) {
+            customChecklists = [];
+            renderCustomChecklists();
+            return;
+        }
+        let apiUrl = "{{ url_for('work_orders.get_checklist_api', id=0) }}".replace('0', id);
+        fetch(apiUrl)
+            .then(res => res.json())
+            .then(data => {
+                customChecklists = data;
+                renderCustomChecklists();
+                let collapseEl = document.getElementById('collapseChkContainer');
+                let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+                bsCollapse.show();
+            });
+    }
+
+    function renderCustomProcedures() {
+        const container = document.getElementById('procListContainer');
+        const jsonInput = document.getElementById('custom_procedures_json');
+        
+        jsonInput.value = JSON.stringify(customProcedures);
+        
+        if (customProcedures.length === 0) {
+            container.innerHTML = '<div class="text-center py-4 text-muted small" id="emptyProcMsg">No custom tasks added yet. Standard templates will still applying automatically.</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        customProcedures.forEach((proc, index) => {
+            const reqLabel = proc.requires_attachment ? '<span class="badge bg-info text-dark ms-2" style="font-size:0.65rem;"><i class="bi bi-camera"></i> Photo Required</span>' : '';
+            const minLabel = proc.estimated_minutes > 0 ? `<span class="badge bg-light text-dark border ms-1" style="font-size:0.65rem;"><i class="bi bi-clock"></i> ${proc.estimated_minutes} m</span>` : '';
+            
+            container.innerHTML += `
+                <div class="d-flex align-items-center justify-content-between px-0 py-2 border-bottom border-start border-5 border-transparent ps-2">
+                    <div class="d-flex align-items-center text-start overflow-hidden">
+                        <button type="button" class="btn btn-lg p-0 m-0 border-0 bg-transparent text-secondary opacity-25 me-3" disabled><i class="bi bi-circle fs-3"></i></button>
+                        <div>
+                            <span class="text-dark fw-semibold">${proc.name}</span>
+                            ${reqLabel}
+                            ${minLabel}
+                        </div>
+                    </div>
+                    <div class="ms-3 flex-shrink-0">
+                        <button type="button" class="btn btn-sm text-danger shadow-none p-1" onclick="removeCustomProcedure(${index})"><i class="bi bi-trash fs-5"></i></button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function pushCustomProcedure() {
+        const nameInput = document.getElementById('custom_proc_name');
+        const minInput = document.getElementById('custom_proc_duration');
+        const reqPhotoCheck = document.getElementById('custom_proc_req_photo');
+        
+        if (!nameInput.value.trim()) { alert('Task name required'); return; }
+        
+        customProcedures.push({
+            name: nameInput.value.trim(),
+            estimated_minutes: parseInt(minInput.value) || 0,
+            requires_attachment: reqPhotoCheck.checked,
+            min_photos: reqPhotoCheck.checked ? 1 : 0
+        });
+        
+        nameInput.value = ''; minInput.value = ''; reqPhotoCheck.checked = false;
+        renderCustomProcedures();
+        bootstrap.Modal.getInstance(document.getElementById('addCustomProcModal')).hide();
+    }
+    
+    function removeCustomProcedure(index) {
+        customProcedures.splice(index, 1);
+        renderCustomProcedures();
+    }
+    
+    // Checklist Logics
+    function renderCustomChecklists() {
+        const tbody = document.getElementById('chkListContainer');
+        const jsonInput = document.getElementById('custom_checklists_json');
+        
+        jsonInput.value = JSON.stringify(customChecklists);
+        
+        if (customChecklists.length === 0) {
+            tbody.innerHTML = '<tr id="emptyChkMsg"><td colspan="3" class="text-center py-4 text-muted small">No custom parameters added yet.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        customChecklists.forEach((chk, index) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold text-dark">${chk.parameter}</td>
+                    <td><span class="badge bg-light text-dark border"><i class="bi bi-bullseye text-warning me-1"></i> ${chk.standard}</span></td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm text-danger shadow-none p-1" onclick="removeCustomChecklist(${index})"><i class="bi bi-trash fs-5"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function pushCustomChecklist() {
+        const paramInput = document.getElementById('custom_chk_parameter');
+        const stdInput = document.getElementById('custom_chk_standard');
+        
+        if (!paramInput.value.trim() || !stdInput.value.trim()) { alert('Parameter and Standard required'); return; }
+        
+        customChecklists.push({
+            parameter: paramInput.value.trim(),
+            standard: stdInput.value.trim()
+        });
+        
+        paramInput.value = ''; stdInput.value = '';
+        renderCustomChecklists();
+        bootstrap.Modal.getInstance(document.getElementById('addCustomChkModal')).hide();
+    }
+    
+    function removeCustomChecklist(index) {
+        customChecklists.splice(index, 1);
+        renderCustomChecklists();
+    }
+
+    // Parts Logics
+    function renderCustomParts() {
+        const tbody = document.getElementById('partsListContainer');
+        const jsonInput = document.getElementById('custom_parts_json');
+        
+        jsonInput.value = JSON.stringify(customParts);
+        
+        if (customParts.length === 0) {
+            tbody.innerHTML = '<tr id="emptyPartsMsg"><td colspan="4" class="text-center py-4 text-muted small">No parts added yet.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        customParts.forEach((cp, index) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td><span class="badge bg-light text-dark border">${cp.code}</span></td>
+                    <td class="fw-bold text-dark">${cp.name}</td>
+                    <td>${cp.qty}</td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-sm text-danger shadow-none p-1" onclick="removeCustomPart(${index})"><i class="bi bi-x-circle fs-5"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function pushCustomPart() {
+        const partSelect = document.getElementById('custom_part_id');
+        const qtyInput = document.getElementById('custom_part_qty');
+        
+        if (!partSelect.value) { alert('Select a part'); return; }
+        const selectedOption = partSelect.options[partSelect.selectedIndex];
+        const qty = parseFloat(qtyInput.value);
+        if (isNaN(qty) || qty <= 0) { alert('Valid quantity required'); return; }
+        
+        customParts.push({
+            part_id: partSelect.value,
+            name: selectedOption.getAttribute('data-name'),
+            code: selectedOption.getAttribute('data-code'),
+            qty: qty
+        });
+        
+        partSelect.value = ''; qtyInput.value = '';
+        renderCustomParts();
+        bootstrap.Modal.getInstance(document.getElementById('addPartModal')).hide();
+    }
+    
+    function removeCustomPart(index) {
+        customParts.splice(index, 1);
+        renderCustomParts();
+    }
+
+    function calculateHours() {
+        var start = document.getElementById('start_date').value;
+        var end = document.getElementById('end_date').value;
+        if (start && end) {
+            var diff = new Date(end) - new Date(start);
+            if (diff > 0) {
+                var hours = diff / 1000 / 60 / 60;
+                document.getElementById('estimated_hours').value = hours.toFixed(2);
+            } else {
+                document.getElementById('estimated_hours').value = '0';
+            }
+        }
+    }
+</script>
+
+<script>
+    let cachedRunningNum = "{{ running_number_str }}";
+
+    function updateWoCode() {
+        const assetSelect = document.getElementById('asset_select');
+        const assetId = assetSelect ? assetSelect.value : "";
+        let siteName = "Site";
+        if (assetId && typeof allAssets !== 'undefined') {
+            const foundAsset = allAssets.find(a => a.id == assetId);
+            if (foundAsset && foundAsset.site_name) {
+                siteName = foundAsset.site_name;
+            }
+        }
+        
+        const projSelect = document.getElementById('project_code_select');
+        let projCode = projSelect ? projSelect.value : "";
+        let last4 = "0000";
+        if (projCode && projCode.trim() !== "" && projCode.toLowerCase() !== "none") {
+            const trimmed = projCode.trim();
+            last4 = trimmed.length >= 4 ? trimmed.slice(-4) : trimmed.padStart(4, '0');
+        }
+        
+        const maintSelect = document.getElementById('maint_type_select');
+        const maintVal = maintSelect ? maintSelect.value : "";
+        let typeCode = "CM";
+        if (maintVal === "Preventive" || maintVal === "PM") {
+            typeCode = "PM";
+        } else if (maintVal === "Handling" || maintVal === "HM") {
+            typeCode = "HM";
+        }
+        
+        // Month and Year from suggested_start_date or start_date
+        const startDateInput = document.getElementById('suggested_start_date');
+        const actualStartInput = document.getElementById('start_date');
+        const chosenDateVal = (startDateInput && startDateInput.value) ? startDateInput.value : ((actualStartInput && actualStartInput.value) ? actualStartInput.value : "");
+        
+        let monthStr = "{{ month_str }}";
+        let yearStr = "{{ year_str }}";
+        if (chosenDateVal) {
+            const d = new Date(chosenDateVal);
+            if (!isNaN(d.getTime())) {
+                monthStr = String(d.getMonth() + 1).padStart(2, '0');
+                yearStr = String(d.getFullYear());
+            }
+        }
+        
+        // Format: WO - Running Number - site - 4 kode terakhir project code - PM/CM - Bulan tahun
+        document.getElementById('wo_code_input').value = `WO - ${cachedRunningNum} - ${siteName} - ${last4} - ${typeCode} - ${monthStr} - ${yearStr}`;
+
+        // Live sync with server for guaranteed freshest running number
+        const params = new URLSearchParams({
+            asset_id: assetId || '',
+            project_code: projCode || '',
+            maintenance_type: maintVal || 'Preventive',
+            date: chosenDateVal || ''
+        });
+        fetch(`/work-orders/api/next-code?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.code) {
+                    document.getElementById('wo_code_input').value = data.code;
+                    if (data.running_number) {
+                        cachedRunningNum = data.running_number;
+                    }
+                }
+            })
+            .catch(err => {});
+    }
+
+    function validateAndSubmit() {
+        const assetId = document.getElementById('asset_select').value;
+        const projectCode = document.getElementById('project_code_select').value;
+        const tasklistId = document.querySelector('select[name="tasklist_id"]').value;
+        const checklistId = document.querySelector('select[name="checklist_id"]').value;
+        const suggestedStart = document.getElementById('suggested_start_date').value;
+        const suggestedEnd = document.getElementById('suggested_completion_date').value;
+        
+        // Custom data check
+        let customProcs = [];
+        try { customProcs = JSON.parse(document.getElementById('custom_procedures_json').value || '[]'); } catch(e) {}
+        
+        let customChks = [];
+        try { customChks = JSON.parse(document.getElementById('custom_checklists_json').value || '[]'); } catch(e) {}
+        
+        let errors = [];
+        if (!assetId) errors.push("Silakan pilih Aset.");
+        if (!projectCode) errors.push("Silakan pilih Project Code.");
+        if (!suggestedStart) errors.push("Suggested Start Date wajib diisi.");
+        if (!suggestedEnd) errors.push("Suggested End Date wajib diisi.");
+        if (!tasklistId && customProcs.length === 0) errors.push("Tasklist wajib diisi (Pilih template atau tambah tugas custom).");
+        if (!checklistId && customChks.length === 0) errors.push("Checklist wajib diisi (Pilih template atau tambah parameter custom).");
+        
+        if (errors.length > 0) {
+            if (!suggestedStart || !suggestedEnd) {
+                const completionTabBtn = document.getElementById('completion-tab');
+                if (completionTabBtn) {
+                    const tab = new bootstrap.Tab(completionTabBtn);
+                    tab.show();
+                }
+            }
+            alert("Peringatan Wajib:\n\n- " + errors.join("\n- "));
+            return;
+        }
+        
+        document.getElementById('woForm').submit();
+    }
+</script>
+<style>
+    [data-bs-toggle="collapse"]:not(.collapsed) .toggle-icon {
+        transform: rotate(180deg);
+    }
+    /* Select2 integration in Bootstrap 5 input-group */
+    .input-group > .select2-container--bootstrap-5 {
+        width: 0 !important;
+        flex: 1 1 auto !important;
+    }
+    .input-group > .select2-container--bootstrap-5 .select2-selection {
+        border-top-right-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+    }
+    .input-group > .remove-assignee-btn {
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        z-index: 4;
+    }
+    .select2-container {
+        z-index: 1055;
+    }
+</style>
+{% endblock %}

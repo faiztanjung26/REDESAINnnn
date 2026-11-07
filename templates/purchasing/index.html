@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('purchasing.create_po') }}" class="btn btn-sm btn-primary ms-1"><i class="bi bi-plus"></i> New Purchase Order</a>
+    <a href="{{ url_for('purchasing.vendors') }}" class="btn btn-sm btn-outline-secondary ms-1"><i class="bi bi-shop"></i> Vendors</a>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Purchase Orders</h3>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped align-middle mb-0 text-nowrap">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40px;"><input class="form-check-input" type="checkbox"></th>
+                        <th>PO Number</th>
+                        <th>Vendor</th>
+                        <th>Site</th>
+                        <th>Total Cost</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for po in pos %}
+                    <tr>
+                        <td><input class="form-check-input" type="checkbox"></td>
+                        <td>
+                            <a href="{{ url_for('purchasing.view_po', id=po.id) }}" class="fw-bold">{{ po.po_number }}</a>
+                            <br><small class="text-muted">{{ po.date_created.strftime('%b %d, %Y') }}</small>
+                        </td>
+                        <td>{{ po.vendor.name }}</td>
+                        <td><i class="bi bi-geo-alt text-muted small"></i> {{ po.site.name }}</td>
+                        <td class="fw-bold">${{ "%.2f"|format(po.total_cost) }}</td>
+                        <td>
+                            {% if po.status == 'Draft' %}
+                                <span class="badge bg-secondary">Draft</span>
+                            {% elif po.status == 'Submitted' %}
+                                <span class="badge bg-primary">Submitted</span>
+                            {% elif po.status == 'Receiving' %}
+                                <span class="badge bg-info text-dark">Receiving</span>
+                            {% elif po.status == 'Closed' %}
+                                <span class="badge bg-success">Closed</span>
+                            {% else %}
+                                <span class="badge bg-dark">{{ po.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('purchasing.view_po', id=po.id) }}" class="btn btn-sm btn-outline-primary border-0"><i class="bi bi-eye"></i> View</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">No Purchase Orders found. Click "New Purchase Order" to start.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white border-top-0 d-flex justify-content-between">
+        <small class="text-muted">{{ pos|length }} POs found.</small>
+    </div>
+</div>
+{% endblock %}

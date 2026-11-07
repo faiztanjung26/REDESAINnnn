@@ -1,0 +1,24 @@
+{
+  "short_name": "CMMS Mobile",
+  "name": "CMMS Engineer Mobile Work Order",
+  "icons": [
+    {
+      "src": "/static/images/favicon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/static/images/favicon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "description": "Aplikasi Pemeliharaan & Work Order Offline-First CMMS"
+}

@@ -1,0 +1,746 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<style>
+    /* Styling for TomSelect to match Bootstrap form-control bg-light */
+    .ts-wrapper.form-select.bg-light {
+        background-color: #f8f9fa !important;
+        border: none !important;
+        padding: 0;
+    }
+    .ts-wrapper.form-select.bg-light .ts-control {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+        min-height: calc(1.5em + 0.75rem + 2px);
+    }
+
+    
+    /* Premium Input Styling */
+    .form-control.bg-light, .ts-wrapper.form-select.bg-light {
+        background-color: #f1f5f9 !important;
+        border: 2px solid transparent !important;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    .form-control.bg-light:focus {
+        background-color: #ffffff !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important;
+    }
+    .ts-wrapper.form-select.bg-light.focus .ts-control {
+        background-color: transparent !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
+    }
+    .ts-wrapper.form-select.bg-light.focus {
+        background-color: #ffffff !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important;
+    }
+    
+    /* Vibrant Button Gradient */
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        border: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+    }
+    
+    /* Cards smooth hover */
+    .card {
+        transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .card:hover {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01) !important;
+        border-color: #e2e8f0 !important;
+    }
+</style>
+{% endblock %}
+
+{% block toolbar_left %}
+    <a href="{{ url_for('helpdesk.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-sm"><i class="bi bi-arrow-left"></i> Back</a>
+    <h5 class="mb-0 ms-3 d-flex align-items-center fw-bold text-dark">Helpdesk <span class="badge bg-primary ms-2 fs-6 rounded-pill">New Ticket</span></h5>
+    <span class="ms-3 text-muted fw-bold small"><i class="bi bi-ticket-detailed"></i> [Auto Generated]</span>
+    <span class="ms-2 text-muted fw-bold small"><i class="bi bi-qr-code"></i> [QR Code]</span>
+{% endblock %}
+
+{% block toolbar_right %}
+    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm me-2"><i class="bi bi-eye"></i> Preview</button>
+    <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 shadow-sm fw-bold" onclick="document.getElementById('hdForm').submit();"><i class="bi bi-save me-1"></i> Submit Ticket</button>
+{% endblock %}
+
+{% block content %}
+<form method="POST" action="" id="hdForm" class="pb-5" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    
+    <!-- Header Section (Subject & Description) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-4 bg-white">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-card-heading text-primary me-1"></i> Subject</label>
+                        <input type="text" name="subject" class="form-control form-control-lg fw-bold border-0 bg-light" placeholder="Subject" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-text-paragraph text-primary me-1"></i> Description of the issue</label>
+                        <textarea class="form-control border-0 bg-light" name="description" placeholder="Description" style="height: 100px; resize: none;" required></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-camera text-primary me-1"></i> Attachment</label>
+                            <input type="file" name="damage_photo" class="form-control border-0 bg-light" accept="image/*">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-journal-text text-primary me-1"></i> Photo Note / Additional Note</label>
+                            <input type="text" name="damage_note" class="form-control border-0 bg-light" placeholder="Note about damage...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column -->
+        <div class="col-md-6 d-flex flex-column gap-4">
+            
+            <!-- INFORMATION -->
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="z-index: 10;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-info-circle-fill text-info me-2"></i> Ticket Information</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold mb-1">Complain Type</label>
+                            <input type="text" name="complain_type" class="form-control bg-light border-0" placeholder="Complain Type">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Site</label>
+                            <select name="divisi_tujuan" class="form-select bg-light border-0" id="divisiInput">
+                                <option value="">-- Select Divisi / Site --</option>
+                                {% for site in sites %}
+                                    <option value="{{ site.name }}">{{ site.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Asset Category</label>
+                            <select name="modul" class="form-select bg-light border-0" id="modulInput">
+                                <option value="">-- Select Asset Category --</option>
+                                {% for mod in hd_modules %}
+                                    <option value="{{ mod.name }}">{{ mod.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Location</label>
+                            <select name="location_subject" class="form-select bg-light border-0" id="locInput">
+                                <option value="">-- Select Location --</option>
+                                {% for loc in hd_locations %}
+                                    <option value="{{ loc.name }}">{{ loc.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Asset (Optional)</label>
+                            <select name="asset" class="form-select bg-light border-0" id="assetInput">
+                                <option value="">-- Select Asset --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Material Type</label>
+                            <select name="ticket_type" class="form-select bg-light border-0" id="typeInput">
+                                <option value="">-- Select Type --</option>
+                                <option value="Material By JTI">Material By JTI</option>
+                                <option value="Material By BM">Material By BM</option>
+                                <option value="Material By Customer">Material By Customer</option>
+                                <option value="No Material">No Material</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Priority Level</label>
+                            <select name="priority" class="form-select bg-light border-0 text-dark fw-bold">
+                                <option value="Safety" class="text-danger">Safety (Critical)</option>
+                                <option value="High" class="text-warning">High</option>
+                                <option value="Medium" selected class="text-info">Medium</option>
+                                <option value="Low" class="text-secondary">Low</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- RESPONSIBLE -->
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="z-index: 9;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-person-badge-fill text-warning me-2"></i> Assigned Personnel</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12 mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Team</label>
+                            <select name="team" class="form-select bg-light border-0">
+                                <option value="">-- Select Team --</option>
+                                {% for team in teams %}
+                                <option value="{{ team.name }}">{{ team.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Primary Technician</label>
+                            <select name="primary_technician_id" class="form-select bg-light border-0" id="primaryAssigneeSelect">
+                                <option value="">-- Select Primary Technician --</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small fw-bold mb-1">Technician(s)</label>
+                            <select name="technician_ids" class="form-select bg-light border-0" id="assigneeSelect" multiple>
+                                <!-- Dipopulasi sesuai Site -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PROCEDURES & CHECKLISTS -->
+            <div class="card border-0 shadow-sm rounded-4 h-100 mt-4" style="z-index: 8;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-list-check text-primary me-2"></i> Procedures & Checklists</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold text-primary"><i class="bi bi-ui-checks"></i> Standard Tasklist</label>
+                        <select class="form-select border-primary" name="tasklist_id" onchange="fetchTasklistTemplate(this.value)">
+                            <option value="">-- No Tasklist --</option>
+                            {% set grouped_tasklists = tasklists|groupby('project_code_group') %}
+                            {% for group in grouped_tasklists %}
+                                <optgroup label="{{ group.grouper if group.grouper else 'General (No Project Code)' }}">
+                                    {% for tl in group.list %}
+                                    <option value="{{ tl.id }}">{{ tl.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                        
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <button class="btn btn-sm btn-light border text-primary fw-bold shadow-sm d-flex align-items-center flex-grow-1 me-2 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProcContainer" aria-expanded="false" style="justify-content: space-between;">
+                                    <span><i class="bi bi-list-task me-1"></i> Task Procedures</span> 
+                                    <i class="bi bi-chevron-down toggle-icon" style="transition: transform 0.2s;"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary shadow-sm bg-white" style="font-size: 0.70rem;" data-bs-toggle="modal" data-bs-target="#addCustomProcModal"><i class="bi bi-plus-lg text-primary fw-bold"></i> Add</button>
+                            </div>
+                            <div class="collapse" id="collapseProcContainer">
+                                <div class="mb-1" id="procListContainer">
+                                    <div class="text-center py-3 text-muted" style="font-size: 0.75rem;" id="emptyProcMsg">
+                                        Select a template or add custom tasks.
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="custom_procedures_json" id="custom_procedures_json" value="[]">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="form-label text-muted small fw-bold text-warning"><i class="bi bi-list-check"></i> Standard Checklist</label>
+                        <select class="form-select border-warning" name="checklist_id" onchange="fetchChecklistTemplate(this.value)">
+                            <option value="">-- No Checklist --</option>
+                            {% set grouped_checklists = checklists|groupby('project_code_group') %}
+                            {% for group in grouped_checklists %}
+                                <optgroup label="{{ group.grouper if group.grouper else 'General (No Project Code)' }}">
+                                    {% for cl in group.list %}
+                                    <option value="{{ cl.id }}">{{ cl.name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                        
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <button class="btn btn-sm btn-light border text-warning text-dark fw-bold shadow-sm d-flex align-items-center flex-grow-1 me-2 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChkContainer" aria-expanded="false" style="justify-content: space-between;">
+                                    <span><i class="bi bi-ui-checks me-1"></i> Checklist Parameters</span> 
+                                    <i class="bi bi-chevron-down toggle-icon" style="transition: transform 0.2s;"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning text-dark shadow-sm bg-white" style="font-size: 0.70rem;" data-bs-toggle="modal" data-bs-target="#addCustomChkModal"><i class="bi bi-plus-lg text-dark fw-bold"></i> Add</button>
+                            </div>
+                            <div class="collapse" id="collapseChkContainer">
+                                <div class="table-responsive mb-1">
+                                    <table class="table table-hover align-middle mb-0" style="font-size: 0.8rem;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 45%">Parameter</th>
+                                                <th style="width: 35%">Standard</th>
+                                                <th style="width: 20%" class="text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="chkListContainer">
+                                            <tr id="emptyChkMsg">
+                                                <td colspan="3" class="text-center py-3 text-muted">Select a template or add parameters.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <input type="hidden" name="custom_checklists_json" id="custom_checklists_json" value="[]">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="col-md-6 d-flex flex-column gap-4">
+            
+            <!-- CUSTOMER -->
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="z-index: 10;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-people-fill text-success me-2"></i> Customer Details</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label text-muted small fw-bold mb-1">Select from Master Customer</label>
+                            <select id="masterCustomerSelect" class="form-select bg-light border-0">
+                                <option value="">-- Custom / Manual Entry --</option>
+                                {% for customer in customers %}
+                                <option value="{{ customer.id }}" data-org="{{ customer.partner_organization }}" data-contact="{{ customer.point_of_contact or '' }}" data-email="{{ customer.email or '' }}" data-mobile="{{ customer.mobile_number or '' }}">{{ customer.partner_organization }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold mb-1">Partner Organization</label>
+                            <input type="text" name="partner" id="inputPartnerOrg" class="form-control bg-light border-0" placeholder="Partner Organization">
+                        </div>
+                        
+                        <div class="col-md-12">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-person text-secondary"></i> Point of Contact (Name)</label>
+                            <input type="text" name="person_name" id="inputPartnerContact" class="form-control bg-light border-0" placeholder="Person Name">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-envelope text-secondary"></i> Email Address</label>
+                            <input type="email" name="email" id="inputPartnerEmail" class="form-control bg-light border-0" placeholder="Email Address">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-telephone text-secondary"></i> Mobile Number</label>
+                            <input type="text" name="mobile" id="inputPartnerMobile" class="form-control bg-light border-0" placeholder="Mobile Number">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- MISCELLANEOUS -->
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="z-index: 9;">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-calendar-check-fill text-primary me-2"></i> Scheduling & Tags</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-tags text-secondary"></i> Tags (comma separated)</label>
+                            <input type="text" name="tags" class="form-control bg-light border-0" placeholder="Tags">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Scheduled Start</label>
+                            <input type="datetime-local" name="scheduled_start_date" class="form-control bg-light border-0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold mb-1">Scheduled End</label>
+                            <input type="datetime-local" name="scheduled_end_date" class="form-control bg-light border-0">
+                        </div>
+                        
+                        <div class="col-12 mt-4">
+                            <label class="form-label text-muted small fw-bold mb-1">Actual End Date (Auto-filled on completion)</label>
+                            <input type="datetime-local" name="actual_end_date" class="form-control bg-light border-0 text-muted" readonly disabled>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</form>
+
+    <!-- Add Custom Procedure Modal -->
+    <div class="modal fade" id="addCustomProcModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Custom Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Task Name / Step *</label>
+                        <input type="text" class="form-control" id="custom_proc_name" placeholder="Ex: Clean the filter">
+                    </div>
+                    <div class="row">
+                        <div class="col-4 mb-3">
+                            <label class="form-label text-muted small fw-bold">Duration (Min)</label>
+                            <input type="number" step="1" min="0" class="form-control" id="custom_proc_duration" placeholder="0">
+                        </div>
+                        <div class="col-4 mb-3">
+                            <label class="form-label text-muted small fw-bold">Min Photos</label>
+                            <input type="number" step="1" min="0" class="form-control" id="custom_proc_min_photos" placeholder="0" title="0 = opsional / mengikuti checkbox">
+                        </div>
+                        <div class="col-4 mb-3 d-flex align-items-end pb-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="custom_proc_req_photo">
+                                <label class="form-check-label text-muted small fw-bold ms-1" for="custom_proc_req_photo">Req. Photo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="pushCustomProcedure()">Add Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Custom Checklist Modal -->
+    <div class="modal fade" id="addCustomChkModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Custom Parameter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Parameter Name (Unit check) *</label>
+                        <input type="text" class="form-control" id="custom_chk_parameter" placeholder="Ex: Oil Pressure">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Standard Range / Expected Value *</label>
+                        <input type="text" class="form-control" id="custom_chk_standard" placeholder="Ex: 40-60 psi / OK">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-warning fw-bold px-4 text-dark" onclick="pushCustomChecklist()">Add Parameter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tsConfig = {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        };
+        
+        const divisiTs = new TomSelect("#divisiInput", tsConfig);
+        const assigneeTs = new TomSelect("#assigneeSelect", {
+            plugins: ['remove_button'],
+            maxItems: null,
+            sortField: { field: "text", direction: "asc" }
+        });
+        const primaryAssigneeTs = new TomSelect("#primaryAssigneeSelect", {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        });
+
+        const modulTs = new TomSelect("#modulInput", {
+            create: function(input, callback) {
+                const siteName = divisiTs.getValue();
+                if (!siteName) {
+                    alert("Please select a Site first!");
+                    return callback(false);
+                }
+                fetch('/helpdesk/api/create_module', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ name: input, site_name: siteName })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) callback({value: data.name, text: data.name});
+                    else callback(false);
+                })
+                .catch(() => callback(false));
+            },
+            sortField: { field: "text", direction: "asc" }
+        });
+
+        const locTs = new TomSelect("#locInput", {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        });
+        const assetTs = new TomSelect("#assetInput", {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        });
+        new TomSelect("#typeInput", {create: false});
+
+        function updateAssets(siteName, locName) {
+            if (!siteName && !locName) {
+                assetTs.clearOptions();
+                return;
+            }
+            let url = `/helpdesk/api/assets?site_name=${encodeURIComponent(siteName||'')}`;
+            if(locName) url += `&location_name=${encodeURIComponent(locName)}`;
+            
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    assetTs.clear();
+                    assetTs.clearOptions();
+                    data.assets.forEach(a => {
+                        assetTs.addOption({value: a.name, text: `${a.code} - ${a.name}`});
+                    });
+                })
+                .catch(err => console.error(err));
+        }
+
+        locTs.on('change', function(value) {
+            updateAssets(divisiTs.getValue(), value);
+        });
+
+        function updateMasterData(siteName) {
+            if (!siteName) {
+                modulTs.clearOptions();
+                locTs.clearOptions();
+                assigneeTs.clearOptions();
+                return;
+            }
+
+            fetch(`/helpdesk/api/master_data?site_name=${encodeURIComponent(siteName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    modulTs.clear();
+                    modulTs.clearOptions();
+                    data.modules.forEach(m => {
+                        modulTs.addOption({value: m.name, text: m.name});
+                    });
+
+                    locTs.clear();
+                    locTs.clearOptions();
+                    data.locations.forEach(l => {
+                        locTs.addOption({value: l.name, text: l.name});
+                    });
+
+                    // Update Users for Technicians
+                    assigneeTs.clearOptions();
+                    primaryAssigneeTs.clearOptions();
+                    
+                    data.technicians.forEach(u => {
+                        assigneeTs.addOption({value: String(u.id), text: `${u.name} (${u.role})`});
+                        primaryAssigneeTs.addOption({value: String(u.id), text: `${u.name} (${u.role})`});
+                    });
+                })
+                .catch(err => {
+                    console.error('Error fetching master data:', err);
+                    alert("Failed to fetch master data. Check console for details.");
+                });
+        }
+
+        divisiTs.on('change', function(value) {
+            updateMasterData(value);
+            updateAssets(value, locTs.getValue());
+        });
+        
+        // Initial load if site is already selected
+        if (divisiTs.getValue()) {
+            updateMasterData(divisiTs.getValue());
+            updateAssets(divisiTs.getValue(), locTs.getValue());
+        }
+        
+        // Customer Select Logic
+        document.getElementById('masterCustomerSelect').addEventListener('change', function() {
+            var selectedOption = this.options[this.selectedIndex];
+            if (this.value) {
+                document.getElementById('inputPartnerOrg').value = selectedOption.getAttribute('data-org') || "";
+                document.getElementById('inputPartnerContact').value = selectedOption.getAttribute('data-contact') || "";
+                document.getElementById('inputPartnerEmail').value = selectedOption.getAttribute('data-email') || "";
+                document.getElementById('inputPartnerMobile').value = selectedOption.getAttribute('data-mobile') || "";
+            } else {
+                document.getElementById('inputPartnerOrg').value = "";
+                document.getElementById('inputPartnerContact').value = "";
+                document.getElementById('inputPartnerEmail').value = "";
+                document.getElementById('inputPartnerMobile').value = "";
+            }
+        });
+    });
+
+    const allTasklists = {{ tasklists_json|safe }};
+    const allChecklists = {{ checklists_json|safe }};
+    let customProcedures = [];
+    let customChecklists = [];
+    
+    function fetchTasklistTemplate(id) {
+        if (!id) {
+            customProcedures = [];
+            renderCustomProcedures();
+            return;
+        }
+        let tasklist = allTasklists.find(t => t.id == id);
+        if (tasklist) {
+            customProcedures = tasklist.procedures;
+            renderCustomProcedures();
+            let collapseEl = document.getElementById('collapseProcContainer');
+            let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+            bsCollapse.show();
+        }
+    }
+
+    function fetchChecklistTemplate(id) {
+        if (!id) {
+            customChecklists = [];
+            renderCustomChecklists();
+            return;
+        }
+        let checklist = allChecklists.find(c => c.id == id);
+        if (checklist) {
+            customChecklists = checklist.parameters;
+            renderCustomChecklists();
+            let collapseEl = document.getElementById('collapseChkContainer');
+            let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+            bsCollapse.show();
+        }
+    }
+
+    function renderCustomProcedures() {
+        const container = document.getElementById('procListContainer');
+        const jsonInput = document.getElementById('custom_procedures_json');
+        
+        jsonInput.value = JSON.stringify(customProcedures);
+        
+        if (customProcedures.length === 0) {
+            container.innerHTML = '<div class="text-center py-4 text-muted small" id="emptyProcMsg">No custom tasks added yet. Standard templates will still applying automatically.</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        customProcedures.forEach((proc, index) => {
+            const reqLabel = proc.requires_attachment ? '<span class="badge bg-info text-dark ms-2" style="font-size:0.65rem;"><i class="bi bi-camera"></i> Photo Required</span>' : '';
+            const minPhotoLabel = proc.min_photos > 0 ? `<span class="badge bg-primary ms-1" style="font-size:0.65rem;"><i class="bi bi-images"></i> Min ${proc.min_photos} Photo(s)</span>` : '';
+            const minLabel = proc.estimated_minutes > 0 ? `<span class="badge bg-light text-dark border ms-1" style="font-size:0.65rem;"><i class="bi bi-clock"></i> ${proc.estimated_minutes} m</span>` : '';
+            
+            let html = `
+                <div class="d-flex align-items-center justify-content-between p-2 border-bottom hover-bg-light">
+                    <div>
+                        <div class="fw-bold text-dark" style="font-size:0.85rem;">${index + 1}. ${proc.name}</div>
+                        <div class="mt-1">${reqLabel}${minPhotoLabel}${minLabel}</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeCustomProcedure(${index})"><i class="bi bi-x-circle-fill"></i></button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    function renderCustomChecklists() {
+        const container = document.getElementById('chkListContainer');
+        const jsonInput = document.getElementById('custom_checklists_json');
+        
+        jsonInput.value = JSON.stringify(customChecklists);
+        
+        if (customChecklists.length === 0) {
+            container.innerHTML = '<tr id="emptyChkMsg"><td colspan="3" class="text-center py-4 text-muted small">No custom parameters added yet.</td></tr>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        customChecklists.forEach((chk, index) => {
+            let html = `
+                <tr>
+                    <td class="fw-bold text-dark">${chk.parameter}</td>
+                    <td class="text-muted">${chk.standard}</td>
+                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeCustomChecklist(${index})"><i class="bi bi-trash-fill"></i></button></td>
+                </tr>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    function pushCustomProcedure() {
+        const name = document.getElementById('custom_proc_name').value;
+        const duration = document.getElementById('custom_proc_duration').value;
+        const reqPhoto = document.getElementById('custom_proc_req_photo').checked;
+        
+        if (!name) {
+            alert('Task name is required.');
+            return;
+        }
+        
+        customProcedures.push({
+            name: name,
+            estimated_minutes: parseInt(duration) || 0,
+            requires_attachment: reqPhoto,
+            min_photos: reqPhoto ? 1 : 0
+        });
+        
+        renderCustomProcedures();
+        
+        // Reset and close
+        document.getElementById('custom_proc_name').value = '';
+        document.getElementById('custom_proc_duration').value = '';
+        document.getElementById('custom_proc_req_photo').checked = false;
+        
+        let modal = bootstrap.Modal.getInstance(document.getElementById('addCustomProcModal'));
+        modal.hide();
+        
+        // Auto-open accordion if it's closed
+        let collapseEl = document.getElementById('collapseProcContainer');
+        let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+        bsCollapse.show();
+    }
+
+    function pushCustomChecklist() {
+        const param = document.getElementById('custom_chk_parameter').value;
+        const std = document.getElementById('custom_chk_standard').value;
+        
+        if (!param || !std) {
+            alert('Parameter and Standard are required.');
+            return;
+        }
+        
+        customChecklists.push({
+            parameter: param,
+            standard: std
+        });
+        
+        renderCustomChecklists();
+        
+        // Reset and close
+        document.getElementById('custom_chk_parameter').value = '';
+        document.getElementById('custom_chk_standard').value = '';
+        
+        let modal = bootstrap.Modal.getInstance(document.getElementById('addCustomChkModal'));
+        modal.hide();
+        
+        let collapseEl = document.getElementById('collapseChkContainer');
+        let bsCollapse = bootstrap.Collapse.getInstance(collapseEl) || new bootstrap.Collapse(collapseEl, {toggle: false});
+        bsCollapse.show();
+    }
+
+    function removeCustomProcedure(index) {
+        customProcedures.splice(index, 1);
+        renderCustomProcedures();
+    }
+
+    function removeCustomChecklist(index) {
+        customChecklists.splice(index, 1);
+        renderCustomChecklists();
+    }
+</script>
+{% endblock %}

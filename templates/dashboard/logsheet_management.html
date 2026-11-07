@@ -1,0 +1,1064 @@
+{% extends "base.html" %}
+
+{% block toolbar_left %}
+<div class="d-flex align-items-center">
+    <h3 class="mb-0 text-dark fw-bold me-4">
+        <i class="bi bi-journal-album text-primary me-2"></i> Logsheet Management
+    </h3>
+</div>
+{% endblock %}
+
+{% block toolbar_right %}
+    <button type="button" class="btn btn-sm btn-primary fw-bold d-flex align-items-center gap-2 rounded-3 shadow-sm" style="padding: 0.4rem 1rem;" data-bs-toggle="modal" data-bs-target="#addAssetModal">
+        <i class="bi bi-plus-lg"></i> Add Asset
+    </button>
+{% endblock %}
+
+{% block content %}
+<style>
+    .table-logsheet th {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        border-bottom: 1px solid #e2e8f0;
+        background-color: #f8fafc;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    .table-logsheet td {
+        vertical-align: middle;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .btn-action {
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 0.4rem 1rem;
+    }
+    .btn-isi {
+        background-color: #2563eb;
+        color: white;
+        border: none;
+    }
+    .btn-isi:hover {
+        background-color: #1d4ed8;
+        color: white;
+    }
+    .nav-tabs-custom {
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 1.5rem;
+    }
+    .nav-tabs-custom .nav-link {
+        border: none;
+        color: #64748b;
+        font-weight: 600;
+        padding: 1rem 1.5rem;
+        position: relative;
+    }
+    .nav-tabs-custom .nav-link:hover {
+        color: #334155;
+    }
+    .nav-tabs-custom .nav-link.active {
+        color: #2563eb;
+        background: transparent;
+    }
+    .nav-tabs-custom .nav-link.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #2563eb;
+        border-radius: 2px 2px 0 0;
+    }
+</style>
+
+{% if require_site_selection %}
+    <div class="container-fluid py-2">
+        <div class="row row-cols-1 row-cols-md-3 g-3">
+            {% for site in sites %}
+            <div class="col">
+                <a href="{{ url_for('logsheet_management', site_id=site.id) }}" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm hover-shadow transition-all d-flex flex-row align-items-center p-3" style="border-radius: 12px; border: 1px solid #f1f5f9 !important; background-color: #ffffff;">
+                        <div class="d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background-color: #f5f3ff; border-radius: 10px;">
+                            <i class="bi bi-building" style="color: #6366f1; font-size: 1.25rem;"></i>
+                        </div>
+                        <div class="ms-3 flex-grow-1">
+                            <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">{{ site.name }}</h6>
+                            <span class="text-muted" style="font-size: 0.75rem;">View Tasks & Logsheets</span>
+                        </div>
+                        <div class="ms-2 text-muted">
+                            <i class="bi bi-chevron-right" style="font-size: 0.9rem;"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% else %}
+            <div class="col-12 text-center py-5">
+                <p class="text-muted">Tidak ada site yang tersedia.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+{% else %}
+
+{% if active_tab != 'schedules' %}
+    <!-- Assets View -->
+    <div>
+        <div class="card border-0 mb-4 rounded-4 shadow-sm overflow-hidden" style="border: 1px solid #e2e8f0 !important;">
+    <div class="card-body p-0">
+        <div class="table-responsive bg-white">
+            <table class="table table-logsheet table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-center" width="5%" style="border-bottom: 2px solid #f1f5f9; background: #fafafa;">NO</th>
+                        <th width="40%" style="border-bottom: 2px solid #f1f5f9; background: #fafafa;">NAMA ASSET</th>
+                        <th width="30%" style="border-bottom: 2px solid #f1f5f9; background: #fafafa;">LOKASI / SITE</th>
+                        <th width="25%" class="text-end pe-4" style="border-bottom: 2px solid #f1f5f9; background: #fafafa;">AKSI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asset in logsheet_assets %}
+                    <tr style="border-bottom: 1px solid #f8fafc;" class="hover-bg-light transition-colors">
+                        <td class="text-center text-muted align-middle" style="font-size: 0.9rem; font-weight: 500;">{{ loop.index }}</td>
+                        
+                        <td class="align-middle py-3">
+                            <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem;">{{ asset.name }}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">
+                                ID: {{ asset.code }}
+                            </div>
+                        </td>
+                        <td class="align-middle">
+                            <div class="fw-bold text-secondary" style="font-size: 0.9rem;">
+                                {{ asset.site.name if asset.site else '-' }}
+                            </div>
+                        </td>
+                        <td class="text-end pe-4 align-middle">
+                            <div class="d-flex justify-content-end gap-2 w-100">
+                                <a href="{{ url_for('logsheet_management', tab='schedules', asset_id=asset.id) }}" class="btn btn-action btn-isi shadow-sm d-flex justify-content-center align-items-center" style="flex: 1; background-color: #0ea5e9;">
+                                    <i class="bi bi-list-task me-2"></i> Lihat Jadwal
+                                </a>
+                                
+                                <form method="POST" action="{{ url_for('logsheet_remove_asset_template', asset_id=asset.id) }}" class="d-inline m-0 p-0" onsubmit="return confirm('Hapus aset ini dari daftar logsheet?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger h-100 d-flex align-items-center justify-content-center px-2" style="border-radius: 8px;" title="Remove">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            <i class="bi bi-journal-x fs-1 text-light mb-3 d-block"></i>
+                            <h6 class="fw-bold text-secondary">Belum ada asset logsheet</h6>
+                            <p class="small text-muted mb-0">Klik tombol 'Add Asset' di kanan atas untuk menambahkan asset ke daftar logsheet.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+<!-- End Assets View -->
+
+{% else %}
+    <!-- Schedules View -->
+    <div class="mb-4">
+        <div class="d-flex flex-wrap gap-2 mb-3 justify-content-between align-items-center">
+            <a href="{{ url_for('logsheet_management') }}" class="btn btn-outline-secondary btn-sm shadow-sm d-inline-flex align-items-center rounded-3">
+                <i class="bi bi-arrow-left me-1"></i> Kembali
+            </a>
+            
+            <!-- View Switcher -->
+            <div class="view-switcher btn-group bg-white rounded-pill shadow-sm border p-1" role="group">
+                <button type="button" id="btnViewGrid" class="btn btn-sm rounded-pill px-3 py-1 fw-bold {% if view_mode != 'list' %}btn-primary text-white{% else %}btn-light text-muted{% endif %}" onclick="switchLogsheetView('grid')" title="Grid View">
+                    <i class="bi bi-grid-fill me-1"></i> Grid
+                </button>
+                <button type="button" id="btnViewList" class="btn btn-sm rounded-pill px-3 py-1 fw-bold {% if view_mode == 'list' %}btn-primary text-white{% else %}btn-light text-muted{% endif %}" onclick="switchLogsheetView('list')" title="List View">
+                    <i class="bi bi-list-task me-1"></i> List
+                </button>
+            </div>
+        </div>
+        
+        <!-- Date Filter Form -->
+        <form method="GET" class="card border-0 shadow-sm rounded-4 mb-4" style="border: 1px solid #e2e8f0 !important;">
+            <div class="card-body p-3 d-flex flex-wrap align-items-end gap-3">
+                <input type="hidden" name="tab" value="schedules">
+                <input type="hidden" name="view_mode" id="viewModeInput" value="{{ view_mode }}">
+                {% if request.args.get('site_id') %}
+                <input type="hidden" name="site_id" value="{{ request.args.get('site_id') }}">
+                {% endif %}
+                {% if request.args.get('asset_id') %}
+                <input type="hidden" name="asset_id" value="{{ request.args.get('asset_id') }}">
+                {% endif %}
+                
+                <div class="flex-grow-1" style="min-width: 200px;">
+                    <label class="form-label text-secondary fw-bold" style="font-size: 0.8rem;">Mulai Tanggal</label>
+                    <input type="date" name="date_from" class="form-control rounded-3" value="{{ date_from }}">
+                </div>
+                <div class="flex-grow-1" style="min-width: 200px;">
+                    <label class="form-label text-secondary fw-bold" style="font-size: 0.8rem;">Sampai Tanggal</label>
+                    <input type="date" name="date_to" class="form-control rounded-3" value="{{ date_to }}">
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary fw-bold rounded-3 px-4 shadow-sm">
+                        <i class="bi bi-filter me-2"></i>Terapkan
+                    </button>
+                    {% if selected_asset %}
+                    <button type="button" class="btn btn-success fw-bold rounded-3 px-3 shadow-sm" onclick='openScheduleModal({{ selected_asset.id }}, {{ selected_asset.name | tojson | forceescape }}, {{ selected_asset.site_id or "null" }})'>
+                        <i class="bi bi-calendar-plus me-1"></i> Buat Jadwal
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+
+        <!-- Grid View Container -->
+        <div id="gridViewContainer" class="{% if view_mode == 'list' %}d-none{% endif %}">
+            {% set ns = namespace(count=0) %}
+            {% for shift in sorted_shifts %}
+                {% if shift_groups[shift] %}
+                <h5 class="fw-bold text-dark mt-4 mb-3 d-flex align-items-center">
+                    <span class="badge bg-primary rounded-circle p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style="width: 32px; height: 32px;">
+                        <i class="bi bi-clock-history"></i>
+                    </span> 
+                    {{ 'Shift ' if shift in ['1','2','3'] else '' }}{{ shift }}
+                </h5>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-4">
+                    {% for item in shift_groups[shift] %}
+                        {% set ns.count = ns.count + 1 %}
+                        <div class="col">
+                            <div class="card h-100 border-0 shadow-sm rounded-4 hover-shadow transition-all" style="border: 1px solid #e2e8f0 !important; border-left: 4px solid {% if item.type == 'schedule' %}#f59e0b{% else %}#10b981{% endif %} !important;">
+                                <div class="card-body p-4 d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-start mb-3 gap-2">
+                                        <div style="min-width: 0;">
+                                            <h6 class="fw-bold text-dark mb-1 text-truncate" title="{% if item.obj.asset %}{{ item.obj.asset.name }}{% else %}{{ item.obj.name or item.obj.code }}{% endif %}">
+                                                {% if item.obj.asset %}{{ item.obj.asset.name }}{% else %}{{ item.obj.name or item.obj.code }}{% endif %}
+                                            </h6>
+                                            <p class="text-muted small mb-0 text-truncate">ID: {% if item.obj.asset %}{{ item.obj.asset.code }}{% else %}{{ item.obj.code }}{% endif %}</p>
+                                        </div>
+                                        {% if item.type == 'schedule' %}
+                                            <span class="badge bg-warning text-dark border shadow-sm">PENDING</span>
+                                        {% else %}
+                                            {% if item.obj.status == 'Draft' %}
+                                            <span class="badge bg-secondary shadow-sm">DRAFT</span>
+                                            {% elif item.obj.status == 'Submitted' %}
+                                            <span class="badge bg-info shadow-sm">SUBMITTED</span>
+                                            {% elif item.obj.status == 'Approved' %}
+                                            <span class="badge bg-success shadow-sm">APPROVED</span>
+                                            {% else %}
+                                            <span class="badge bg-dark shadow-sm">{{ item.obj.status }}</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="mb-3 d-flex flex-column gap-2 text-secondary small">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-calendar3 me-2 text-primary"></i> 
+                                            {% if item.type == 'schedule' %}{{ item.obj.scheduled_date.strftime('%d %b %Y') if item.obj.scheduled_date else '-' }}{% else %}{{ item.obj.date.strftime('%d %b %Y') if item.obj.date else '-' }}{% endif %}
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-clock me-2 text-primary"></i> 
+                                            {% if item.type == 'schedule' %}{{ item.obj.scheduled_time.strftime('%H:%M') if item.obj.scheduled_time else '-' }}{% else %}{{ item.obj.created_at.strftime('%H:%M') if item.obj.created_at else '-' }}{% endif %} WIB
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex gap-2 mt-auto pt-3 border-top">
+                                        {% if item.type == 'schedule' %}
+                                            <a href="{{ url_for('logsheet_schedule_execute', id=item.obj.id) }}" class="btn btn-primary btn-sm flex-grow-1 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center">
+                                                <i class="bi bi-pencil-square me-2"></i> Isi Logsheet
+                                            </a>
+                                            <a href="{{ url_for('logsheet_schedule_edit', id=item.obj.id) }}" class="btn btn-outline-secondary btn-sm rounded-3 shadow-sm px-3 d-flex align-items-center justify-content-center" title="Edit Jadwal">
+                                                <i class="bi bi-gear"></i>
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('logsheet_detail', id=item.obj.id) }}" class="btn btn-outline-primary btn-sm flex-grow-1 fw-bold rounded-3 shadow-sm d-flex align-items-center justify-content-center">
+                                                <i class="bi bi-eye me-2"></i> Lihat Detail
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endfor %}
+            
+            {% if ns.count == 0 %}
+            <div class="card border-0 shadow-sm rounded-4 text-center py-5" style="border: 1px solid #e2e8f0 !important;">
+                <div class="card-body py-5">
+                    <i class="bi bi-calendar-x text-muted mb-3 d-block" style="font-size: 3rem;"></i>
+                    <h5 class="fw-bold text-dark mt-3 mb-1">Belum Ada Tugas</h5>
+                    <p class="text-muted mb-0">Tidak ada jadwal atau riwayat logsheet pada rentang tanggal ini.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <!-- End Grid View Container -->
+
+        <!-- List View Container (Grouped by Shift) -->
+        <div id="listViewContainer" class="{% if view_mode != 'list' %}d-none{% endif %}">
+            {% set ns_list = namespace(count=0) %}
+            {% for shift in sorted_shifts %}
+                {% if shift_groups[shift] %}
+                <h5 class="fw-bold text-dark mt-4 mb-3 d-flex align-items-center">
+                    <span class="badge bg-primary rounded-circle p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style="width: 32px; height: 32px;">
+                        <i class="bi bi-clock-history"></i>
+                    </span> 
+                    {{ 'Shift ' if shift in ['1','2','3'] else '' }}{{ shift }}
+                </h5>
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="border: 1px solid #e2e8f0 !important;">
+                    <div class="card-body p-0">
+                        <div class="table-responsive bg-white">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead style="background-color: #f8fafc; border-bottom: 2px solid #f1f5f9;">
+                                    <tr>
+                                        <th class="ps-4 py-3 text-uppercase text-secondary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;" width="16%">CODE</th>
+                                        <th class="py-3 text-uppercase text-secondary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;" width="14%">START DATE</th>
+                                        <th class="py-3 text-uppercase text-secondary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;" width="20%">DESCRIPTION</th>
+                                        <th class="py-3 text-uppercase text-secondary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;" width="18%">ASSET & SITE</th>
+                                        <th class="py-3 text-uppercase text-secondary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;" width="14%">ASSIGNED USER</th>
+                                        <th class="py-3 text-uppercase text-secondary fw-bold text-center" style="font-size: 0.75rem; letter-spacing: 0.05em;" width="10%">STATUS</th>
+                                        <th class="py-3 pe-4 text-uppercase text-secondary fw-bold text-end" style="font-size: 0.75rem; letter-spacing: 0.05em;" width="10%">ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in shift_groups[shift] %}
+                                    {% set ns_list.count = ns_list.count + 1 %}
+                                    <tr style="border-bottom: 1px solid #f8fafc;" class="hover-bg-light transition-colors">
+                                        <td class="ps-4 py-3 align-middle">
+                                            {% if item.type == 'schedule' %}
+                                            <a href="{{ url_for('logsheet_schedule_execute', id=item.obj.id) }}" class="fw-bold text-primary text-decoration-none" style="font-size: 0.9rem;">
+                                                {{ item.obj.code }}
+                                            </a>
+                                            {% else %}
+                                            <a href="{{ url_for('logsheet_detail', id=item.obj.id) }}" class="fw-bold text-primary text-decoration-none" style="font-size: 0.9rem;">
+                                                {{ item.obj.code }}
+                                            </a>
+                                            {% endif %}
+                                        </td>
+                                        <td class="py-3 align-middle text-nowrap">
+                                            <div class="fw-semibold text-dark" style="font-size: 0.85rem;">
+                                                {% if item.type == 'schedule' %}
+                                                    {{ item.obj.scheduled_date.strftime('%d %b %Y') if item.obj.scheduled_date else '-' }}
+                                                {% else %}
+                                                    {{ item.obj.date.strftime('%d %b %Y') if item.obj.date else '-' }}
+                                                {% endif %}
+                                            </div>
+                                            <div class="text-muted" style="font-size: 0.75rem;">
+                                                <i class="bi bi-clock me-1"></i>
+                                                {% if item.type == 'schedule' %}
+                                                    {{ item.obj.scheduled_time.strftime('%H:%M') if item.obj.scheduled_time else '-' }} WIB
+                                                {% else %}
+                                                    {{ item.obj.created_at.strftime('%H:%M') if item.obj.created_at else '-' }} WIB
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="py-3 align-middle">
+                                            <div class="fw-bold text-dark text-truncate" style="max-width: 220px; font-size: 0.88rem;" title="{{ item.obj.name if item.type == 'schedule' else (item.obj.asset.name ~ ' Logsheet' if item.obj.asset else 'Logsheet') }}">
+                                                {{ item.obj.name if item.type == 'schedule' else (item.obj.asset.name ~ ' Logsheet' if item.obj.asset else 'Logsheet') }}
+                                            </div>
+                                        </td>
+                                        <td class="py-3 align-middle">
+                                            {% if item.obj.asset %}
+                                            <div class="fw-semibold text-dark text-truncate" style="max-width: 200px; font-size: 0.85rem;" title="{{ item.obj.asset.name }}">
+                                                <i class="bi bi-box text-muted me-1"></i> {{ item.obj.asset.name }}
+                                            </div>
+                                            <div class="text-muted text-truncate" style="max-width: 200px; font-size: 0.75rem;">
+                                                <i class="bi bi-geo-alt me-1"></i> {{ item.obj.site.name if item.obj.site else (item.obj.asset.site.name if item.obj.asset and item.obj.asset.site else 'No Site') }}
+                                            </div>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="py-3 align-middle">
+                                            {% if item.type == 'schedule' %}
+                                                {% if item.obj.assigned_technicians and item.obj.assigned_technicians|length > 0 %}
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                    {% for tech in item.obj.assigned_technicians %}
+                                                        <div class="badge bg-light text-primary border shadow-sm" style="font-size: 0.70rem; padding: 0.3em 0.5em;">
+                                                            <i class="bi bi-person-fill me-1"></i>{{ tech.name.split(' ')[0] }}
+                                                        </div>
+                                                    {% endfor %}
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted fst-italic" style="font-size: 0.75rem;">Unassigned</span>
+                                                {% endif %}
+                                            {% else %}
+                                                {% if item.obj.filled_by %}
+                                                    <div class="badge bg-light text-success border shadow-sm" style="font-size: 0.70rem; padding: 0.3em 0.5em;">
+                                                        <i class="bi bi-person-check-fill me-1"></i>{{ item.obj.filled_by.name.split(' ')[0] }}
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted" style="font-size: 0.75rem;">-</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td class="py-3 align-middle text-center">
+                                            {% if item.type == 'schedule' %}
+                                                <span class="badge bg-warning text-dark border shadow-sm px-2 py-1" style="font-size: 0.72rem;">PENDING</span>
+                                            {% else %}
+                                                {% if item.obj.status == 'Draft' %}
+                                                <span class="badge bg-secondary shadow-sm px-2 py-1" style="font-size: 0.72rem;">DRAFT</span>
+                                                {% elif item.obj.status == 'Submitted' %}
+                                                <span class="badge bg-info text-white shadow-sm px-2 py-1" style="font-size: 0.72rem;">SUBMITTED</span>
+                                                {% elif item.obj.status == 'Approved' %}
+                                                <span class="badge bg-success shadow-sm px-2 py-1" style="font-size: 0.72rem;">APPROVED</span>
+                                                {% else %}
+                                                <span class="badge bg-dark shadow-sm px-2 py-1" style="font-size: 0.72rem;">{{ item.obj.status }}</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td class="py-3 pe-4 align-middle text-end">
+                                            <div class="d-flex justify-content-end gap-1">
+                                                {% if item.type == 'schedule' %}
+                                                    <a href="{{ url_for('logsheet_schedule_execute', id=item.obj.id) }}" class="btn btn-sm btn-primary rounded-3 px-2 py-1 fw-bold shadow-sm d-inline-flex align-items-center" style="font-size: 0.75rem;" title="Isi Logsheet">
+                                                        <i class="bi bi-pencil-square me-1"></i> Isi
+                                                    </a>
+                                                    <a href="{{ url_for('logsheet_schedule_edit', id=item.obj.id) }}" class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1 shadow-sm d-inline-flex align-items-center" style="font-size: 0.75rem;" title="Edit Jadwal">
+                                                        <i class="bi bi-gear"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{{ url_for('logsheet_detail', id=item.obj.id) }}" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1 fw-bold shadow-sm d-inline-flex align-items-center" style="font-size: 0.75rem;" title="Lihat Detail">
+                                                        <i class="bi bi-eye me-1"></i> Detail
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+
+            {% if ns_list.count == 0 %}
+            <div class="card border-0 shadow-sm rounded-4 text-center py-5" style="border: 1px solid #e2e8f0 !important;">
+                <div class="card-body py-5">
+                    <i class="bi bi-calendar-x text-muted mb-3 d-block" style="font-size: 3rem;"></i>
+                    <h5 class="fw-bold text-dark mt-3 mb-1">Belum Ada Tugas</h5>
+                    <p class="text-muted mb-0">Tidak ada jadwal atau riwayat logsheet pada rentang tanggal ini.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <!-- End List View Container -->
+    </div>
+    <!-- End Schedules View -->
+{% endif %}
+{% endif %}
+
+<!-- Modal Add & Schedule Assets -->
+<div class="modal fade" id="addAssetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <form class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" method="POST" action="{{ url_for('logsheet_add_asset_template') }}" id="formAddAsset">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="site_id" value="{{ site_id or '' }}"/>
+            <input type="hidden" name="view_mode" value="{{ view_mode }}"/>
+
+            <div class="modal-header bg-light border-0 p-4">
+                <div>
+                    <h5 class="modal-title fw-bold mb-1 text-dark">
+                        <i class="bi bi-plus-circle text-primary me-2"></i>Tambah & Jadwalkan Asset Logsheet
+                    </h5>
+                    <p class="text-muted small mb-0">Pilih tanggal, pilih beberapa equipment/aset, dan tentukan teknisi bertugas (maksimal 2 teknisi per aset).</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <!-- Date and Time Row -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold text-secondary mb-0" style="font-size: 0.85rem;" id="startDateLabel">
+                            <i class="bi bi-calendar-event text-primary me-1"></i>Tanggal Pelaksanaan *
+                        </label>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="toggleMultiDay" onchange="toggleMultiDaySchedule()" style="cursor: pointer;">
+                            <label class="form-check-label text-secondary small fw-semibold" for="toggleMultiDay" style="cursor: pointer; font-size: 0.8rem;">
+                                Beberapa Hari (Rentang Tanggal)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12" id="startDateCol">
+                            <input type="date" name="scheduled_date" id="bulkStartDate" class="form-control rounded-3" value="{{ date_from or today.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        <div class="col-md-6 d-none" id="endDateCol">
+                            <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.85rem;">
+                                <i class="bi bi-calendar-range text-primary me-1"></i>Sampai Tanggal *
+                            </label>
+                            <input type="date" name="scheduled_end_date" id="bulkEndDate" class="form-control rounded-3" value="{{ date_to or today.strftime('%Y-%m-%d') }}">
+                        </div>
+                        <!-- Day of Week Selector (Visible only when multi-day toggle is ON) -->
+                        <div class="col-12 d-none" id="daysFilterCol">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label text-secondary small fw-bold mb-0" style="font-size: 0.8rem;">
+                                    <i class="bi bi-calendar-week me-1 text-primary"></i>Pilih Hari Pelaksanaan:
+                                </label>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold" onclick="selectAllRepeatDays(true)" style="font-size: 0.75rem;">Semua Hari</button>
+                                    <span class="text-muted small">|</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold" onclick="selectWorkDaysOnly()" style="font-size: 0.75rem;">Sen-Jum</button>
+                                    <span class="text-muted small">|</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold" onclick="selectWeekendOnly()" style="font-size: 0.75rem;">Sab-Ming</button>
+                                    <span class="text-muted small">|</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-muted fw-semibold" onclick="selectAllRepeatDays(false)" style="font-size: 0.75rem;">Kosongkan</button>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-1.5 align-items-center" id="dayButtonsContainer">
+                                <button type="button" class="btn btn-sm btn-outline-primary day-toggle-btn rounded-3 fw-semibold py-1 px-3" data-day="0" onclick="toggleDaySelection(0)">
+                                    <span class="day-check-icon d-none me-1"><i class="bi bi-check2"></i></span>Senin
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary day-toggle-btn rounded-3 fw-semibold py-1 px-3" data-day="1" onclick="toggleDaySelection(1)">
+                                    <span class="day-check-icon d-none me-1"><i class="bi bi-check2"></i></span>Selasa
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary day-toggle-btn rounded-3 fw-semibold py-1 px-3" data-day="2" onclick="toggleDaySelection(2)">
+                                    <span class="day-check-icon d-none me-1"><i class="bi bi-check2"></i></span>Rabu
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary day-toggle-btn rounded-3 fw-semibold py-1 px-3" data-day="3" onclick="toggleDaySelection(3)">
+                                    <span class="day-check-icon d-none me-1"><i class="bi bi-check2"></i></span>Kamis
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary day-toggle-btn rounded-3 fw-semibold py-1 px-3" data-day="4" onclick="toggleDaySelection(4)">
+                                    <span class="day-check-icon d-none me-1"><i class="bi bi-check2"></i></span>Jumat
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary day-toggle-btn rounded-3 fw-semibold py-1 px-3" data-day="5" onclick="toggleDaySelection(5)">
+                                    <span class="day-check-icon d-none me-1"><i class="bi bi-check2"></i></span>Sabtu
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary day-toggle-btn rounded-3 fw-semibold py-1 px-3" data-day="6" onclick="toggleDaySelection(6)">
+                                    <span class="day-check-icon d-none me-1"><i class="bi bi-check2"></i></span>Minggu
+                                </button>
+                            </div>
+                            <!-- Hidden inputs for form submission -->
+                            <div id="hiddenRepeatDaysInputs"></div>
+
+                            <!-- Live Date Range & Days Summary Alert -->
+                            <div id="schedulePreviewAlert" class="alert alert-success py-2 px-3 mt-2 mb-0 rounded-3 small border" style="display: none; font-size: 0.8rem;">
+                            </div>
+                            <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">*Klik hari yang diinginkan, atau kosongkan untuk menjadwalkan setiap hari.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Select Multiple Equipments / Assets -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold text-secondary mb-0" style="font-size: 0.85rem;">
+                            <i class="bi bi-box-seam text-primary me-1"></i>Pilih Equipment / Aset (Bisa Pilih Banyak) *
+                        </label>
+                        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold" onclick="selectAllBulkAssets()" style="font-size: 0.8rem;">
+                            Pilih Semua Aset
+                        </button>
+                    </div>
+                    <select id="bulkAssetSelect" class="form-select rounded-3" multiple="multiple" style="width: 100%;" required>
+                        {% for asset in assets %}
+                        <option value="{{ asset.id }}" data-name="{{ asset.name }}" data-code="{{ asset.code }}" data-site="{{ asset.site.name if asset.site else '' }}">
+                            {{ asset.name }} ({{ asset.code }}){% if asset.site %} - {{ asset.site.name }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted" style="font-size: 0.75rem;">Ketik atau pilih satu/beberapa equipment yang akan dijadwalkan.</small>
+                </div>
+
+                <!-- Equipment Technician Assignment Container -->
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold text-secondary mb-0" style="font-size: 0.85rem;">
+                            <i class="bi bi-people text-primary me-1"></i>Penugasan Teknisi & Jam per Equipment (Maks. 2 Teknisi)
+                        </label>
+                        <span class="badge bg-light text-secondary border" style="font-size: 0.75rem;" id="selectedCountBadge">0 Equipment Terpilih</span>
+                    </div>
+
+                    <div id="selectedEquipmentsContainer" class="d-flex flex-column gap-3 p-3 bg-light rounded-4 border">
+                        <div class="text-center py-4 text-muted" id="noEquipmentsPlaceholder">
+                            <i class="bi bi-arrow-up-circle text-muted mb-2 d-block" style="font-size: 1.75rem;"></i>
+                            <span class="small">Pilih equipment pada dropdown di atas untuk menentukan jam pemeriksaan dan teknisi yang bertugas.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light border-0 p-3">
+                <button type="button" class="btn btn-light border text-muted fw-bold rounded-3 px-3" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary fw-bold rounded-3 shadow-sm px-4">
+                    <i class="bi bi-check-circle me-1"></i>Tambahkan & Jadwalkan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Jadwalkan Logsheet (Single Quick Schedule) -->
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" method="POST" action="{{ url_for('logsheet_quick_schedule') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="asset_id" id="modalScheduleAssetId"/>
+            
+            <div class="modal-header bg-primary text-white border-0 p-4">
+                <div>
+                    <h5 class="modal-title fw-bold mb-1">Jadwalkan Logsheet</h5>
+                    <p class="mb-0 text-white-50" style="font-size: 0.8rem;" id="modalScheduleAssetName"></p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary" style="font-size: 0.85rem;">Tanggal *</label>
+                    <input type="date" name="scheduled_date" class="form-control rounded-3" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary" style="font-size: 0.85rem;">Jam Eksekusi</label>
+                    <input type="time" name="scheduled_time" class="form-control rounded-3" value="08:00">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-bold text-secondary" style="font-size: 0.85rem;">Teknisi Bertugas (Maks. 2)</label>
+                    <select name="user_id" id="modalScheduleTech" class="form-select rounded-3" multiple="multiple" style="width: 100%;">
+                        {% for user in users %}
+                        <option value="{{ user.id }}" data-site-id="{{ user.site_id }}">{{ user.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0 p-3">
+                <button type="button" class="btn btn-light border text-muted fw-bold rounded-3" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary fw-bold rounded-3 shadow-sm px-4">Buat Jadwal & Lanjutkan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    const availableUsersData = [
+        {% for user in users %}
+        { id: "{{ user.id }}", name: {{ user.name | tojson }}, site_id: "{{ user.site_id or '' }}" },
+        {% endfor %}
+    ];
+
+    const dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    let selectedRepeatDays = new Set(); // store selected days [0..6]
+
+    $(document).ready(function() {
+        $('#modalScheduleTech').select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $('#scheduleModal'),
+            placeholder: '-- Pilih Teknisi (Maks. 2) --',
+            maximumSelectionLength: 2,
+            allowClear: true
+        });
+
+        $('#bulkAssetSelect').select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $('#addAssetModal'),
+            placeholder: '-- Pilih Satu atau Beberapa Equipment --',
+            allowClear: true
+        });
+
+        $('#bulkAssetSelect').on('change', function() {
+            renderEquipmentTechnicianRows();
+        });
+
+        $('#bulkStartDate, #bulkEndDate').on('change', function() {
+            updateScheduleDatesPreview();
+        });
+    });
+
+    function toggleDaySelection(dayIndex) {
+        if (selectedRepeatDays.has(dayIndex)) {
+            selectedRepeatDays.delete(dayIndex);
+        } else {
+            selectedRepeatDays.add(dayIndex);
+        }
+        updateDayButtonsUI();
+        updateScheduleDatesPreview();
+    }
+
+    function selectAllRepeatDays(selectAll) {
+        if (selectAll) {
+            selectedRepeatDays = new Set([0, 1, 2, 3, 4, 5, 6]);
+        } else {
+            selectedRepeatDays.clear();
+        }
+        updateDayButtonsUI();
+        updateScheduleDatesPreview();
+    }
+
+    function selectWorkDaysOnly() {
+        selectedRepeatDays = new Set([0, 1, 2, 3, 4]); // Mon-Fri
+        updateDayButtonsUI();
+        updateScheduleDatesPreview();
+    }
+
+    function selectWeekendOnly() {
+        selectedRepeatDays = new Set([5, 6]); // Sat-Sun
+        updateDayButtonsUI();
+        updateScheduleDatesPreview();
+    }
+
+    function updateDayButtonsUI() {
+        $('.day-toggle-btn').each(function() {
+            const day = parseInt($(this).data('day'), 10);
+            const isSelected = selectedRepeatDays.has(day);
+            const icon = $(this).find('.day-check-icon');
+            if (isSelected) {
+                $(this).removeClass('btn-outline-primary').addClass('btn-primary text-white shadow-sm');
+                icon.removeClass('d-none');
+            } else {
+                $(this).removeClass('btn-primary text-white shadow-sm').addClass('btn-outline-primary');
+                icon.addClass('d-none');
+            }
+        });
+
+        const container = $('#hiddenRepeatDaysInputs');
+        container.empty();
+        selectedRepeatDays.forEach(day => {
+            container.append(`<input type="hidden" name="repeat_days" value="${day}">`);
+        });
+    }
+
+    function toggleMultiDaySchedule() {
+        const isChecked = $('#toggleMultiDay').is(':checked');
+        const startDateCol = $('#startDateCol');
+        const endDateCol = $('#endDateCol');
+        const daysFilterCol = $('#daysFilterCol');
+        const startDateInput = $('#bulkStartDate');
+        const endDateInput = $('#bulkEndDate');
+
+        if (isChecked) {
+            startDateCol.removeClass('col-12').addClass('col-md-6');
+            endDateCol.removeClass('d-none');
+            daysFilterCol.removeClass('d-none');
+
+            // Default end date to start date + 7 days if empty or <= start date
+            if (startDateInput.val()) {
+                const sDate = new Date(startDateInput.val() + 'T00:00:00');
+                if (!endDateInput.val() || new Date(endDateInput.val() + 'T00:00:00') <= sDate) {
+                    const nextWeek = new Date(sDate.getTime());
+                    nextWeek.setDate(nextWeek.getDate() + 7);
+                    const yyyy = nextWeek.getFullYear();
+                    const mm = String(nextWeek.getMonth() + 1).padStart(2, '0');
+                    const dd = String(nextWeek.getDate()).padStart(2, '0');
+                    endDateInput.val(`${yyyy}-${mm}-${dd}`);
+                }
+            }
+            endDateInput.prop('required', true);
+            updateDayButtonsUI();
+            updateScheduleDatesPreview();
+        } else {
+            startDateCol.removeClass('col-md-6').addClass('col-12');
+            endDateCol.addClass('d-none');
+            daysFilterCol.addClass('d-none');
+            endDateInput.val('');
+            endDateInput.prop('required', false);
+            $('#schedulePreviewAlert').hide();
+        }
+    }
+
+    function updateScheduleDatesPreview() {
+        const isMultiDay = $('#toggleMultiDay').is(':checked');
+        const startStr = $('#bulkStartDate').val();
+        const endStr = $('#bulkEndDate').val();
+        const previewContainer = $('#schedulePreviewAlert');
+
+        if (!isMultiDay || !startStr) {
+            previewContainer.hide();
+            return;
+        }
+
+        const startDate = new Date(startStr + 'T00:00:00');
+        let endDate = startDate;
+        if (endStr) {
+            endDate = new Date(endStr + 'T00:00:00');
+            if (endDate < startDate) endDate = startDate;
+        }
+
+        const matchedDates = [];
+        let cur = new Date(startDate.getTime());
+        while (cur <= endDate) {
+            const jsDay = cur.getDay();
+            const pyWeekday = (jsDay === 0) ? 6 : (jsDay - 1); // 0=Senin, 6=Minggu
+            if (selectedRepeatDays.size === 0 || selectedRepeatDays.has(pyWeekday)) {
+                matchedDates.push(new Date(cur.getTime()));
+            }
+            cur.setDate(cur.getDate() + 1);
+        }
+
+        previewContainer.show();
+        if (matchedDates.length === 0) {
+            previewContainer.removeClass('alert-info alert-success').addClass('alert-warning')
+                .html(`<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> <strong>Tidak ada hari yang cocok</strong> pada rentang ${startDate.getDate()} ${monthNames[startDate.getMonth()]} s/d ${endDate.getDate()} ${monthNames[endDate.getMonth()]}. Ubah <em>Sampai Tanggal</em> agar mencakup hari yang dipilih.`);
+        } else {
+            const previewSamples = matchedDates.slice(0, 4).map(d => {
+                const pyW = (d.getDay() === 0) ? 6 : (d.getDay() - 1);
+                return `<strong>${dayNames[pyW]}</strong> (${d.getDate()} ${monthNames[d.getMonth()]})`;
+            }).join(', ');
+            const moreText = matchedDates.length > 4 ? `, dan +${matchedDates.length - 4} hari lainnya` : '';
+            const dayFilterNote = selectedRepeatDays.size === 0 ? '<span class="text-muted fst-italic ms-1">(Setiap Hari)</span>' : '';
+
+            previewContainer.removeClass('alert-warning alert-info').addClass('alert-success')
+                .html(`<i class="bi bi-calendar-check-fill text-success me-1"></i> Jadwal akan dibuat untuk <strong>${matchedDates.length} hari</strong>${dayFilterNote}: <div class="mt-1">${previewSamples}${moreText}</div>`);
+        }
+    }
+
+    function renderEquipmentTechnicianRows() {
+        const container = $('#selectedEquipmentsContainer');
+        const selectedOptions = $('#bulkAssetSelect').find(':selected');
+        const count = selectedOptions.length;
+        $('#selectedCountBadge').text(count + ' Equipment Terpilih');
+
+        if (count === 0) {
+            container.html(`
+                <div class="text-center py-4 text-muted" id="noEquipmentsPlaceholder">
+                    <i class="bi bi-arrow-up-circle text-muted mb-2 d-block" style="font-size: 1.75rem;"></i>
+                    <span class="small">Pilih equipment pada dropdown di atas untuk menentukan teknisi yang bertugas.</span>
+                </div>
+            `);
+            return;
+        }
+
+        // Preserve already chosen technician selections and times
+        const prevSelections = {};
+        const prevTimes = {};
+
+        container.find('.eq-tech-select').each(function() {
+            const aid = $(this).attr('data-asset-id');
+            prevSelections[aid] = $(this).val() || [];
+        });
+
+        container.find('.asset-time-container').each(function() {
+            const aid = $(this).attr('data-asset-id');
+            const times = [];
+            $(this).find('input[type="time"]').each(function() {
+                if ($(this).val()) times.push($(this).val());
+            });
+            if (times.length > 0) {
+                prevTimes[aid] = times;
+            }
+        });
+
+        container.empty();
+
+        selectedOptions.each(function() {
+            const aid = $(this).val();
+            const name = $(this).data('name') || $(this).text();
+            const code = $(this).data('code') || '';
+            const site = $(this).data('site') || '';
+            const savedVal = prevSelections[aid] || [];
+            const savedTimes = prevTimes[aid] || ['08:00'];
+
+            let techOptionsHtml = '';
+            availableUsersData.forEach(function(u) {
+                const isSel = savedVal.includes(String(u.id)) ? 'selected' : '';
+                techOptionsHtml += `<option value="${u.id}" ${isSel}>${u.name}</option>`;
+            });
+
+            const cardHtml = `
+                <div class="card border bg-white shadow-sm rounded-3 p-3" id="eqCard_${aid}">
+                    <input type="hidden" name="asset_ids" value="${aid}"/>
+                    
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.9rem;">
+                                <i class="bi bi-box text-primary me-1"></i>${name}
+                            </div>
+                            <div class="text-muted small" style="font-size: 0.75rem;">
+                                <span class="badge bg-light text-secondary border me-1">${code}</span>
+                                ${site ? '<i class="bi bi-geo-alt me-1"></i>' + site : ''}
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="removeEquipmentSelection('${aid}')" title="Hapus Aset">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Jam Pemeriksaan (Bisa Beberapa Kali Sehari) -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label text-muted small fw-bold mb-0" style="font-size: 0.78rem;">
+                                <i class="bi bi-clock me-1"></i>Jam Pemeriksaan (Bisa Lebih Dari 1 Kali)
+                            </label>
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fw-semibold" onclick="addAssetTimeRow('${aid}')" style="font-size: 0.75rem;">
+                                + Tambah Jam
+                            </button>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 align-items-center asset-time-container" id="timeContainer_${aid}" data-asset-id="${aid}">
+                        </div>
+                    </div>
+
+                    <!-- Teknisi Bertugas -->
+                    <div>
+                        <label class="form-label text-muted small fw-bold mb-1" style="font-size: 0.78rem;">
+                            <i class="bi bi-person-badge me-1"></i>Teknisi Bertugas (Maks. 2 Teknisi)
+                        </label>
+                        <select name="tech_ids_${aid}" class="form-select eq-tech-select" data-asset-id="${aid}" multiple="multiple" style="width: 100%;">
+                            ${techOptionsHtml}
+                        </select>
+                    </div>
+                </div>
+            `;
+            container.append(cardHtml);
+
+            // Populate time inputs for this equipment
+            savedTimes.forEach(function(t) {
+                renderTimeInputRow(aid, t);
+            });
+        });
+
+        // Initialize Select2 with maximumSelectionLength: 2 for each equipment row
+        container.find('.eq-tech-select').select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $('#addAssetModal'),
+            placeholder: '-- Pilih Maks. 2 Teknisi (Opsional) --',
+            maximumSelectionLength: 2,
+            allowClear: true
+        });
+    }
+
+    function renderTimeInputRow(aid, timeVal) {
+        const container = $(`#timeContainer_${aid}`);
+        const itemHtml = `
+            <div class="d-inline-flex align-items-center gap-1 time-input-item">
+                <input type="time" name="times_${aid}" class="form-control form-control-sm rounded-3" value="${timeVal || '08:00'}" style="width: 110px;" required>
+                <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="removeAssetTimeRow(this, '${aid}')" title="Hapus Jam">
+                    <i class="bi bi-x-lg" style="font-size: 0.75rem;"></i>
+                </button>
+            </div>
+        `;
+        container.append(itemHtml);
+    }
+
+    function addAssetTimeRow(aid, timeVal) {
+        const container = $(`#timeContainer_${aid}`);
+        if (!timeVal) {
+            const lastVal = container.find('input[type="time"]').last().val();
+            if (lastVal) {
+                try {
+                    const parts = lastVal.split(':');
+                    let h = parseInt(parts[0], 10) + 4;
+                    if (h >= 24) h = h % 24;
+                    timeVal = `${String(h).padStart(2, '0')}:${parts[1] || '00'}`;
+                } catch(e) {
+                    timeVal = '12:00';
+                }
+            } else {
+                timeVal = '08:00';
+            }
+        }
+        renderTimeInputRow(aid, timeVal);
+    }
+
+    function removeAssetTimeRow(btn, aid) {
+        const container = $(`#timeContainer_${aid}`);
+        if (container.find('.time-input-item').length <= 1) {
+            alert('Minimal harus ada 1 jam pemeriksaan.');
+            return;
+        }
+        $(btn).closest('.time-input-item').remove();
+    }
+
+    function removeEquipmentSelection(aid) {
+        const select = $('#bulkAssetSelect');
+        const currentValues = select.val() || [];
+        const newValues = currentValues.filter(val => String(val) !== String(aid));
+        select.val(newValues).trigger('change');
+    }
+
+    function selectAllBulkAssets() {
+        const select = $('#bulkAssetSelect');
+        const allVals = [];
+        select.find('option').each(function() {
+            if (this.value) allVals.push(this.value);
+        });
+        select.val(allVals).trigger('change');
+    }
+
+    function openScheduleModal(assetId, assetName, siteId) {
+        document.getElementById('modalScheduleAssetId').value = assetId;
+        document.getElementById('modalScheduleAssetName').innerText = assetName;
+        
+        // Filter technicians by site using disabled property for Select2 compatibility
+        $('#modalScheduleTech option').each(function() {
+            if(!this.value) return; // Skip if no value
+            const optSiteId = $(this).attr('data-site-id');
+            if(!siteId || optSiteId == siteId || !optSiteId || optSiteId === 'None') {
+                $(this).prop('disabled', false);
+            } else {
+                $(this).prop('disabled', true);
+            }
+        });
+        
+        // Reset selection and re-render Select2
+        $('#modalScheduleTech').val(null).trigger('change');
+        
+        new bootstrap.Modal(document.getElementById('scheduleModal')).show();
+    }
+
+    function switchLogsheetView(mode) {
+        const gridContainer = document.getElementById('gridViewContainer');
+        const listContainer = document.getElementById('listViewContainer');
+        const btnGrid = document.getElementById('btnViewGrid');
+        const btnList = document.getElementById('btnViewList');
+        const viewInput = document.getElementById('viewModeInput');
+
+        if (mode === 'list') {
+            if (gridContainer) gridContainer.classList.add('d-none');
+            if (listContainer) listContainer.classList.remove('d-none');
+            if (btnGrid) {
+                btnGrid.classList.remove('btn-primary', 'text-white');
+                btnGrid.classList.add('btn-light', 'text-muted');
+            }
+            if (btnList) {
+                btnList.classList.remove('btn-light', 'text-muted');
+                btnList.classList.add('btn-primary', 'text-white');
+            }
+            if (viewInput) viewInput.value = 'list';
+            localStorage.setItem('logsheet_view_mode', 'list');
+        } else {
+            if (gridContainer) gridContainer.classList.remove('d-none');
+            if (listContainer) listContainer.classList.add('d-none');
+            if (btnGrid) {
+                btnGrid.classList.remove('btn-light', 'text-muted');
+                btnGrid.classList.add('btn-primary', 'text-white');
+            }
+            if (btnList) {
+                btnList.classList.remove('btn-primary', 'text-white');
+                btnList.classList.add('btn-light', 'text-muted');
+            }
+            if (viewInput) viewInput.value = 'grid';
+            localStorage.setItem('logsheet_view_mode', 'grid');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlView = urlParams.get('view_mode');
+        if (urlView) {
+            switchLogsheetView(urlView);
+        } else {
+            const savedView = localStorage.getItem('logsheet_view_mode');
+            if (savedView) {
+                switchLogsheetView(savedView);
+            }
+        }
+    });
+</script>
+
+{% endblock %}

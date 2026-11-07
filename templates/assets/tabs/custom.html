@@ -1,0 +1,93 @@
+<div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+    <h5 class="fw-bold text-primary mb-0"><i class="bi bi-cpu me-2"></i>Komponen & Kadaluarsa</h5>
+    <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addCustomFieldModal"><i class="bi bi-plus-circle me-1"></i> Tambah Komponen</button>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 25%">Nama Komponen</th>
+                <th>Keterangan / Spek</th>
+                <th style="width: 150px">Tgl. Kadaluarsa</th>
+                <th style="width: 110px">Status</th>
+                <th style="width: 80px" class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cf in asset.custom_fields %}
+            <tr>
+                <td class="fw-bold">
+                    <i class="bi bi-gear text-primary me-1"></i> {{ cf.field_name }}
+                </td>
+                <td class="text-muted">{{ cf.field_value or '-' }}</td>
+                <td>
+                    {% if cf.expiry_date %}
+                        <span class="fw-semibold">{{ cf.expiry_date.strftime('%d %b %Y') }}</span>
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if cf.expiry_date %}
+                        {% if cf.expiry_date.date() < today %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-exclamation-triangle-fill"></i> Expired</span>
+                        {% elif (cf.expiry_date.date() - today).days <= 30 %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="bi bi-clock-history"></i> {{ (cf.expiry_date.date() - today).days }}d left</span>
+                        {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle"></i> Active</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted small">N/A</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <form action="{{ url_for('assets.remove_custom_field', id=cf.id) }}" method="POST" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-sm btn-outline-danger border-0" onclick="return confirm('Hapus komponen ini?');"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-5">
+                <i class="bi bi-box-seam fs-1 d-block mb-2 text-muted" style="opacity:0.3;"></i>
+                Belum ada komponen yang didaftarkan.
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Tambah Komponen -->
+<div class="modal fade" id="addCustomFieldModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
+            <form action="{{ url_for('assets.add_custom_field', asset_id=asset.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header border-0 pb-2 border-bottom">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-cpu text-primary me-2"></i> Tambah Komponen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Nama Komponen <span class="text-danger">*</span></label>
+                        <input type="text" name="field_name" class="form-control" placeholder="Contoh: Filter Oli, Bearing, Belt, Sensor" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Keterangan / Spesifikasi</label>
+                        <textarea name="field_value" class="form-control" rows="2" placeholder="Contoh: Merk ABC, ukuran 10x20cm"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small"><i class="bi bi-calendar-event text-danger me-1"></i> Tanggal Kadaluarsa</label>
+                        <input type="date" name="expiry_date" class="form-control">
+                        <div class="form-text text-muted small">Kosongkan jika komponen tidak memiliki masa kadaluarsa.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-4 shadow-sm"><i class="bi bi-plus-circle me-1"></i> Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
