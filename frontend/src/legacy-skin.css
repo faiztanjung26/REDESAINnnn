@@ -27,7 +27,7 @@
   --bs-font-monospace: var(--font-mono);
   --bs-body-font-size: 0.875rem;
   --bs-body-line-height: 1.55;
-  --bs-heading-color: var(--color-ink);
+  --bs-heading-color: inherit;
   --bs-emphasis-color: var(--color-ink);
   --bs-emphasis-color-rgb: 15, 22, 38;
   --bs-secondary-color: var(--color-ink-muted);
