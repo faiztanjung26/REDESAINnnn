@@ -97,9 +97,9 @@
             <input type="hidden" name="entries_json" id="entriesJson" value="[]"/>
 
             <!-- Optional: We can add the fake tabs here to look identical, but skipping them makes it cleaner. We'll jump straight to Checklist Data. -->
-            <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
+            <div class="d-flex flex-wrap row-gap-2 justify-content-between align-items-center mb-3 mt-2">
                 <h6 class="fw-bold mb-0">Checklist Data Collection</h6>
-                <div class="d-flex align-items-center">
+                <div class="d-flex flex-wrap row-gap-2 align-items-center">
                     <span class="badge bg-warning text-dark rounded-pill px-3 me-2">{{ parameters|length }} Parameters</span>
                     <button type="button" class="btn btn-sm btn-outline-info rounded-pill shadow-sm bg-white me-2" onclick="if(confirm('Tarik parameter dari Master Metering aset ini?')) document.getElementById('pullMetersForm').submit();">
                         <i class="bi bi-cloud-download"></i> Tarik dari API Metering

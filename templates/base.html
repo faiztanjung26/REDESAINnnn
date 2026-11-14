@@ -3,290 +3,328 @@
 <head>
     <meta charset="UTF-8">
     <meta name="color-scheme" content="light">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Portal Engineer CMMS untuk manajemen aset dan pemeliharaan">
-    <title>Portal Engineer</title>
-    <!-- Google Fonts -->
+    <title>{% block title %}Portal Engineer{% endblock %}</title>
+    <!-- Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <!-- Favicon & PWA Manifest Meta Tags -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Favicon & PWA -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#ffffff">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Custom Application CSS -->
-    <link href="{{ url_for('static', filename='css/style.css', v=3) }}" rel="stylesheet">
+    <!-- CSS hasil build (sumber: frontend/src). Naikkan angka v setiap selesai build ulang. -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=5) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/legacy.css', v=5) }}">
 
-    <style>
-        .sidebar { position: fixed; top: 0; left: 0; width: 250px; height: 100vh; background: #0f172a; z-index: 1045; overflow-y: auto; }
-        @media (max-width: 768px) { .sidebar { left: -250px; } }
-    </style>
     {% block head %}{% endblock %}
+    <script defer src="{{ url_for('static', filename='vendor/alpine/alpine.min.js') }}"></script>
 </head>
 <body>
     <script>
-        // Prevent sidebar flash (FOUC) on load
-        if (localStorage.getItem('sidebarMinimized') === 'true' && window.innerWidth >= 768) {
-            document.body.classList.add('sidebar-minimized');
-        }
+        // Cegah sidebar berkedip saat halaman dimuat
+        try {
+            if (localStorage.getItem('sidebarMinimized') === 'true' && window.innerWidth >= 768) {
+                document.body.classList.add('sidebar-minimized');
+            }
+        } catch (e) {}
     </script>
+    <a class="skip-link" href="#main">Lewati ke konten utama</a>
+
     {% if current_user.is_authenticated %}
+    {# Nilai bantu menu. Awalan nav_ agar tidak menimpa variabel halaman anak. #}
+    {% set nav_ep = request.endpoint or '' %}
+    {% set nav_view = request.args.get('view') %}
+    {% set nav_dash_on = nav_ep == 'dashboard' and nav_view != 'executive' %}
+    {% set nav_exec_on = nav_ep == 'dashboard' and nav_view == 'executive' %}
+    {% set nav_dash_group = nav_dash_on or 'bas_monitoring.' in nav_ep %}
+    {% set nav_mnt_group = 'work_orders.' in nav_ep or nav_exec_on %}
+    {% set nav_wh_group = 'warehouse.' in nav_ep or 'ppm.' in nav_ep %}
+    {# Judul bagian di top bar. Endpoint yang belum terdaftar di sini jatuh ke "Portal Engineer". #}
+    {% set nav_title = (
+        'Dashboard Maintenance' if nav_exec_on else
+        _('Dashboard') if nav_ep == 'dashboard' else
+        'BAS Monitoring' if 'bas_monitoring.' in nav_ep else
+        'Work Orders' if 'work_orders.' in nav_ep else
+        _('Helpdesk') if 'helpdesk.' in nav_ep else
+        'Operasional' if 'logsheet' in nav_ep else
+        'Asisten AI' if nav_ep == 'chatbot_page' else
+        'Aktivitas User' if nav_ep == 'user_activity' else
+        'Team Schedule' if 'schedule.' in nav_ep else
+        _('Assets') if 'assets.' in nav_ep else
+        _('Warehouse') if 'warehouse.' in nav_ep or 'ppm.' in nav_ep else
+        'Purchasing' if 'purchasing.' in nav_ep else
+        'Laporan' if 'reports.' in nav_ep else
+        'Monitoring' if 'monitoring.' in nav_ep else
+        _('Settings') if 'settings.' in nav_ep else
+        'Profil' if nav_ep == 'auth.profile' else
+        'Portal Engineer') %}
+    {% set nav_name = current_user.name or '?' %}
+    {% set nav_parts = nav_name.split() %}
+    {% set nav_initials = ((nav_parts[0][:1] if nav_parts else '?') ~ (nav_parts[1][:1] if nav_parts|length > 1 else ''))|upper %}
+
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <a href="{{ url_for('auth.profile') }}" class="brand" style="text-decoration: none; transition: 0.2s; cursor: pointer; line-height: 1.2;">
-            PT Jaya Teknik Indonesia
-            <div style="font-size: 11px; font-weight: normal; margin-top:8px; color:#aaa;" class="text-truncate px-2">
-                <i class="bi bi-person-fill border border-secondary rounded-circle px-1 py-1 me-1 bg-dark"></i>
-                {{ current_user.name }} ({{ current_user.role }})
-            </div>
+    <aside class="sidebar" id="sidebar" aria-label="Menu utama">
+        <a href="{{ url_for('dashboard') if current_user.role != 'User' else url_for('helpdesk.index') }}" class="sb-brand">
+            <img src="{{ url_for('static', filename='images/logo_white.png') }}" alt="PT Jaya Teknik Indonesia">
+            <span class="sb-product">Portal Engineer</span>
         </a>
-        
+        <nav class="sb-nav" aria-label="Navigasi">
         {% if current_user.role != 'User' %}
         <!-- Dashboard Dropdown -->
-        <a href="#dashboardSubmenu" data-bs-toggle="collapse" class="sidebar-dropdown-toggle {% if (request.endpoint == 'dashboard' and request.args.get('view') != 'executive') or 'bas_monitoring.' in request.endpoint %}active{% endif %}">
+        <a href="#dashboardSubmenu" data-bs-toggle="collapse" role="button" aria-controls="dashboardSubmenu" aria-expanded="{{ 'true' if nav_dash_group else 'false' }}" class="sb-link sidebar-dropdown-toggle {{ 'active' if nav_dash_group else 'collapsed' }}">
             <i class="bi bi-house-door"></i> {{ _('Dashboard') }}
-            <i class="bi bi-chevron-down sidebar-dropdown-arrow ms-auto"></i>
+            <i class="bi bi-chevron-down sidebar-dropdown-arrow"></i>
         </a>
-        <div class="collapse sidebar-submenu {% if (request.endpoint == 'dashboard' and request.args.get('view') != 'executive') or 'bas_monitoring.' in request.endpoint %}show{% endif %}" id="dashboardSubmenu">
-            <a href="{{ url_for('dashboard') }}" class="sidebar-subitem {% if request.endpoint == 'dashboard' and request.args.get('view') != 'executive' %}active{% endif %}"><i class="bi bi-speedometer2"></i> Dashboard Utama</a>
-            <a href="{{ url_for('bas_monitoring.index') }}" class="sidebar-subitem {% if 'bas_monitoring.' in request.endpoint %}active{% endif %}"><i class="bi bi-display"></i> BAS Monitoring</a>
+        <div class="collapse sidebar-submenu {% if nav_dash_group %}show{% endif %}" id="dashboardSubmenu">
+            <a href="{{ url_for('dashboard') }}" class="sidebar-subitem {% if nav_dash_on %}active{% endif %}"><i class="bi bi-speedometer2"></i> Dashboard Utama</a>
+            <a href="{{ url_for('bas_monitoring.index') }}" class="sidebar-subitem {% if 'bas_monitoring.' in nav_ep %}active{% endif %}"><i class="bi bi-display"></i> BAS Monitoring</a>
 
             <!-- User Custom Dashboards (loaded via JS) -->
             <div id="customDashboardsContainer"></div>
 
-            <a href="#" class="sidebar-subitem text-muted" onclick="createNewDashboard(event)" style="font-size: 12.5px; opacity: 0.7;">
+            <a href="#" class="sidebar-subitem sidebar-subitem--add" onclick="createNewDashboard(event)">
                 <i class="bi bi-plus-circle"></i> Tambah Dashboard Baru
             </a>
         </div>
-        
+
         <!-- Maintenance Dropdown -->
-        <a href="#maintenanceSubmenu" data-bs-toggle="collapse" class="sidebar-dropdown-toggle {% if 'work_orders.' in request.endpoint or (request.endpoint == 'dashboard' and request.args.get('view') == 'executive') %}active{% endif %}">
+        <a href="#maintenanceSubmenu" data-bs-toggle="collapse" role="button" aria-controls="maintenanceSubmenu" aria-expanded="{{ 'true' if nav_mnt_group else 'false' }}" class="sb-link sidebar-dropdown-toggle {{ 'active' if nav_mnt_group else 'collapsed' }}">
             <i class="bi bi-wrench"></i> {{ _('Maintenance') }}
-            <i class="bi bi-chevron-down sidebar-dropdown-arrow ms-auto"></i>
+            <i class="bi bi-chevron-down sidebar-dropdown-arrow"></i>
         </a>
-        <div class="collapse sidebar-submenu {% if 'work_orders.' in request.endpoint or (request.endpoint == 'dashboard' and request.args.get('view') == 'executive') %}show{% endif %}" id="maintenanceSubmenu">
-            <a href="{{ url_for('dashboard', view='executive') }}" class="sidebar-subitem {% if request.endpoint == 'dashboard' and request.args.get('view') == 'executive' %}active{% endif %}"><i class="bi bi-person-workspace"></i> Dashboard Maintenance</a>
-            <a href="{{ url_for('work_orders.index') }}" class="sidebar-subitem {% if 'work_orders.' in request.endpoint %}active{% endif %}"><i class="bi bi-list-task"></i> Work Orders</a>
+        <div class="collapse sidebar-submenu {% if nav_mnt_group %}show{% endif %}" id="maintenanceSubmenu">
+            <a href="{{ url_for('dashboard', view='executive') }}" class="sidebar-subitem {% if nav_exec_on %}active{% endif %}"><i class="bi bi-person-workspace"></i> Dashboard Maintenance</a>
+            <a href="{{ url_for('work_orders.index') }}" class="sidebar-subitem {% if 'work_orders.' in nav_ep %}active{% endif %}"><i class="bi bi-list-task"></i> Work Orders</a>
         </div>
+        <div class="sb-sep"></div>
         {% endif %}
-        
-        <a href="{{ url_for('helpdesk.index') }}" class="{% if 'helpdesk.' in request.endpoint %}active{% endif %}"><i class="bi bi-headset"></i> {{ _('Helpdesk') }}</a>
+
+        <a href="{{ url_for('helpdesk.index') }}" class="sb-link {% if 'helpdesk.' in nav_ep %}active{% endif %}"><i class="bi bi-headset"></i> {{ _('Helpdesk') }}</a>
         {% if current_user.role in ['Admin', 'Supervisor'] %}
-        <a href="{{ url_for('logsheet_management') }}" class="{% if 'logsheet_management' in request.endpoint %}active{% endif %}"><i class="bi bi-journal-album"></i> Operasional</a>
+        <a href="{{ url_for('logsheet_management') }}" class="sb-link {% if 'logsheet_management' in nav_ep %}active{% endif %}"><i class="bi bi-journal-album"></i> Operasional</a>
         {% endif %}
         {% if current_user.role == 'Technician' %}
-        <a href="{{ url_for('logsheet_my_tasks') }}" class="{% if 'logsheet_my_tasks' in request.endpoint %}active{% endif %}"><i class="bi bi-clipboard-check"></i> Tugas Logsheet Saya</a>
+        <a href="{{ url_for('logsheet_my_tasks') }}" class="sb-link {% if 'logsheet_my_tasks' in nav_ep %}active{% endif %}"><i class="bi bi-clipboard-check"></i> Tugas Logsheet Saya</a>
         {% endif %}
 
-        
         {% if current_user.role in ['Admin', 'Supervisor', 'Technician'] %}
-        <a href="{{ url_for('chatbot_page') }}" class="{% if request.endpoint == 'chatbot_page' %}active{% endif %}"><i class="bi bi-robot"></i> Asisten AI</a>
+        <a href="{{ url_for('chatbot_page') }}" class="sb-link {% if nav_ep == 'chatbot_page' %}active{% endif %}"><i class="bi bi-robot"></i> Asisten AI</a>
         {% endif %}
         {% if current_user.role == 'Admin' %}
-        <a href="{{ url_for('user_activity') }}" class="{% if request.endpoint == 'user_activity' %}active{% endif %}"><i class="bi bi-person-video3"></i> Aktivitas User</a>
+        <a href="{{ url_for('user_activity') }}" class="sb-link {% if nav_ep == 'user_activity' %}active{% endif %}"><i class="bi bi-person-video3"></i> Aktivitas User</a>
         {% endif %}
 
         {% if current_user.role in ['Admin', 'Supervisor'] %}
-        <a href="{{ url_for('schedule.index') }}" class="{% if 'schedule.' in request.endpoint %}active{% endif %}"><i class="bi bi-calendar-range"></i> Team Schedule</a>
-        <a href="{{ url_for('assets.index') }}" class="{% if 'assets.' in request.endpoint %}active{% endif %}"><i class="bi bi-box"></i> {{ _('Assets') }}</a>
+        <a href="{{ url_for('schedule.index') }}" class="sb-link {% if 'schedule.' in nav_ep %}active{% endif %}"><i class="bi bi-calendar-range"></i> Team Schedule</a>
+        <a href="{{ url_for('assets.index') }}" class="sb-link {% if 'assets.' in nav_ep %}active{% endif %}"><i class="bi bi-box"></i> {{ _('Assets') }}</a>
         {% endif %}
 
         <!-- Warehouse Dropdown -->
-        <a href="#warehouseSubmenu" data-bs-toggle="collapse" class="sidebar-dropdown-toggle {% if 'warehouse.' in request.endpoint or 'ppm.' in request.endpoint %}active{% endif %}">
+        <a href="#warehouseSubmenu" data-bs-toggle="collapse" role="button" aria-controls="warehouseSubmenu" aria-expanded="{{ 'true' if nav_wh_group else 'false' }}" class="sb-link sidebar-dropdown-toggle {{ 'active' if nav_wh_group else 'collapsed' }}">
             <i class="bi bi-nut"></i> {{ _('Warehouse') }}
-            <i class="bi bi-chevron-down sidebar-dropdown-arrow ms-auto"></i>
+            <i class="bi bi-chevron-down sidebar-dropdown-arrow"></i>
         </a>
-        <div class="collapse sidebar-submenu {% if 'warehouse.' in request.endpoint or 'ppm.' in request.endpoint %}show{% endif %}" id="warehouseSubmenu">
+        <div class="collapse sidebar-submenu {% if nav_wh_group %}show{% endif %}" id="warehouseSubmenu">
             {% if current_user.role in ['Admin', 'Supervisor'] %}
-            <a href="{{ url_for('warehouse.index') }}" class="sidebar-subitem {% if request.endpoint == 'warehouse.index' or 'warehouse.site_' in request.endpoint or 'warehouse.incoming_goods' in request.endpoint or 'warehouse.adjust_stock' in request.endpoint %}active{% endif %}"><i class="bi bi-inboxes"></i> Stok Gudang</a>
+            <a href="{{ url_for('warehouse.index') }}" class="sidebar-subitem {% if nav_ep == 'warehouse.index' or 'warehouse.site_' in nav_ep or 'warehouse.incoming_goods' in nav_ep or 'warehouse.adjust_stock' in nav_ep %}active{% endif %}"><i class="bi bi-inboxes"></i> Stok Gudang</a>
             {% endif %}
-            <a href="{{ url_for('ppm.index') }}" class="sidebar-subitem {% if 'ppm.' in request.endpoint %}active{% endif %}"><i class="bi bi-file-earmark-text"></i> Permintaan PPM</a>
+            <a href="{{ url_for('ppm.index') }}" class="sidebar-subitem {% if 'ppm.' in nav_ep %}active{% endif %}"><i class="bi bi-file-earmark-text"></i> Permintaan PPM</a>
         </div>
-        
+
         {% if current_user.role == 'Admin' %}
-        <a href="{{ url_for('settings.index') }}" class="{% if 'settings.' in request.endpoint %}active{% endif %}"><i class="bi bi-gear"></i> {{ _('Settings') }}</a>
+        <div class="sb-sep"></div>
+        <a href="{{ url_for('settings.index') }}" class="sb-link {% if 'settings.' in nav_ep %}active{% endif %}"><i class="bi bi-gear"></i> {{ _('Settings') }}</a>
         {% endif %}
-        
+        </nav>
+
         <div class="sidebar-footer">
-            <a href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> {{ _('Log Off') }}</a>
+            <a href="{{ url_for('auth.logout') }}" class="sb-link"><i class="bi bi-box-arrow-right"></i> {{ _('Log Off') }}</a>
         </div>
-    </div>
+    </aside>
     {% endif %}
 
     <!-- Main Content -->
-    <div class="main-content" {% if not current_user.is_authenticated %}style="margin-left:0;"{% endif %}>
+    <div class="main-content {% if not current_user.is_authenticated %}main-content--bare{% endif %}">
         {% if current_user.is_authenticated %}
-        <!-- Top Toolbar -->
-        <div class="top-toolbar">
-            <div class="toolbar-left d-flex align-items-center flex-grow-1 w-100 w-md-auto">  
-                <button class="btn btn-sm btn-outline-secondary me-2 sidebarToggleContainer" id="sidebarToggle" aria-label="Toggle Sidebar">
+        <!-- Top bar global, selalu satu baris. Judul dan tombol aksi halaman ada di .page-bar di dalam <main>. -->
+        <header class="top-toolbar">
+            <div class="toolbar-left">
+                <button type="button" class="tb-iconbtn sidebarToggleContainer" id="sidebarToggle" aria-label="Buka atau tutup menu samping" aria-controls="sidebar">
                     <i class="bi bi-list"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-secondary me-2 toolbar-btn shadow-sm" onclick="toggleAppFullscreen()" title="Layar Penuh / Fullscreen">
+                <img class="tb-logo" src="{{ url_for('static', filename='images/Logo Jaya Teknik.png') }}" alt="Logo Jaya Teknik">
+                <span class="tb-title">{{ nav_title }}</span>
+            </div>
+            <div class="toolbar-right">
+                <form action="{{ url_for('assets.search') }}" method="GET" class="tb-search" role="search"
+                      x-data="{ open: false }" :class="{ 'is-open': open }" @keydown.escape="open = false">
+                    <button type="button" class="tb-iconbtn tb-search-toggle" aria-label="Cari kode aset"
+                            @click="open = true; $nextTick(() => $refs.q.focus())">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                    </button>
+                    <i class="bi bi-search tb-search-ico" aria-hidden="true"></i>
+                    <input x-ref="q" type="search" name="q" placeholder="Cari kode aset..." aria-label="Cari kode aset" autocomplete="off">
+                    <button type="button" class="tb-iconbtn tb-search-close" aria-label="Tutup pencarian" @click="open = false">
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                </form>
+                <button type="button" class="btn btn-outline-primary btn-sm tb-scan" data-bs-toggle="modal" data-bs-target="#qrScannerModal">
+                    <i class="bi bi-qr-code-scan"></i> Scan
+                </button>
+            </div>
+            <div class="tb-utils">
+                <button type="button" class="tb-iconbtn d-none d-md-grid" onclick="toggleAppFullscreen()" title="Layar penuh" aria-label="Layar penuh">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
-                
-                <!-- Left Toolbar Content -->
-                <div class="d-flex align-items-center gap-2 me-3">
-                </div>
-
-                {% block toolbar_left %}{% endblock %}
-                <!-- Logo Top Right First Row -->
-                <div class="ms-auto d-flex align-items-center pe-2 gap-3">
-                    <div class="d-none d-md-flex align-items-center gap-3">
-                        <img src="{{ url_for('static', filename='images/Logo Jaya Teknik.png') }}" alt="Logo Jaya Teknik" style="height: 60px; width: auto;">
-                    </div>
-                    
-                    <div class="d-flex d-md-none align-items-center gap-2">
-                        <img src="{{ url_for('static', filename='images/Logo Jaya Teknik.png') }}" alt="Logo Jaya Teknik" style="height: 50px; width: auto;">
+                <div class="tb-user" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
+                    <button type="button" class="tb-userbtn" @click="open = !open" :aria-expanded="open" aria-haspopup="menu" aria-label="Menu pengguna">
+                        <span class="sb-avatar" aria-hidden="true">{{ nav_initials }}</span>
+                        <span class="tb-user-text"><b>{{ current_user.name }}</b><small>{{ current_user.role }}</small></span>
+                        <i class="bi bi-chevron-down text-muted d-none d-lg-inline" aria-hidden="true"></i>
+                    </button>
+                    <div class="tb-menu" x-show="open" x-cloak x-transition.opacity.duration.120ms role="menu">
+                        <div class="tb-menu-head"><b>{{ current_user.name }}</b><small>{{ current_user.role }}</small></div>
+                        <a href="{{ url_for('auth.profile') }}" role="menuitem"><i class="bi bi-person"></i> Profil saya</a>
+                        {% if current_user.role == 'Admin' %}
+                        <a href="{{ url_for('settings.index') }}" role="menuitem"><i class="bi bi-gear"></i> {{ _('Settings') }}</a>
+                        {% endif %}
+                        <a href="{{ url_for('auth.logout') }}" class="is-danger" role="menuitem"><i class="bi bi-box-arrow-right"></i> {{ _('Log Off') }}</a>
                     </div>
                 </div>
             </div>
-            <div class="toolbar-right mt-2 mt-md-0 w-100 w-md-auto d-flex justify-content-end">
-                {% block toolbar_right %}
-                    <div class="d-flex m-0 w-100 gap-2 align-items-center">
-                        <form action="{{ url_for('assets.search') }}" method="GET" class="flex-grow-1 m-0">
-                            <div class="input-group input-group-sm">
-                                <input type="text" name="q" class="form-control" placeholder="Type Asset Code...">
-                                <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
-                            </div>
-                        </form>
-                        <button class="btn btn-sm btn-outline-primary fw-bold px-3 shadow-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#qrScannerModal">
-                            <i class="bi bi-qr-code-scan"></i> Scan
-                        </button>
-                    </div>
-                {% endblock %}
-            </div>
-        </div>
+        </header>
         {% endif %}
 
-        <!-- Alerts/Flashes -->
-        <div class="container-fluid mt-2">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        </div>
-
         <!-- Page Content -->
-        <div class="content-area">
+        <main class="content-area" id="main" tabindex="-1">
+            {% if current_user.is_authenticated %}
+            <!-- Bar aksi halaman: isi blok toolbar_left dan toolbar_right dari template anak -->
+            <div class="page-bar">
+                <div class="pb-start">{% block toolbar_left %}{% endblock %}</div>
+                <div class="pb-end">{% block toolbar_right %}{% endblock %}</div>
+            </div>
+            {% endif %}
+            <!-- Alerts/Flashes -->
+            <div class="flash-stack">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
             {% block content %}{% endblock %}
-        </div>
+        </main>
     </div>
-    
+
     {% if current_user.is_authenticated %}
     <!-- Mobile Native Bottom Navigation -->
-    <div class="bottom-nav">
+    <nav class="bottom-nav" aria-label="Navigasi bawah">
         {% if current_user.role in ['Admin', 'Supervisor'] %}
         <!-- ADMIN / SUPERVISOR NAVBAR -->
-        <div class="d-flex w-50 justify-content-evenly align-items-center">
-            <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
-                <i class="bi bi-house{{ '-fill' if request.endpoint == 'dashboard' else '' }}"></i>
+        <div class="bn-group">
+            <a href="{{ url_for('dashboard') }}" class="nav-item {% if nav_ep == 'dashboard' %}active{% endif %}">
+                <i class="bi bi-house{{ '-fill' if nav_ep == 'dashboard' else '' }}"></i>
                 Home
             </a>
-            <a href="{{ url_for('assets.index') }}" class="nav-item {% if 'assets.' in request.endpoint %}active{% endif %}">
-                <i class="bi bi-box{{ '-seam-fill' if 'assets.' in request.endpoint else '-seam' }}"></i>
+            <a href="{{ url_for('assets.index') }}" class="nav-item {% if 'assets.' in nav_ep %}active{% endif %}">
+                <i class="bi bi-box{{ '-seam-fill' if 'assets.' in nav_ep else '-seam' }}"></i>
                 Assets
             </a>
         </div>
-        
-        <a href="#" class="nav-item scan-fab" data-bs-toggle="modal" data-bs-target="#qrScannerModal" style="position: absolute; left: 50%; width: 60px; height: 60px; transform: translateX(-50%); z-index: 1060; margin-top: -30px;" aria-label="Scan QR Code">
-            <i class="bi bi-qr-code-scan" style="font-size: 24px;"></i>
+
+        <a href="#" class="nav-item scan-fab" data-bs-toggle="modal" data-bs-target="#qrScannerModal" aria-label="Scan QR Code">
+            <i class="bi bi-qr-code-scan"></i>
         </a>
-        
-        <div class="d-flex w-50 justify-content-evenly align-items-center">
-            <a href="{{ url_for('work_orders.index') }}" class="nav-item {% if 'work_orders.' in request.endpoint %}active{% endif %}">
+
+        <div class="bn-group">
+            <a href="{{ url_for('work_orders.index') }}" class="nav-item {% if 'work_orders.' in nav_ep %}active{% endif %}">
                 <i class="bi bi-tools"></i>
                 WOs
             </a>
-            <a href="{{ url_for('settings.index') if current_user.role == 'Admin' else url_for('auth.profile') }}" class="nav-item {% if request.endpoint in ['settings.index', 'auth.profile'] %}active{% endif %}">
-                <i class="bi bi-person{{ '-badge-fill' if request.endpoint in ['settings.index','auth.profile'] else '-badge' }}"></i>
+            <a href="{{ url_for('settings.index') if current_user.role == 'Admin' else url_for('auth.profile') }}" class="nav-item {% if nav_ep in ['settings.index', 'auth.profile'] %}active{% endif %}">
+                <i class="bi bi-person{{ '-badge-fill' if nav_ep in ['settings.index','auth.profile'] else '-badge' }}"></i>
                 Admin
             </a>
         </div>
 
         {% elif current_user.role == 'Technician' %}
         <!-- TECHNICIAN NAVBAR -->
-        <div class="d-flex w-50 justify-content-evenly align-items-center">
-            <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
-                <i class="bi bi-house{{ '-fill' if request.endpoint == 'dashboard' else '' }}"></i>
+        <div class="bn-group">
+            <a href="{{ url_for('dashboard') }}" class="nav-item {% if nav_ep == 'dashboard' %}active{% endif %}">
+                <i class="bi bi-house{{ '-fill' if nav_ep == 'dashboard' else '' }}"></i>
                 Home
             </a>
-            <a href="{{ url_for('work_orders.index') }}" class="nav-item {% if 'work_orders.' in request.endpoint %}active{% endif %}">
+            <a href="{{ url_for('work_orders.index') }}" class="nav-item {% if 'work_orders.' in nav_ep %}active{% endif %}">
                 <i class="bi bi-list-check"></i>
                 Tasks
             </a>
         </div>
-        
-        <a href="#" class="nav-item scan-fab" data-bs-toggle="modal" data-bs-target="#qrScannerModal" style="position: absolute; left: 50%; width: 60px; height: 60px; transform: translateX(-50%); z-index: 1060; margin-top: -30px;" aria-label="Scan QR Code">
-            <i class="bi bi-qr-code-scan" style="font-size: 24px;"></i>
+
+        <a href="#" class="nav-item scan-fab" data-bs-toggle="modal" data-bs-target="#qrScannerModal" aria-label="Scan QR Code">
+            <i class="bi bi-qr-code-scan"></i>
         </a>
-        
-        <div class="d-flex w-50 justify-content-evenly align-items-center">
-            <a href="{{ url_for('helpdesk.index') }}" class="nav-item {% if 'helpdesk.' in request.endpoint %}active{% endif %}">
+
+        <div class="bn-group">
+            <a href="{{ url_for('helpdesk.index') }}" class="nav-item {% if 'helpdesk.' in nav_ep %}active{% endif %}">
                 <i class="bi bi-headset"></i>
                 Helpdesk
             </a>
-            <a href="{{ url_for('auth.profile') }}" class="nav-item {% if request.endpoint == 'auth.profile' %}active{% endif %}">
-                <i class="bi bi-person{{ '-circle' if request.endpoint == 'auth.profile' else '' }}"></i>
+            <a href="{{ url_for('auth.profile') }}" class="nav-item {% if nav_ep == 'auth.profile' %}active{% endif %}">
+                <i class="bi bi-person{{ '-circle' if nav_ep == 'auth.profile' else '' }}"></i>
                 Profile
             </a>
         </div>
         {% elif current_user.role == 'User' %}
         <!-- USER NAVBAR -->
-        <div class="d-flex w-100 justify-content-evenly align-items-center">
-            <a href="{{ url_for('helpdesk.index') }}" class="nav-item {% if 'helpdesk.' in request.endpoint %}active{% endif %}">
+        <div class="bn-group">
+            <a href="{{ url_for('helpdesk.index') }}" class="nav-item {% if 'helpdesk.' in nav_ep %}active{% endif %}">
                 <i class="bi bi-headset"></i>
                 Helpdesk
             </a>
-            <a href="{{ url_for('auth.profile') }}" class="nav-item {% if request.endpoint == 'auth.profile' %}active{% endif %}">
-                <i class="bi bi-person{{ '-circle' if request.endpoint == 'auth.profile' else '' }}"></i>
+            <a href="{{ url_for('auth.profile') }}" class="nav-item {% if nav_ep == 'auth.profile' %}active{% endif %}">
+                <i class="bi bi-person{{ '-circle' if nav_ep == 'auth.profile' else '' }}"></i>
                 Profile
             </a>
         </div>
         {% endif %}
-    </div>
+    </nav>
     {% endif %}
 
     <!-- QR Scanner Modal -->
-    <div class="modal fade" id="qrScannerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="qrScannerModal" tabindex="-1" aria-labelledby="qrScannerTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 form-glass">
-                <div class="modal-header border-0 pb-2 border-bottom">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-qr-code-scan text-primary me-2"></i> Scan Asset QR</h5>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="qrScannerTitle"><i class="bi bi-qr-code-scan text-primary me-2"></i> Scan Asset QR</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body text-center pt-4 pb-4 px-4 bg-light rounded-bottom-4">
-                    <div id="qr-reader" class="rounded overflow-hidden shadow-sm mx-auto" style="width:100%; max-width: 380px; min-height: 250px; background: white;"></div>
-                    <div class="mt-4 p-3 bg-white rounded-3 shadow-sm border border-light d-inline-block">
-                        <p class="text-muted mb-0 small fw-semibold"><i class="bi bi-camera me-1 text-primary"></i> Point your camera at the Asset QR Code to scan automatically.</p>
-                    </div>
+                <div class="modal-body text-center">
+                    <div id="qr-reader" class="rounded overflow-hidden mx-auto" style="width:100%; max-width: 380px; min-height: 250px; background: white;"></div>
+                    <p class="text-muted mb-0 mt-3 small"><i class="bi bi-camera me-1 text-primary"></i> Arahkan kamera ke QR Code aset, hasilnya terbaca otomatis.</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    <!-- Bootstrap JS Bundle (salinan lokal, 5.3.0) -->
+    <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" defer></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js" defer></script>
@@ -295,10 +333,11 @@
             var toggleBtn = document.getElementById('sidebarToggle');
             var sidebar = document.getElementById('sidebar');
             var overlay = document.getElementById('sidebarOverlay');
-            
+
             // Load and apply minimized state for desktop
             if (window.innerWidth > 768) {
-                const isMinimized = localStorage.getItem('sidebarMinimized') === 'true';
+                var isMinimized = false;
+                try { isMinimized = localStorage.getItem('sidebarMinimized') === 'true'; } catch (e) {}
                 if (isMinimized) {
                     document.body.classList.add('sidebar-minimized');
                 }
@@ -309,7 +348,7 @@
                     if (window.innerWidth > 768) {
                         // Desktop: Toggle body class
                         document.body.classList.toggle('sidebar-minimized');
-                        localStorage.setItem('sidebarMinimized', document.body.classList.contains('sidebar-minimized'));
+                        try { localStorage.setItem('sidebarMinimized', document.body.classList.contains('sidebar-minimized')); } catch (e) {}
                     } else {
                         // Mobile: Toggle sidebar class and overlay
                         sidebar.classList.toggle('show');
@@ -323,22 +362,28 @@
                     overlay.classList.remove('show');
                 });
             }
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && sidebar && sidebar.classList.contains('show')) {
+                    sidebar.classList.remove('show');
+                    if (overlay) overlay.classList.remove('show');
+                }
+            });
 
             // QR Scanner Logic
             const qrModalEl = document.getElementById('qrScannerModal');
             let html5QrcodeScanner;
-            
+
             if (qrModalEl) {
                 qrModalEl.addEventListener('shown.bs.modal', function () {
                     if (!html5QrcodeScanner) {
                         html5QrcodeScanner = new Html5QrcodeScanner(
                             "qr-reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
-                        
+
                         html5QrcodeScanner.render(function(decodedText, decodedResult) {
                             html5QrcodeScanner.clear();
                             var qrModal = bootstrap.Modal.getInstance(qrModalEl);
                             qrModal.hide();
-                            
+
                             // Redirect to backend scan handler
                             window.location.href = "{{ url_for('assets.scan', code='') }}" + encodeURIComponent(decodedText);
                         }, function(error) {
@@ -359,7 +404,7 @@
 
             // Universal Tab Persistence using localStorage
             var currentPath = window.location.pathname;
-            
+
             // 1. Try to activate based on URL hash first (for direct links)
             var hash = window.location.hash;
             var activated = false;
@@ -371,7 +416,7 @@
                     activated = true;
                 }
             }
-            
+
             // 2. Fallback to localStorage for this specific page
             if (!activated) {
                 var activeTab = localStorage.getItem('activeTab_' + currentPath);
@@ -383,7 +428,7 @@
                     }
                 }
             }
-            
+
             // 3. Listen for tab changes to update URL hash and localStorage
             var tabButtons = document.querySelectorAll('button[data-bs-toggle="tab"]');
             tabButtons.forEach(function(btn) {
@@ -425,19 +470,21 @@
                     const container = document.getElementById('customDashboardsContainer');
                     if (!container) return;
                     container.innerHTML = '';
-                    
+
                     if (data.dashboards && data.dashboards.length > 0) {
                         const divider = document.createElement('div');
                         divider.style.cssText = 'border-top: 1px solid rgba(255,255,255,0.08); margin: 4px 12px;';
                         container.appendChild(divider);
-                        
+
                         data.dashboards.forEach(dash => {
                             const isActive = window.location.pathname.includes('/custom-dashboard/' + dash.id);
                             const link = document.createElement('a');
                             link.href = dash.url;
                             link.className = 'sidebar-subitem' + (isActive ? ' active' : '');
-                            link.style.fontSize = '13px';
-                            link.innerHTML = `<i class="bi ${dash.icon}"></i> ${dash.name}`;
+                            // DOM, bukan innerHTML: nama dashboard buatan pengguna tidak boleh jadi HTML
+                            const icon = document.createElement('i');
+                            icon.className = 'bi ' + dash.icon;
+                            link.append(icon, ' ', dash.name);
                             container.appendChild(link);
                         });
                     }
@@ -448,7 +495,7 @@
             e.preventDefault();
             const name = prompt('Nama dashboard baru:');
             if (!name || !name.trim()) return;
-            
+
             fetch('/custom-dashboard/api/create', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -468,11 +515,11 @@
     {% if current_user.is_authenticated %}
     <!-- Custom Chatbot UI -->
     <div class="custom-chat-widget">
-        <button id="chatbotToggle" class="chatbot-toggle-btn shadow-lg" title="Buka Asisten AI">
+        <button id="chatbotToggle" class="chatbot-toggle-btn" title="Buka Asisten AI" aria-label="Buka Asisten AI">
             <i class="bi bi-chat-dots-fill"></i>
         </button>
-        
-        <div id="chatbotWindow" class="chatbot-window shadow-lg d-none">
+
+        <div id="chatbotWindow" class="chatbot-window d-none" role="dialog" aria-label="Asisten AI">
             <div class="chatbot-header">
                 <div class="d-flex align-items-center">
                     <div class="bot-avatar me-2"><i class="bi bi-robot"></i></div>
@@ -486,23 +533,21 @@
                     <button id="chatbotClose" class="btn btn-sm text-white border-0 p-1" title="Tutup"><i class="bi bi-x-lg"></i></button>
                 </div>
             </div>
-            
+
             <div id="chatbotMessages" class="chatbot-messages">
                 <div class="chat-message bot">
                     <div class="msg-bubble">Halo {{ current_user.name }}! Saya adalah <strong>Portal Engineer</strong> AI (GPT-5 Nano). Ada yang bisa saya bantu terkait maintenance CMMS hari ini?</div>
                 </div>
             </div>
-            
+
             <input type="hidden" id="baseChatbotCsrfToken" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="chatbot-input">
                 <input type="text" id="chatbotInputBox" class="form-control" placeholder="Tanyakan sesuatu..." autocomplete="off">
-                <button id="chatbotSendBtn" class="btn btn-primary btn-sm"><i class="bi bi-send-fill"></i></button>
+                <button id="chatbotSendBtn" class="btn btn-primary btn-sm" aria-label="Kirim"><i class="bi bi-send-fill"></i></button>
             </div>
         </div>
     </div>
 
-    <!-- Ensure Marked.js is loaded for Markdown rendering -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const toggleBtn = document.getElementById('chatbotToggle');
@@ -513,7 +558,7 @@
             const messagesContainer = document.getElementById('chatbotMessages');
             const inputBox = document.getElementById('chatbotInputBox');
             const sendBtn = document.getElementById('chatbotSendBtn');
-            
+
             let widgetHistory = [];
 
             function toggleChat() {
@@ -559,7 +604,7 @@
                 addMessage(text, 'user');
                 inputBox.value = '';
                 widgetHistory.push({ role: 'user', content: text });
-                
+
                 inputBox.disabled = true;
                 sendBtn.disabled = true;
 

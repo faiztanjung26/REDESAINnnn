@@ -4,7 +4,7 @@
     <a href="{{ url_for('work_orders.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
     <h5 class="mb-0 ms-3 d-flex align-items-center">
         {% if source_wo %}
-        New Work Order <span class="badge bg-secondary ms-2 fs-6"><i class="bi bi-copy me-1"></i> Salin dari {{ source_wo.code }}</span>
+        New Work Order <span class="badge bg-secondary ms-2 fs-6"><i class="bi bi-files me-1"></i> Salin dari {{ source_wo.code }}</span>
         {% else %}
         New Work Order
         {% endif %}
@@ -15,7 +15,7 @@
     {% if recent_work_orders %}
     <div class="dropdown d-inline-block me-2">
         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-copy"></i> Salin dari WO Lain
+            <i class="bi bi-files"></i> Salin dari WO Lain
         </button>
         <ul class="dropdown-menu dropdown-menu-end shadow" style="max-height: 320px; overflow-y: auto;">
             <li><h6 class="dropdown-header">Pilih WO Sumber untuk Disalin:</h6></li>
@@ -32,7 +32,7 @@
 {% if source_wo %}
 <div class="alert alert-info border-0 shadow-sm d-flex align-items-center justify-content-between mb-4 py-2 px-3 rounded-3">
     <div class="d-flex align-items-center">
-        <i class="bi bi-copy fs-4 text-primary me-3"></i>
+        <i class="bi bi-files fs-4 text-primary me-3"></i>
         <div>
             <strong>Menyalin konfigurasi dari:</strong> <span class="badge bg-primary ms-1">{{ source_wo.code }}</span> <span class="text-muted">({{ source_wo.asset.name if source_wo.asset else 'No Asset' }})</span>
             <div class="text-muted small mt-1">Checklist, Tasklist, Assignee teknisi, Jadwal, dan Notes telah otomatis disalin. Silakan pilih <strong>Asset</strong> baru di kolom kiri.</div>

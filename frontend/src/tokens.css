@@ -1,0 +1,75 @@
+/*
+  Token desain Portal Engineer, versi 2 ("Teknik").
+  Satu sumber untuk utilitas Tailwind (bg-brand-600, text-ink, rounded-card, shadow-card)
+  dan untuk CSS kulit Bootstrap (var(--color-line), dst.).
+  "static" = selalu ditulis ke hasil, walau belum dipakai kelas mana pun.
+
+  Arah desain
+  - Aksi utama: biru kobalt. Ujung tergelapnya mengambil biru navy logo SOM.
+  - Merah (--color-signal) hanya penanda identitas Jaya Teknik (marker menu aktif, titik merek).
+    Jangan dipakai untuk aksi atau bahaya: bahaya punya merahnya sendiri (--color-bad).
+  - Netral: grafit dingin. Permukaan putih di atas kanvas abu kebiruan, garis tipis, bayangan ringan.
+  - Status selalu berpasangan: latar lembut (-bg) + teks pekat (-ink), supaya terbaca tanpa warna jenuh.
+*/
+@theme static {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* aksi utama: kobalt */
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dbe7ff;
+  --color-brand-200: #bcd1ff;
+  --color-brand-300: #8fb0ff;
+  --color-brand-400: #5b87fb;
+  --color-brand-500: #3866ee;
+  --color-brand-600: #254fd9;
+  --color-brand-700: #1e3fb3;
+  --color-brand-800: #1d388f;
+  --color-brand-900: #1c3272;
+  --color-brand-950: #121d47;
+
+  /* identitas Jaya Teknik: penanda merek saja */
+  --color-signal: #e5252b;
+
+  /* permukaan dan teks */
+  --color-canvas: #f1f3f8;
+  --color-surface: #ffffff;
+  --color-sunken: #f6f8fb;
+  --color-line: #e3e7ee;
+  --color-line-strong: #c9d0dc;
+  --color-ink: #0f1626;
+  --color-ink-soft: #384256;
+  --color-ink-muted: #667085;
+  --color-ink-faint: #98a2b3;
+  --color-nav: #0c111c;
+  --color-nav-raised: #151c2c;
+
+  /* status kerja: lencana, kartu ringkasan, peringatan */
+  --color-ok: #15803d;
+  --color-ok-bg: #dcf6e6;
+  --color-ok-ink: #0b6b3c;
+  --color-warn: #d98a00;
+  --color-warn-bg: #fdf0cc;
+  --color-warn-ink: #84470a;
+  --color-bad: #d92d20;
+  --color-bad-bg: #fde5e3;
+  --color-bad-ink: #a8231a;
+  --color-info: #1d7fe0;
+  --color-info-bg: #dcecff;
+  --color-info-ink: #0b57a8;
+  --color-mute-bg: #eaedf3;
+  --color-mute-ink: #475467;
+
+  /* bentuk: kontrol 8px, kartu 12px, jendela melayang 16px */
+  --radius-ctl: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-pop: 1rem;
+
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.05), 0 0 0 1px rgb(16 24 40 / 0.015);
+  --shadow-raised: 0 6px 16px -4px rgb(16 24 40 / 0.1), 0 2px 4px -2px rgb(16 24 40 / 0.06);
+  --shadow-pop: 0 22px 48px -14px rgb(16 24 40 / 0.32), 0 2px 8px rgb(16 24 40 / 0.06);
+
+  --jt-sidebar-w: 16.5rem;
+  --jt-topbar-h: 3.5rem;
+}

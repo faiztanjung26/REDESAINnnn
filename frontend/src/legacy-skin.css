@@ -1,0 +1,601 @@
+/*
+  Kulit Bootstrap 5.3 v2 untuk halaman lama (pakai kelas Bootstrap, tampil dengan desain baru).
+  build.mjs menaruh berkas ini di dalam @layer bootstrap, tepat sesudah Bootstrap dan Bootstrap Icons.
+  Jadi aturan di sini bersaing dengan Bootstrap lewat urutan sumber dan spesifisitas biasa,
+  seperti tema Bootstrap pada umumnya. Aturan itu aman untuk kelompok tombol dan input-group.
+  Aturan: ubah variabel --bs-* sebisa mungkin; kalau menimpa properti, pakai selektor yang sama
+  dengan Bootstrap atau yang lebih spesifik, dan tulis ulang varian .btn-sm/.btn-lg/.form-control-sm.
+  Yang butuh !important (menang atas utilitas Bootstrap) ada di legacy-override.css.
+*/
+
+/* ---------- alias nama variabel lama (style.css) yang masih dipakai beberapa template ---------- */
+:root {
+  --color-primary: var(--color-brand-600);
+  --color-primary-hover: var(--color-brand-700);
+  --color-bg: var(--color-canvas);
+  --color-border: var(--color-line);
+  --color-text-main: var(--color-ink);
+  --radius-sm: var(--radius-ctl);
+  --radius-md: var(--radius-card);
+  --radius-lg: var(--radius-pop);
+}
+
+/* ---------- variabel dasar ---------- */
+:root,
+[data-bs-theme="light"] {
+  --bs-body-font-family: var(--font-sans);
+  --bs-font-monospace: var(--font-mono);
+  --bs-body-font-size: 0.875rem;
+  --bs-body-line-height: 1.55;
+  --bs-heading-color: var(--color-ink);
+  --bs-emphasis-color: var(--color-ink);
+  --bs-emphasis-color-rgb: 15, 22, 38;
+  --bs-secondary-color: var(--color-ink-muted);
+  --bs-tertiary-color: var(--color-ink-faint);
+  --bs-secondary-bg: #eceff5;
+  --bs-tertiary-bg: var(--color-sunken);
+  --bs-border-color: var(--color-line);
+  --bs-border-color-translucent: rgb(16 24 40 / 0.08);
+  --bs-border-radius: var(--radius-ctl);
+  --bs-border-radius-sm: 0.375rem;
+  --bs-border-radius-lg: var(--radius-card);
+  --bs-border-radius-xl: var(--radius-pop);
+  --bs-border-radius-xxl: 1.25rem;
+  --bs-box-shadow-sm: var(--shadow-card);
+  --bs-box-shadow: var(--shadow-raised);
+  --bs-box-shadow-lg: var(--shadow-pop);
+}
+
+html {
+  /* "clip", bukan "hidden": tidak membuat wadah gulir, jadi position: sticky tetap jalan */
+  overflow-x: clip;
+}
+body {
+  background-color: var(--color-canvas);
+  -webkit-tap-highlight-color: transparent;
+}
+::selection {
+  background: var(--color-brand-200);
+  color: var(--color-brand-950);
+}
+hr {
+  border-color: var(--color-line);
+  opacity: 1;
+}
+
+/* ---------- tipografi ---------- */
+h1, .h1, h2, .h2, h3, .h3, h4, .h4, h5, .h5, h6, .h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+h1, .h1 { font-size: 1.75rem; }
+h2, .h2 { font-size: 1.5rem; }
+h3, .h3 { font-size: 1.25rem; }
+h4, .h4 { font-size: 1.0625rem; font-weight: 650; }
+h5, .h5 { font-size: 0.9375rem; font-weight: 650; }
+h6, .h6 { font-size: 0.8125rem; font-weight: 650; }
+a { text-decoration: none; }
+a:not([class]):hover,
+a.link-primary:hover { text-decoration: underline; }
+small, .small { font-size: 0.78125rem; }
+code {
+  padding: 0.1em 0.35em;
+  border-radius: 0.3125rem;
+  background: var(--color-bad-bg);
+  color: var(--color-bad-ink);
+  font-size: 0.85em;
+}
+pre code { padding: 0; background: transparent; color: inherit; }
+a:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+/* ---------- kartu ---------- */
+.card {
+  --bs-card-bg: var(--color-surface);
+  --bs-card-border-color: var(--color-line);
+  --bs-card-border-radius: var(--radius-card);
+  --bs-card-inner-border-radius: calc(var(--radius-card) - 1px);
+  --bs-card-box-shadow: var(--shadow-card);
+  --bs-card-spacer-y: 1.125rem;
+  --bs-card-spacer-x: 1.25rem;
+  --bs-card-cap-padding-y: 0.875rem;
+  --bs-card-cap-padding-x: 1.25rem;
+  --bs-card-cap-bg: transparent;
+}
+.card-header {
+  border-bottom-color: var(--color-line);
+  font-weight: 650;
+}
+.card-footer {
+  border-top-color: var(--color-line);
+  background: var(--color-sunken);
+}
+.card-title {
+  font-family: var(--font-display);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- tombol ---------- */
+.btn {
+  --bs-btn-padding-x: 0.875rem;
+  --bs-btn-padding-y: 0.4375rem;
+  --bs-btn-font-size: 0.84375rem;
+  --bs-btn-font-weight: 600;
+  --bs-btn-line-height: 1.4;
+  --bs-btn-border-radius: var(--radius-ctl);
+  --bs-btn-box-shadow: none;
+  --bs-btn-active-shadow: none;
+  --bs-btn-focus-box-shadow: 0 0 0 3px rgba(var(--bs-btn-focus-shadow-rgb), 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.375rem;
+  letter-spacing: 0;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.btn-sm,
+.btn-group-sm > .btn {
+  --bs-btn-padding-y: 0.25rem;
+  --bs-btn-padding-x: 0.625rem;
+  --bs-btn-font-size: 0.78125rem;
+  --bs-btn-border-radius: 0.4375rem;
+  min-height: 2rem;
+  gap: 0.3rem;
+}
+.btn-lg,
+.btn-group-lg > .btn {
+  --bs-btn-padding-y: 0.5625rem;
+  --bs-btn-padding-x: 1.25rem;
+  --bs-btn-font-size: 0.9375rem;
+  --bs-btn-border-radius: var(--radius-card);
+  min-height: 2.875rem;
+}
+/* tombol penuh warna: sedikit kedalaman */
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-info,
+.btn-dark {
+  --bs-btn-box-shadow: 0 1px 2px rgb(16 24 40 / 0.14), inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+.btn-primary {
+  --bs-btn-bg: var(--color-brand-600);
+  --bs-btn-border-color: var(--color-brand-600);
+  --bs-btn-hover-bg: var(--color-brand-700);
+  --bs-btn-hover-border-color: var(--color-brand-700);
+  --bs-btn-active-bg: var(--color-brand-800);
+  --bs-btn-active-border-color: var(--color-brand-800);
+  --bs-btn-disabled-bg: var(--color-brand-300);
+  --bs-btn-disabled-border-color: var(--color-brand-300);
+  --bs-btn-focus-shadow-rgb: 56, 102, 238;
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--color-brand-700);
+  --bs-btn-bg: #fff;
+  --bs-btn-border-color: var(--color-brand-200);
+  --bs-btn-hover-color: var(--color-brand-800);
+  --bs-btn-hover-bg: var(--color-brand-50);
+  --bs-btn-hover-border-color: var(--color-brand-300);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--color-brand-600);
+  --bs-btn-active-border-color: var(--color-brand-600);
+  --bs-btn-disabled-color: var(--color-brand-300);
+  --bs-btn-disabled-border-color: var(--color-brand-100);
+  --bs-btn-focus-shadow-rgb: 56, 102, 238;
+}
+.btn-secondary {
+  --bs-btn-bg: var(--color-ink-muted);
+  --bs-btn-border-color: var(--color-ink-muted);
+}
+.btn-outline-secondary {
+  --bs-btn-color: var(--color-ink-soft);
+  --bs-btn-bg: #fff;
+  --bs-btn-border-color: var(--color-line-strong);
+  --bs-btn-hover-color: var(--color-ink);
+  --bs-btn-hover-bg: #f1f4f9;
+  --bs-btn-hover-border-color: var(--color-line-strong);
+  --bs-btn-active-color: var(--color-ink);
+  --bs-btn-active-bg: #e3e7ee;
+  --bs-btn-active-border-color: var(--color-line-strong);
+  --bs-btn-disabled-color: var(--color-ink-faint);
+  --bs-btn-disabled-border-color: var(--color-line);
+}
+.btn-light {
+  --bs-btn-color: var(--color-ink-soft);
+  --bs-btn-bg: #eceff5;
+  --bs-btn-border-color: #eceff5;
+  --bs-btn-hover-color: var(--color-ink);
+  --bs-btn-hover-bg: #e0e5ee;
+  --bs-btn-hover-border-color: #e0e5ee;
+  --bs-btn-active-color: var(--color-ink);
+  --bs-btn-active-bg: #d2d9e5;
+  --bs-btn-active-border-color: #d2d9e5;
+  --bs-btn-disabled-bg: #eceff5;
+  --bs-btn-disabled-border-color: #eceff5;
+}
+.btn-dark {
+  --bs-btn-bg: var(--color-ink);
+  --bs-btn-border-color: var(--color-ink);
+  --bs-btn-hover-bg: #232d42;
+  --bs-btn-hover-border-color: #232d42;
+  --bs-btn-active-bg: #323d56;
+  --bs-btn-active-border-color: #323d56;
+}
+.btn-link {
+  --bs-btn-color: var(--color-brand-600);
+  --bs-btn-hover-color: var(--color-brand-800);
+  font-weight: 600;
+}
+
+/* ---------- formulir ---------- */
+.form-control,
+.form-select {
+  min-height: 2.375rem;
+  padding-top: 0.4375rem;
+  padding-bottom: 0.4375rem;
+  border-color: var(--color-line-strong);
+  border-radius: var(--radius-ctl);
+  background-color: #fff;
+  color: var(--color-ink);
+  font-size: 0.875rem;
+}
+.form-control-sm,
+.form-select-sm {
+  min-height: 2rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  border-radius: 0.4375rem;
+  font-size: 0.8125rem;
+}
+.form-control-lg,
+.form-select-lg {
+  min-height: 2.875rem;
+  border-radius: var(--radius-card);
+  font-size: 0.9375rem;
+}
+.form-control::placeholder { color: var(--color-ink-faint); }
+.form-control:hover:not(:focus):not(:disabled),
+.form-select:hover:not(:focus):not(:disabled) { border-color: #aeb8c8; }
+.form-control:focus,
+.form-select:focus {
+  background-color: #fff;
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 3px rgb(56 102 238 / 0.18);
+}
+.form-control:disabled,
+.form-select:disabled,
+.form-control[readonly] { background-color: #eff2f7; }
+.form-label {
+  margin-bottom: 0.375rem;
+  color: var(--color-ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.form-text { font-size: 0.75rem; }
+.form-check-input { border-color: #98a2b3; }
+.form-check-input:focus {
+  border-color: var(--color-brand-400);
+  box-shadow: 0 0 0 3px rgb(56 102 238 / 0.18);
+}
+.input-group-text {
+  border-color: var(--color-line-strong);
+  background-color: var(--color-sunken);
+  color: var(--color-ink-muted);
+}
+.form-control-color { min-height: 0; }
+
+/* ---------- tabel ---------- */
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: #1d2433;
+  --bs-table-border-color: var(--color-line);
+  --bs-table-hover-bg: #f5f7fb;
+  --bs-table-hover-color: var(--color-ink);
+  --bs-table-striped-bg: #f8f9fc;
+  --bs-table-striped-color: #1d2433;
+  font-size: 0.84375rem;
+  font-variant-numeric: tabular-nums;
+}
+.table > :not(caption) > * > * {
+  padding: 0.75rem 0.875rem;
+  vertical-align: middle;
+}
+.table > thead > tr > th {
+  color: var(--color-ink-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.table > thead:not(.table-dark) > tr > th {
+  background-color: var(--color-sunken);
+  border-bottom-color: var(--color-line);
+}
+.table-light,
+.table > thead.table-light > tr > th {
+  --bs-table-bg: var(--color-sunken);
+  --bs-table-color: var(--color-ink-muted);
+  --bs-table-border-color: var(--color-line);
+  --bs-table-striped-bg: #eff2f7;
+  --bs-table-hover-bg: #eff2f7;
+}
+.table-hover > tbody > tr:hover > * { --bs-table-bg-state: #f5f7fb; }
+.table-responsive { border-radius: inherit; }
+
+/* ---------- lencana (warna lembut ada di legacy-override.css) ---------- */
+.badge {
+  --bs-badge-padding-x: 0.6em;
+  --bs-badge-padding-y: 0.38em;
+  --bs-badge-font-size: 0.72rem;
+  --bs-badge-font-weight: 650;
+  --bs-badge-border-radius: 0.375rem;
+  letter-spacing: 0.01em;
+}
+.badge.rounded-pill { --bs-badge-padding-x: 0.75em; }
+
+/* ---------- tab: kontrol segmen (tab di dalam header kartu tetap bergaya garis bawah) ---------- */
+.nav-tabs:not(.card-header-tabs) {
+  --bs-nav-tabs-border-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: #e7ebf2;
+}
+.nav-tabs.nav-fill:not(.card-header-tabs),
+.nav-tabs.nav-justified:not(.card-header-tabs) { width: 100%; }
+.nav-tabs:not(.card-header-tabs) .nav-link {
+  margin-bottom: 0;
+  padding: 0.4375rem 0.875rem;
+  border: 0;
+  border-radius: 0.5625rem;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-size: 0.84375rem;
+  font-weight: 600;
+  transition: color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+.nav-tabs:not(.card-header-tabs) .nav-link:hover,
+.nav-tabs:not(.card-header-tabs) .nav-link:focus {
+  background: rgb(255 255 255 / 0.6);
+  color: var(--color-ink);
+}
+.nav-tabs:not(.card-header-tabs) .nav-link.active,
+.nav-tabs:not(.card-header-tabs) .nav-item.show .nav-link {
+  background: #fff;
+  color: var(--color-brand-700);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.1), 0 0 0 1px rgb(16 24 40 / 0.04);
+}
+.nav-tabs:not(.card-header-tabs) .nav-link.disabled,
+.nav-tabs:not(.card-header-tabs) .nav-link:disabled {
+  background: transparent;
+  color: var(--color-ink-faint);
+}
+.nav-tabs.card-header-tabs .nav-link { font-weight: 600; }
+.nav-pills {
+  --bs-nav-pills-border-radius: var(--radius-ctl);
+  --bs-nav-pills-link-active-bg: var(--color-brand-600);
+}
+.nav-pills .nav-link {
+  color: var(--color-ink-soft);
+  font-weight: 600;
+}
+
+/* ---------- menu tarik, modal, peringatan, dll ---------- */
+.dropdown-menu {
+  --bs-dropdown-border-color: var(--color-line);
+  --bs-dropdown-border-radius: var(--radius-card);
+  --bs-dropdown-inner-border-radius: 0.4375rem;
+  --bs-dropdown-item-border-radius: 0.4375rem;
+  --bs-dropdown-box-shadow: var(--shadow-pop);
+  --bs-dropdown-padding-x: 0.375rem;
+  --bs-dropdown-padding-y: 0.375rem;
+  --bs-dropdown-item-padding-x: 0.75rem;
+  --bs-dropdown-item-padding-y: 0.4375rem;
+  --bs-dropdown-font-size: 0.84375rem;
+  --bs-dropdown-link-color: var(--color-ink-soft);
+  --bs-dropdown-link-hover-bg: #f1f4f9;
+  --bs-dropdown-link-hover-color: var(--color-ink);
+  --bs-dropdown-divider-bg: var(--color-line);
+}
+.modal {
+  --bs-modal-border-radius: var(--radius-pop);
+  --bs-modal-inner-border-radius: calc(var(--radius-pop) - 1px);
+  --bs-modal-border-color: rgb(16 24 40 / 0.06);
+  --bs-modal-box-shadow: var(--shadow-pop);
+  --bs-modal-header-padding: 1rem 1.25rem;
+  --bs-modal-header-border-color: var(--color-line);
+  --bs-modal-footer-border-color: var(--color-line);
+  --bs-modal-padding: 1.25rem;
+}
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.modal-footer { background: var(--color-sunken); }
+.modal-backdrop {
+  --bs-backdrop-bg: #0a101c;
+  --bs-backdrop-opacity: 0.55;
+}
+.alert {
+  --bs-alert-border-radius: var(--radius-card);
+  --bs-alert-padding-y: 0.75rem;
+  --bs-alert-padding-x: 1rem;
+  border-left-width: 0.25rem;
+  font-size: 0.875rem;
+}
+.pagination {
+  --bs-pagination-border-radius: var(--radius-ctl);
+  --bs-pagination-color: var(--color-ink-soft);
+  --bs-pagination-bg: #fff;
+  --bs-pagination-border-color: var(--color-line);
+  --bs-pagination-hover-bg: #f1f4f9;
+  --bs-pagination-hover-color: var(--color-ink);
+  --bs-pagination-hover-border-color: var(--color-line-strong);
+  --bs-pagination-font-size: 0.84375rem;
+  gap: 0.25rem;
+}
+.pagination .page-item .page-link { border-radius: var(--radius-ctl); }
+.pagination .page-item:not(:first-child) .page-link { margin-left: 0; }
+.list-group {
+  --bs-list-group-border-color: var(--color-line);
+  --bs-list-group-border-radius: var(--radius-card);
+  --bs-list-group-action-hover-bg: #f5f7fb;
+}
+.progress {
+  --bs-progress-bg: #e3e7ee;
+  --bs-progress-border-radius: 999px;
+  --bs-progress-height: 0.5rem;
+}
+.tooltip {
+  --bs-tooltip-bg: var(--color-ink);
+  --bs-tooltip-border-radius: 0.4375rem;
+  --bs-tooltip-font-size: 0.75rem;
+}
+.toast { --bs-toast-border-radius: var(--radius-card); }
+.accordion {
+  --bs-accordion-border-color: var(--color-line);
+  --bs-accordion-border-radius: var(--radius-card);
+  --bs-accordion-inner-border-radius: calc(var(--radius-card) - 1px);
+}
+.breadcrumb { --bs-breadcrumb-divider-color: var(--color-ink-faint); font-size: 0.8125rem; }
+
+/* ---------- pembantu lama yang masih dipakai template ---------- */
+.form-glass {
+  background: rgb(255 255 255 / 0.95);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.custom-scrollbar,
+.table-responsive,
+.modal-dialog-scrollable .modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: #c3cad6 transparent;
+}
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #c3cad6; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #98a2b3; }
+.toggle-icon { transition: transform 0.2s; }
+[data-bs-toggle="collapse"]:not(.collapsed) .toggle-icon { transform: rotate(180deg); }
+.desc-text {
+  display: inline-block;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ---------- HP ---------- */
+@media (max-width: 768px) {
+  /* 16px mencegah iOS Safari memperbesar halaman saat kolom diketik */
+  .form-control,
+  .form-select,
+  .form-control-sm,
+  .form-select-sm,
+  .form-control-lg,
+  .form-select-lg { font-size: 1rem; }
+  .form-control, .form-select { min-height: 2.75rem; }
+  .form-control-sm, .form-select-sm { min-height: 2.375rem; }
+  .form-control-lg, .form-select-lg { min-height: 3.125rem; }
+  .btn { min-height: 2.75rem; }
+  .btn-sm, .btn-group-sm > .btn { min-height: 2.375rem; }
+  .btn-lg, .btn-group-lg > .btn { min-height: 3.125rem; }
+  .input-group-sm > .form-control,
+  .input-group-sm > .btn { min-height: 2.375rem; }
+  .nav-tabs:not(.card-header-tabs) .nav-link { padding: 0.5rem 0.875rem; }
+  .card { margin-bottom: 1rem; }
+  .card-body { padding: 1rem; }
+  .card-header { padding: 0.875rem 1rem; }
+
+  /* tabel di dalam .table-responsive berubah jadi kartu per baris; label dari data-label (diisi base.html) */
+  .table-responsive { overflow-x: visible; border: 0; }
+  .table-responsive table,
+  .table-responsive tbody,
+  .table-responsive tfoot,
+  .table-responsive tr,
+  .table-responsive th,
+  .table-responsive td { display: block; }
+  .table-responsive thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .table-responsive tbody tr,
+  .table-responsive tfoot tr {
+    margin-bottom: 0.75rem;
+    padding: 0.25rem 0;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background: #fff;
+    box-shadow: var(--shadow-card);
+  }
+  .table-responsive td {
+    position: relative;
+    min-height: 2.5rem;
+    padding: 0.625rem 0.875rem 0.625rem 44%;
+    border: 0;
+    border-bottom: 1px solid #eff2f7;
+    background: transparent;
+    box-shadow: none;
+    color: var(--color-ink-soft);
+    font-size: 0.84375rem;
+    text-align: right;
+    word-break: break-word;
+  }
+  .table-responsive td:last-child { border-bottom: 0; }
+  .table-responsive td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0.875rem;
+    width: 38%;
+    color: var(--color-ink-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: left;
+    white-space: normal;
+  }
+  .table-responsive td[data-label=""],
+  .table-responsive td[data-label="Actions"] {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.375rem;
+    padding-left: 0.875rem;
+  }
+  .table-responsive td[data-label=""]::before,
+  .table-responsive td[data-label="Actions"]::before { display: none; }
+  /* sel tanpa label (baris kosong, kolom lebih dari judul): selebar kartu, dan teksnya boleh turun baris */
+  .table-responsive td:not([data-label]) { padding-left: 0.875rem; }
+  .table-responsive .text-nowrap { white-space: normal !important; }
+  .table-responsive td input[type="checkbox"] { margin-left: auto; }
+  .table-responsive td > .d-flex { justify-content: flex-end; }
+  .table-responsive td .text-truncate,
+  .table-responsive td .desc-text {
+    display: block;
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal !important;
+  }
+}

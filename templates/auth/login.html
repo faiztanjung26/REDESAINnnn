@@ -1,200 +1,193 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="color-scheme" content="light">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1220">
     <title>Log In - Portal Engineer</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon.png') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            background-color: #ffffff;
-            color: #1e293b;
-        }
-        
-        .split-layout {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Left Panel - Branding */
-        .left-panel {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            position: relative;
-            overflow: hidden;
-        }
-        .orb-1 { position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(79,70,229,0.15) 0%, transparent 70%); top: -200px; left: -200px; border-radius: 50%; }
-        .orb-2 { position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%); bottom: -200px; right: -100px; border-radius: 50%; }
-
-        /* Right Panel - Form */
-        .right-panel {
-            background-color: #ffffff;
-        }
-        
-        .login-container {
-            width: 100%;
-            max-width: 440px;
-            padding: 2rem;
-        }
-
-        /* Input Styling */
-        .custom-input-group {
-            display: flex;
-            align-items: center;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            background-color: #ffffff;
-            transition: all 0.2s ease;
-            overflow: hidden;
-        }
-        .custom-input-group:focus-within {
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
-        }
-        .custom-input-group .icon-box {
-            padding: 0 1rem;
-            color: #94a3b8;
-            font-size: 1.1rem;
-        }
-        .custom-input-group:focus-within .icon-box {
-            color: #4f46e5;
-        }
-        .custom-input-group .form-control {
-            border: none;
-            padding: 1rem 1rem 1rem 0;
-            background: transparent;
-            font-weight: 500;
-            color: #1e293b;
-            box-shadow: none !important;
-        }
-        .custom-input-group .form-control::placeholder {
-            color: #cbd5e1;
-            font-weight: 400;
-        }
-        
-        /* Button */
-        .btn-primary {
-            background: #4f46e5;
-            border: none;
-            border-radius: 12px;
-            padding: 14px 0;
-            font-weight: 600;
-            font-size: 1.05rem;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.25);
-        }
-        .btn-primary:hover {
-            background: #4338ca;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.35);
-        }
-
-        .alert-custom {
-            background-color: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #b91c1c;
-            border-radius: 10px;
-            padding: 12px 16px;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-        }
-    </style>
+    <!-- Inter dimuat tanpa memblokir render; offline otomatis jatuh ke font sistem. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"></noscript>
+    <!-- CSS hasil build (sumber: frontend/src). Halaman ini asli Tailwind: reset + utilitas, tanpa Bootstrap. -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/preflight.css', v=5) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=5) }}">
 </head>
-<body>
+<body class="min-h-screen bg-canvas font-sans text-ink antialiased">
 
-    <div class="split-layout">
-        
-        <!-- LEFT PANEL -->
-        <div class="col-lg-5 d-none d-lg-flex flex-column justify-content-between p-5 left-panel">
-            <div class="orb-1"></div>
-            <div class="orb-2"></div>
-            
-            <div style="z-index: 10; display: flex; align-items: center; gap: 16px;">
-                <img src="{{ url_for('static', filename='images/logo_white.png') }}" alt="PT Jaya Teknik Indonesia" style="height: 70px;">
-            </div>
-            
-            <div style="z-index: 10;">
-                <h1 class="text-white fw-bold mb-4" style="font-size: 3.5rem; letter-spacing: -1px; line-height: 1.1;">Portal<br>Engineer.</h1>
-                <p class="text-white opacity-75 fs-5 mb-0" style="max-width: 400px; font-weight: 300;">Streamline maintenance, monitor assets, and manage workflows seamlessly.</p>
-            </div>
-            
-            <div style="z-index: 10;">
-                <p class="text-white opacity-50 small mb-0 fw-medium">&copy; 2026 PT Jaya Teknik Indonesia</p>
-            </div>
-        </div>
-        
-        <!-- RIGHT PANEL -->
-        <div class="col-12 col-lg-7 d-flex align-items-center justify-content-center right-panel">
-            <div class="login-container">
-                
-                <!-- Mobile Logo -->
-                <div class="d-block d-lg-none text-center mb-5 d-flex justify-content-center align-items-center gap-3">
-                    <img src="{{ url_for('static', filename='images/Logo Jaya Teknik.png') }}" alt="PT Jaya Teknik Indonesia" style="height: 70px;">
-                </div>
+    <!-- Ikon: Tabler Icons (MIT). Satu sprite, dipakai berulang lewat <use>. -->
+    <svg class="pointer-events-none absolute size-0" aria-hidden="true" focusable="false">
+        <symbol id="ti-id" viewBox="0 0 24 24"><path d="M3 7a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v10a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -10"/><path d="M7 10a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 8l2 0"/><path d="M15 12l2 0"/><path d="M7 16l10 0"/></symbol>
+        <symbol id="ti-lock" viewBox="0 0 24 24"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></symbol>
+        <symbol id="ti-eye" viewBox="0 0 24 24"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"/></symbol>
+        <symbol id="ti-eye-off" viewBox="0 0 24 24"><path d="M10.585 10.587a2 2 0 0 0 2.829 2.828"/><path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87"/><path d="M3 3l18 18"/></symbol>
+        <symbol id="ti-alert-triangle" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/><path d="M12 16h.01"/></symbol>
+        <symbol id="ti-circle-check" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></symbol>
+        <symbol id="ti-info-circle" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></symbol>
+        <symbol id="ti-device-mobile" viewBox="0 0 24 24"><path d="M6 5a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-14"/><path d="M11 4h2"/><path d="M12 17v.01"/></symbol>
+        <symbol id="ti-arrow-right" viewBox="0 0 24 24"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></symbol>
+        <symbol id="ti-loader-2" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+    </svg>
 
-                <div class="mb-5">
-                    <h2 class="fw-bold mb-2" style="letter-spacing: -0.5px; color: #0f172a;">Welcome back</h2>
-                    <p class="text-muted" style="font-size: 1.05rem;">Please enter your credentials to access your account.</p>
-                </div>
-                
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert-custom mb-4">
-                            <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+    {% set lm_nrp = request.form.get('nrp', '') %}
+
+    <div class="min-h-screen min-h-[100dvh] lg:flex">
+
+        <!-- Panel merek: pita di atas pada HP, kolom penuh di desktop -->
+        <aside class="relative isolate overflow-hidden bg-nav px-6 pb-32 pt-8 text-white sm:px-10 sm:pt-10 lg:flex lg:w-5/12 lg:flex-col lg:justify-between lg:px-12 lg:py-12 xl:w-1/2 xl:px-16 xl:py-14">
+
+            <!-- Lockup merek seperti login produksi: SOM + pemisah + JAYA. Siluet putih lewat filter pada PNG transparan. -->
+            <div class="flex items-center gap-3 self-start lg:gap-4">
+                <img src="{{ url_for('static', filename='images/logo_som.png', v=2) }}" alt="Logo SOM" width="1024" height="399" class="h-8 w-auto shrink-0 brightness-0 invert lg:h-11">
+                <span class="h-9 w-px shrink-0 bg-white/25 lg:h-12" aria-hidden="true"></span>
+                <img src="{{ url_for('static', filename='images/Logo Jaya Teknik.png') }}" alt="PT Jaya Teknik Indonesia" width="666" height="375" class="h-12 w-auto shrink-0 brightness-0 invert lg:h-16">
+            </div>
+
+            <!-- Tanda logo (vektor persis dari logo_white.png, grid 14x14) sebagai watermark.
+                 Di HP ia menempel di pojok kanan atas pita. Di desktop ia mengisi ruang kosong
+                 antara logo dan judul, sehingga ukurannya menyesuaikan tinggi layar dan tidak menabrak teks. -->
+            <div class="contents lg:relative lg:my-8 lg:block lg:min-h-0 lg:flex-1" aria-hidden="true">
+                <svg class="pointer-events-none absolute -right-8 -top-6 -z-10 size-44 fill-white/[0.07] [mask-image:linear-gradient(225deg,#000_30%,transparent_88%)] sm:-right-4 sm:-top-8 sm:size-56 lg:inset-y-0 lg:right-0 lg:my-auto lg:aspect-square lg:h-full lg:max-h-[26rem] lg:w-auto" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+                    <path d="M12 0H14V14H3V3H8V9H9V2H2V14H0V0H11V11H6V5H5V12H12Z"/>
+                </svg>
+            </div>
+
+            <div class="hidden lg:block">
+                <span class="mb-8 block h-1 w-12 rounded-full bg-brand-400"></span>
+                <p class="text-5xl font-semibold leading-[1.05] tracking-tight xl:text-6xl">Portal<br>Engineer.</p>
+                <p class="mt-6 max-w-md text-lg leading-relaxed text-slate-300">Streamline maintenance, monitor assets, and manage workflows seamlessly.</p>
+                <p class="mt-14 text-sm text-slate-400">&copy; 2026 PT Jaya Teknik Indonesia</p>
+            </div>
+
+        </aside>
+
+        <!-- Sisi form -->
+        <main class="relative flex-1 px-4 pb-10 sm:px-6 lg:flex lg:items-center lg:justify-center lg:px-10 lg:py-12">
+            <div class="relative z-10 mx-auto -mt-24 w-full max-w-[26rem] motion-safe:[animation:jt-rise_.55s_cubic-bezier(.16,1,.3,1)_both] lg:mt-0">
+
+                <div class="rounded-2xl border border-line bg-surface p-6 shadow-pop sm:p-8">
+
+                    <div class="mb-7">
+                        <h1 class="text-2xl font-semibold tracking-tight text-ink">Welcome back</h1>
+                        <p class="mt-1.5 text-sm leading-relaxed text-ink-muted">Please enter your credentials to access your account.</p>
+                    </div>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% set lm_tones = {
+                        'error': 'border-bad-ink/15 bg-bad-bg text-bad-ink',
+                        'danger': 'border-bad-ink/15 bg-bad-bg text-bad-ink',
+                        'success': 'border-ok-ink/15 bg-ok-bg text-ok-ink',
+                        'warning': 'border-warn-ink/15 bg-warn-bg text-warn-ink',
+                        'info': 'border-info-ink/15 bg-info-bg text-info-ink'
+                    } %}
+                    <div class="mb-6 space-y-3" aria-live="polite">
+                        {% for category, message in messages %}
+                        <div role="alert" class="flex items-start gap-3 rounded-xl border px-4 py-3 text-sm leading-relaxed {{ lm_tones.get(category, lm_tones['info']) }}">
+                            <svg class="mt-0.5 size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#{{ 'ti-circle-check' if category == 'success' else ('ti-alert-triangle' if category in ('error', 'danger', 'warning') else 'ti-info-circle') }}"/></svg>
                             <div>{{ message }}</div>
                         </div>
-                    {% endfor %}
-                {% endif %}
-                {% endwith %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
 
-                <form method="POST" action="{{ url_for('auth.login') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px;">Employee ID (NRP)</label>
-                        <div class="custom-input-group">
-                            <div class="icon-box"><i class="bi bi-person"></i></div>
-                            <input type="text" class="form-control" id="nrp" name="nrp" placeholder="e.g. 2022071031" required autofocus autocomplete="off">
+                    <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                        <div class="space-y-5">
+                            <div>
+                                <label for="nrp" class="mb-2 block text-sm font-medium text-ink-soft">Employee ID (NRP)</label>
+                                <div class="group relative">
+                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex w-12 items-center justify-center text-slate-400 transition-colors group-focus-within:text-brand-600">
+                                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#ti-id"/></svg>
+                                    </span>
+                                    <input type="text" id="nrp" name="nrp" value="{{ lm_nrp }}" placeholder="e.g. 2022071031" required {% if not lm_nrp %}autofocus{% endif %} autocomplete="off" class="block h-12 w-full rounded-xl border border-line-strong bg-surface pl-12 pr-4 text-base text-ink shadow-sm outline-hidden transition placeholder:text-slate-500 hover:border-slate-400 focus:border-brand-600 focus:ring-4 focus:ring-brand-600/15">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="password" class="mb-2 block text-sm font-medium text-ink-soft">Password</label>
+                                <div class="group relative">
+                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex w-12 items-center justify-center text-slate-400 transition-colors group-focus-within:text-brand-600">
+                                        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#ti-lock"/></svg>
+                                    </span>
+                                    <input type="password" id="password" name="password" placeholder="••••••••" required {% if lm_nrp %}autofocus{% endif %} autocomplete="current-password" class="block h-12 w-full rounded-xl border border-line-strong bg-surface pl-12 pr-12 text-base text-ink shadow-sm outline-hidden transition placeholder:text-slate-500 hover:border-slate-400 focus:border-brand-600 focus:ring-4 focus:ring-brand-600/15">
+                                    <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-slate-400 transition-colors hover:text-ink-soft focus-visible:text-brand-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600" aria-label="Show password" aria-pressed="false">
+                                        <svg id="eyeShow" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#ti-eye"/></svg>
+                                        <svg id="eyeHide" class="hidden size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#ti-eye-off"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                                <label for="remember" class="flex cursor-pointer select-none items-center gap-2.5 whitespace-nowrap text-sm text-ink-muted">
+                                    <input type="checkbox" id="remember" name="remember" class="size-4 cursor-pointer rounded border-line-strong accent-brand-600">
+                                    Remember me
+                                </label>
+                                <a href="#" class="-my-1.5 whitespace-nowrap py-1.5 text-sm font-medium text-brand-700 underline-offset-4 hover:underline">Forgot password?</a>
+                            </div>
+
+                            <button type="submit" id="loginSubmit" class="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-[15px] font-semibold text-white shadow-sm transition hover:bg-brand-700 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 active:scale-[0.99]">
+                                <svg id="loginSpinner" class="hidden size-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><use href="#ti-loader-2"/></svg>
+                                <span id="loginLabel">Sign in to account</span>
+                                <svg id="loginArrow" class="size-4 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#ti-arrow-right"/></svg>
+                            </button>
                         </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px;">Password</label>
-                        <div class="custom-input-group">
-                            <div class="icon-box"><i class="bi bi-lock"></i></div>
-                            <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center mb-5">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input border-secondary" id="remember" name="remember" style="cursor: pointer;">
-                            <label class="form-check-label text-muted small fw-medium" for="remember" style="cursor: pointer;">Remember me</label>
-                        </div>
-                        <a href="#" class="text-decoration-none small fw-bold" style="color: #4f46e5;">Forgot password?</a>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary w-100 mb-4">Sign in to account</button>
-                    
-                    <div class="text-center mt-4">
-                        <p class="text-muted small fw-medium mb-2">Don't have an account? <a href="{{ url_for('auth.register') }}" class="fw-bold text-decoration-none" style="color: #4f46e5;">Register here</a></p>
-                        <a href="{{ url_for('download_app') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-4 mt-2" style="font-weight: 600; border-color: #cbd5e1; color: #475569;">
-                            <i class="bi bi-android2 text-success me-1"></i> Get Mobile App
+                    </form>
+
+                    <p class="mt-6 text-center text-sm text-ink-muted">Don't have an account? <a href="{{ url_for('auth.register') }}" class="whitespace-nowrap font-semibold text-brand-700 underline-offset-4 hover:underline">Register here</a></p>
+
+                    <div class="mt-6 border-t border-line pt-6">
+                        <a href="{{ url_for('download_app') }}" class="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-medium text-ink-soft transition hover:border-line-strong hover:bg-slate-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#ti-device-mobile"/></svg>
+                            Get Mobile App
                         </a>
                     </div>
-                </form>
-            </div>
-        </div>
+                </div>
 
+                <p class="mt-6 text-center text-xs text-ink-muted">&copy; 2026 PT Jaya Teknik Indonesia</p>
+            </div>
+        </main>
     </div>
 
+    <script>
+    (function () {
+        var pw = document.getElementById('password');
+        var toggle = document.getElementById('togglePassword');
+        var eyeShow = document.getElementById('eyeShow');
+        var eyeHide = document.getElementById('eyeHide');
+        toggle.addEventListener('click', function () {
+            var reveal = pw.type === 'password';
+            pw.type = reveal ? 'text' : 'password';
+            eyeShow.classList.toggle('hidden', reveal);
+            eyeHide.classList.toggle('hidden', !reveal);
+            toggle.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+            toggle.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+            pw.focus();
+        });
+
+        var form = document.getElementById('loginForm');
+        var submit = document.getElementById('loginSubmit');
+        var spinner = document.getElementById('loginSpinner');
+        var arrow = document.getElementById('loginArrow');
+        var label = document.getElementById('loginLabel');
+        function setBusy(busy) {
+            submit.setAttribute('aria-busy', busy ? 'true' : 'false');
+            submit.classList.toggle('pointer-events-none', busy);
+            submit.classList.toggle('opacity-80', busy);
+            spinner.classList.toggle('hidden', !busy);
+            arrow.classList.toggle('hidden', busy);
+            label.textContent = busy ? 'Signing in…' : 'Sign in to account';
+        }
+        form.addEventListener('submit', function () { setBusy(true); });
+        // Tombol Back (bfcache) memulihkan halaman dengan keadaan sibuk; kembalikan.
+        window.addEventListener('pageshow', function (e) { if (e.persisted) { setBusy(false); } });
+    })();
+    </script>
 </body>
 </html>

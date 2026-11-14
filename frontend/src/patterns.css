@@ -1,0 +1,216 @@
+/*
+  Pola antarmuka bersama, versi 2.
+  Semua di @layer components: kelas utilitas dan CSS halaman tetap bisa menimpanya.
+  Dipakai langsung oleh template baru dan oleh halaman lama.
+*/
+@layer components {
+  /* ---------- kontrol segmen: pilihan tampilan (daftar, kanban, kalender, ...) ---------- */
+  .seg {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--radius-ctl);
+    background: var(--color-mute-bg);
+  }
+  .seg-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-width: 2.25rem;
+    height: 1.875rem;
+    padding: 0 0.625rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-ink-muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .seg-item:hover {
+    background: rgb(16 24 40 / 0.06);
+    color: var(--color-ink);
+    text-decoration: none;
+  }
+  a.seg-item {
+    text-decoration: none;
+  }
+  .seg-item.is-active {
+    background: var(--color-surface);
+    color: var(--color-brand-700);
+    box-shadow: 0 1px 2px rgb(16 24 40 / 0.14), 0 0 0 1px rgb(16 24 40 / 0.04);
+  }
+  .seg-item:focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 1px;
+  }
+
+  /* ---------- gugus kolom: ikon dan isian dalam satu bingkai (filter, rentang tanggal) ---------- */
+  .field-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    min-height: 2rem;
+    padding-left: 0.625rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 0.4375rem;
+    background: var(--color-surface);
+    color: var(--color-ink-muted);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field-group:hover {
+    border-color: #aeb8c8;
+  }
+  .field-group:focus-within {
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 3px rgb(56 102 238 / 0.18);
+  }
+  .field-group :is(.form-select, .form-control) {
+    width: auto;
+    min-height: 1.875rem;
+    padding-left: 0.25rem;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
+  }
+  .field-group :is(.form-select, .form-control):focus {
+    box-shadow: none;
+  }
+
+  /* kolom filter yang sedang aktif: tersorot supaya terlihat apa yang menyaring daftar */
+  .form-select.is-set {
+    border-color: var(--color-brand-300);
+    background-color: var(--color-brand-50);
+    color: var(--color-brand-800);
+    font-weight: 600;
+  }
+
+  /* ---------- kartu angka: ringkasan KPI (label, nilai besar, catatan, ikon) ---------- */
+  .stat {
+    padding: 1.125rem 1.25rem;
+  }
+  .stat-label {
+    color: var(--color-ink-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .stat-value {
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: 1.875rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.625rem;
+    background: var(--color-mute-bg);
+    color: var(--color-mute-ink);
+    font-size: 1.0625rem;
+  }
+  .stat-icon.is-ok { background: var(--color-ok-bg); color: var(--color-ok-ink); }
+  .stat-icon.is-info { background: var(--color-info-bg); color: var(--color-info-ink); }
+  .stat-icon.is-brand { background: var(--color-brand-100); color: var(--color-brand-800); }
+  .stat-icon.is-warn { background: var(--color-warn-bg); color: var(--color-warn-ink); }
+  .stat-icon.is-bad { background: var(--color-bad-bg); color: var(--color-bad-ink); }
+  .stat-note {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.375rem;
+    color: var(--color-ink-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .stat-note.is-ok { color: var(--color-ok-ink); }
+  .stat-note.is-info { color: var(--color-info-ink); }
+  .stat-note.is-brand { color: var(--color-brand-700); }
+  .stat-note.is-warn { color: var(--color-warn-ink); }
+
+  /* ---------- tombol ikon: aksi per baris (salin, ubah, hapus) ---------- */
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 0.4375rem;
+    background: transparent;
+    color: var(--color-ink-muted);
+    font-size: 0.9375rem;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .icon-btn:hover {
+    background: var(--color-mute-bg);
+    color: var(--color-ink);
+  }
+  .icon-btn.is-brand:hover {
+    background: var(--color-brand-50);
+    color: var(--color-brand-700);
+  }
+  .icon-btn.is-danger:hover {
+    background: var(--color-bad-bg);
+    color: var(--color-bad-ink);
+  }
+  .icon-btn:focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 1px;
+  }
+  @media (max-width: 768px) {
+    .icon-btn {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-color: var(--color-line);
+    }
+  }
+
+  /* ---------- keadaan kosong: tabel atau daftar tanpa isi ---------- */
+  .jt-empty {
+    padding: 2.5rem 1rem;
+    color: var(--color-ink-muted);
+    text-align: center;
+  }
+  .jt-empty > i {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--color-ink-faint);
+    font-size: 1.75rem;
+    line-height: 1;
+  }
+  /* di HP tabel berubah jadi kartu per baris: baris kosong tetap di tengah, tanpa label kolom */
+  @media (max-width: 768px) {
+    .table-responsive td.jt-empty {
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+    .table-responsive td.jt-empty::before {
+      display: none;
+    }
+  }
+}

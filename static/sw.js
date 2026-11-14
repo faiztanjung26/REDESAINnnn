@@ -1,13 +1,17 @@
-const CACHE_NAME = 'cmms-full-cache-v10';
+const CACHE_NAME = 'cmms-full-cache-v12';
 const CORE_ROUTES = [
   '/static/offline.html',
+  '/static/css/app.css',
+  '/static/css/legacy.css',
+  '/static/vendor/bootstrap/bootstrap.bundle.min.js',
+  '/static/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
+  '/static/vendor/alpine/alpine.min.js',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/fonts/bootstrap-icons.woff2',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
   'https://code.jquery.com/jquery-3.6.0.min.js',
   'https://unpkg.com/dexie@latest/dist/dexie.js',
-  '/static/css/style.css',
   '/static/js/offline-db.js',
   '/static/js/offline-sync.js',
   '/static/images/favicon.png',
@@ -21,7 +25,10 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[ServiceWorker] Pre-caching all main system pages, CDN libraries & assets');
-      return cache.addAll(CORE_ROUTES).catch(err => console.warn('[ServiceWorker] Pre-cache warning:', err));
+      // Satu per satu: addAll bersifat atomik, satu berkas gagal membatalkan seluruh pre-cache
+      return Promise.all(CORE_ROUTES.map(url =>
+        cache.add(url).catch(err => console.warn('[ServiceWorker] Pre-cache warning:', url, err))
+      ));
     })
   );
   self.skipWaiting();
@@ -67,7 +74,8 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => {
         // Network failed -> Serve from Service Worker Cache
-        return caches.match(req).then((cachedResponse) => {
+        // Aset statis memakai ?v=... dan font ikon memakai ?hash: cocokkan tanpa query string
+        return caches.match(req, { ignoreSearch: req.url.includes('/static/') }).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }

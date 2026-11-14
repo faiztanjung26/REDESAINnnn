@@ -2,12 +2,12 @@
 
 {% block toolbar_left %}
     {% if current_user.role in ['Admin', 'Supervisor'] %}
-    <a href="{{ url_for('work_orders.create') }}" class="btn btn-primary btn-premium ms-1"><i class="bi bi-plus"></i> New Work Order</a>
-    <button type="button" class="btn btn-sm btn-outline-primary ms-1 toolbar-btn" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-upload"></i> Import</button>
+    <a href="{{ url_for('work_orders.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Work Order</a>
+    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importModal" title="Import" aria-label="Import"><i class="bi bi-upload"></i><span class="d-none d-sm-inline">Import</span></button>
     {% endif %}
-    <div class="btn-group ms-1">
-        <button type="button" class="btn btn-outline-secondary btn-premium dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-download"></i> Export
+    <div class="btn-group">
+        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Export" aria-label="Export">
+            <i class="bi bi-download"></i><span class="d-none d-sm-inline">Export</span>
         </button>
         <ul class="dropdown-menu shadow">
             <li><a class="dropdown-item fw-semibold" href="{{ url_for('reports.wo_monthly_report', site_id=selected_site_id) }}"><i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i> Laporan Bulanan (PDF / PPTX)</a></li>
@@ -16,56 +16,47 @@
             <li><a class="dropdown-item" href="{{ url_for('work_orders.export_all', format='csv', **request.args) }}"><i class="bi bi-file-earmark-text text-primary me-2"></i> CSV (.csv)</a></li>
         </ul>
     </div>
-    <a href="{{ url_for('reports.wo_monthly_report', site_id=selected_site_id) }}" class="btn btn-outline-danger btn-premium ms-1"><i class="bi bi-file-earmark-pdf-fill me-1"></i> Laporan Bulanan</a>
+    <a href="{{ url_for('reports.wo_monthly_report', site_id=selected_site_id) }}" class="btn btn-outline-secondary" title="Laporan Bulanan" aria-label="Laporan Bulanan"><i class="bi bi-file-earmark-pdf text-danger"></i><span class="d-none d-md-inline">Laporan Bulanan</span></a>
 {% endblock %}
 
 {% block content %}
 <style>
-/* Premium Work Orders Design */
-.settings-header { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 1.5rem 2rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); margin-bottom: 2rem; }
-.settings-header h3 { font-weight: 700; letter-spacing: -0.5px; color: white !important; }
-
-.settings-pane-card { background: #ffffff; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; margin-bottom: 1.5rem; overflow: hidden; }
-
-.table-premium { border-collapse: separate; border-spacing: 0; width: 100%; margin-bottom: 0; }
-.table-premium thead th { background-color: #f8fafc; color: #475569; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.85rem 1rem; border-bottom: 2px solid #e2e8f0; border-top: none; }
-.table-premium tbody td { padding: 0.65rem 1rem; vertical-align: middle; color: #334155; border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; }
-.table-premium tbody tr:hover td { background-color: #f8fafc; cursor: pointer; }
-
-.form-select-premium { border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 0.5rem 2.25rem 0.5rem 1rem; font-size: 0.875rem; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); transition: all 0.2s; background-color: #ffffff; }
-.form-select-premium:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-
-.form-control-premium { border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; font-size: 0.875rem; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); transition: all 0.2s; background-color: #ffffff; }
-.form-control-premium:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); outline: none; }
-
-.filter-bar { background: linear-gradient(180deg, #ffffff, #f8fafc); border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 1.5rem; }
-
-.btn-premium { border-radius: 0.75rem; font-weight: 600; padding: 0.5rem 1.25rem; transition: all 0.2s; font-size: 0.875rem; }
-.btn-premium:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-
-.toolbar-btn { border-radius: 2rem !important; padding: 0.4rem 1rem !important; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s; }
-.toolbar-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+/* Hanya yang khas halaman ini. Kartu, tombol, kolom, segmen dan tabel memakai pola bersama (app.css, legacy.css). */
+.wo-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.wo-search { flex: 1 1 18rem; max-width: 30rem; }
+.wo-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.wo-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--color-line); }
+.wo-filter-label { margin-right: 0.25rem; color: var(--color-ink-muted); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.settings-pane-card { margin-bottom: 1.5rem; overflow: hidden; }
+.wo-table td.wo-code { font-weight: 600; white-space: nowrap; }
+@media (min-width: 769px) {
+    .wo-table > :not(caption) > * > * { padding-left: 0.625rem; padding-right: 0.625rem; }
+    .wo-table > :not(caption) > * > :first-child { padding-right: 0; }
+}
+/* kolom deskripsi menyerap sisa lebar dan terpotong dengan elipsis, jadi tabel selalu muat */
+@media (min-width: 769px) {
+    .wo-table td.wo-desc { width: 100%; min-width: 9rem; max-width: 0; }
+    .wo-table td.wo-desc .desc-text { display: block; max-width: none; }
+}
+/* kotak centang baris belum punya fungsi: di HP disembunyikan agar kartu lebih ringkas */
+@media (max-width: 768px) { .wo-table td.wo-check { display: none; } }
 </style>
 
-
-
 <form id="filterForm" method="GET" action="{{ url_for('work_orders.index') }}" class="m-0 w-100">
-    <div class="filter-bar d-flex flex-column gap-3">
+    <input type="hidden" name="view" id="viewModeInput" value="{{ view_mode }}">
+    <div class="filter-bar d-flex flex-column gap-3 mb-3">
         <!-- Top Row -->
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div class="flex-grow-1" style="max-width: 500px;">
-                <input type="hidden" name="view" id="viewModeInput" value="{{ view_mode }}">
-                <div class="input-group shadow-sm align-items-center" style="border-radius: 2rem; border: 1px solid #e2e8f0; background: #fff; padding: 2px;">
-                    <span class="input-group-text bg-white border-0 ps-3 pe-2 text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" name="q" class="form-control border-0 px-2 shadow-none" placeholder="Search Code / Desc..." value="{{ search_query }}">
-                    <button type="submit" class="btn btn-primary px-4 fw-bold" style="border-radius: 2rem;">Search</button>
-                </div>
+        <div class="wo-top">
+            <div class="input-group wo-search">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control" placeholder="Search Code / Desc..." value="{{ search_query }}" aria-label="Search Code / Desc">
+                <button type="submit" class="btn btn-primary">Search</button>
             </div>
             <!-- Saved Views & View Switcher -->
-            <div class="d-flex align-items-center flex-wrap gap-2">
+            <div class="wo-tools">
                 {% if saved_views %}
                 <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary btn-premium dropdown-toggle rounded-pill bg-white shadow-sm" type="button" data-bs-toggle="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="bi bi-bookmark-star text-warning"></i> Saved Views
                     </button>
                     <ul class="dropdown-menu shadow" style="min-width: 250px;">
@@ -83,82 +74,82 @@
                     </ul>
                 </div>
                 {% endif %}
-                <button type="button" class="btn btn-sm btn-light text-muted border shadow-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#saveViewModal" title="Save Current View"><i class="bi bi-save"></i></button>
-                
+                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#saveViewModal" title="Save Current View" aria-label="Save Current View"><i class="bi bi-save"></i></button>
+
                 <!-- View Switcher -->
-                <div class="view-switcher btn-group bg-white rounded-pill shadow-sm border p-1" role="group">
-                <button type="button" class="btn btn-sm {% if view_mode == 'kanban' %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('kanban')" title="Kanban"><i class="bi bi-kanban"></i></button>
-                <button type="button" class="btn btn-sm {% if view_mode == 'list' or not view_mode %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('list')" title="List"><i class="bi bi-list-task"></i></button>
-                <button type="button" class="btn btn-sm {% if view_mode == 'pivot' %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('pivot')" title="Pivot"><i class="bi bi-table"></i></button>
-                <button type="button" class="btn btn-sm {% if view_mode == 'graph' %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('graph')" title="Graph"><i class="bi bi-bar-chart-fill"></i></button>
-                <button type="button" class="btn btn-sm {% if view_mode == 'calendar' %}btn-primary{% else %}btn-light text-muted{% endif %} rounded-pill px-2 px-md-3 py-1 fw-bold" onclick="switchView('calendar')" title="Calendar"><i class="bi bi-calendar3"></i></button>
-            </div>
+                <div class="view-switcher seg" role="group" aria-label="View mode">
+                    <button type="button" class="seg-item{% if view_mode == 'kanban' %} is-active{% endif %}" onclick="switchView('kanban')" title="Kanban" aria-label="Kanban" aria-pressed="{{ 'true' if view_mode == 'kanban' else 'false' }}"><i class="bi bi-kanban"></i></button>
+                    <button type="button" class="seg-item{% if view_mode == 'list' or not view_mode %} is-active{% endif %}" onclick="switchView('list')" title="List" aria-label="List" aria-pressed="{{ 'true' if (view_mode == 'list' or not view_mode) else 'false' }}"><i class="bi bi-list-task"></i></button>
+                    <button type="button" class="seg-item{% if view_mode == 'pivot' %} is-active{% endif %}" onclick="switchView('pivot')" title="Pivot" aria-label="Pivot" aria-pressed="{{ 'true' if view_mode == 'pivot' else 'false' }}"><i class="bi bi-table"></i></button>
+                    <button type="button" class="seg-item{% if view_mode == 'graph' %} is-active{% endif %}" onclick="switchView('graph')" title="Graph" aria-label="Graph" aria-pressed="{{ 'true' if view_mode == 'graph' else 'false' }}"><i class="bi bi-bar-chart-fill"></i></button>
+                    <button type="button" class="seg-item{% if view_mode == 'calendar' %} is-active{% endif %}" onclick="switchView('calendar')" title="Calendar" aria-label="Calendar" aria-pressed="{{ 'true' if view_mode == 'calendar' else 'false' }}"><i class="bi bi-calendar3"></i></button>
+                </div>
             </div>
         </div>
 
         <!-- Bottom Row: Filters -->
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-            <span class="fw-bold small text-muted me-1"><i class="bi bi-funnel-fill me-1"></i> Filters:</span>
-            
+        <div class="wo-filter-row">
+            <span class="wo-filter-label"><i class="bi bi-funnel me-1"></i>Filters</span>
+
             <!-- Time Range Filter -->
-            <div class="d-inline-flex align-items-center bg-white shadow-sm rounded-pill border px-2 py-1">
-                <i class="bi bi-calendar3 text-muted me-2 ms-1"></i>
-                <select name="time_range" id="timeRangeSelect" class="form-select form-select-sm border-0 bg-transparent shadow-none w-auto" style="min-width: 110px;" onchange="handleTimeRangeChange()">
+            <div class="field-group">
+                <i class="bi bi-calendar3"></i>
+                <select name="time_range" id="timeRangeSelect" class="form-select form-select-sm" onchange="handleTimeRangeChange()" aria-label="Time range">
                     <option value="today" {% if time_range == 'today' %}selected{% endif %}>Hari Ini</option>
                     <option value="this_month" {% if time_range == 'this_month' %}selected{% endif %}>Bulan Ini</option>
                     <option value="last_month" {% if time_range == 'last_month' %}selected{% endif %}>Bulan Lalu</option>
                     <option value="this_year" {% if time_range == 'this_year' %}selected{% endif %}>Tahun Ini</option>
                     <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Custom</option>
                 </select>
-                
-                <div id="customDateRange" class="d-inline-flex align-items-center border-start ps-2 ms-1" style="{% if time_range != 'custom' %}display: none !important;{% endif %}">
-                    <input type="date" name="start_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ start_date_str }}" style="width: 110px;">
-                    <span class="mx-1 text-muted">-</span>
-                    <input type="date" name="end_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ end_date_str }}" style="width: 110px;">
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill ms-2 py-0"><i class="bi bi-search"></i></button>
+
+                <div id="customDateRange" class="d-inline-flex align-items-center gap-1 border-start ps-2 ms-1" style="{% if time_range != 'custom' %}display: none !important;{% endif %}">
+                    <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date_str }}" style="width: 8.5rem;" aria-label="Start date">
+                    <span class="text-muted">-</span>
+                    <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date_str }}" style="width: 8.5rem;" aria-label="End date">
+                    <button type="submit" class="btn btn-sm btn-primary" aria-label="Apply date range"><i class="bi bi-search"></i></button>
                 </div>
             </div>
 
             {% if available_sites %}
-            <select name="site_id" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+            <select name="site_id" class="form-select form-select-sm w-auto{% if selected_site_id %} is-set{% endif %}" onchange="this.form.submit()" aria-label="Site">
                 <option value="">All Sites</option>
                 {% for site in available_sites %}
                 <option value="{{ site.id }}" {% if selected_site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
                 {% endfor %}
             </select>
             {% endif %}
-            
-            <select name="maintenance_type" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+
+            <select name="maintenance_type" class="form-select form-select-sm w-auto{% if selected_mt %} is-set{% endif %}" onchange="this.form.submit()" aria-label="Maintenance type">
                 <option value="">All Types</option>
                 {% for mt in maintenance_types %}
                 <option value="{{ mt }}" {% if selected_mt == mt %}selected{% endif %}>{{ mt }}</option>
                 {% endfor %}
             </select>
-            
-            <select name="completeness" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+
+            <select name="completeness" class="form-select form-select-sm w-auto{% if completeness_filter %} is-set{% endif %}" onchange="this.form.submit()" aria-label="Completeness">
                 <option value="">All Completeness</option>
                 <option value="no_tasklist" {% if completeness_filter == 'no_tasklist' %}selected{% endif %}>No Tasklist</option>
                 <option value="no_checklist" {% if completeness_filter == 'no_checklist' %}selected{% endif %}>No Checklist</option>
                 <option value="no_both" {% if completeness_filter == 'no_both' %}selected{% endif %}>No Tasklist & Checklist</option>
             </select>
-            
-            <select name="status" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+
+            <select name="status" class="form-select form-select-sm w-auto{% if request.args.get('status') %} is-set{% endif %}" onchange="this.form.submit()" aria-label="Status">
                 <option value="">All Statuses</option>
                 {% for s in statuses %}
                 <option value="{{ s.name }}" {% if request.args.get('status') == s.name %}selected{% endif %}>{{ s.name }}</option>
                 {% endfor %}
             </select>
-            
-            <select name="assigned_to" class="form-select form-select-premium form-select-sm w-auto shadow-sm" onchange="this.form.submit()">
+
+            <select name="assigned_to" class="form-select form-select-sm w-auto{% if request.args.get('assigned_to') %} is-set{% endif %}" onchange="this.form.submit()" aria-label="Assigned user">
                 <option value="">All Users</option>
                 {% for u in users %}
                 <option value="{{ u.id }}" {% if request.args.get('assigned_to') == u.id|string %}selected{% endif %}>{{ u.name }}</option>
                 {% endfor %}
             </select>
-            
-            <a href="{{ url_for('work_orders.index') }}" class="btn btn-sm btn-light text-muted ms-auto rounded-pill px-3 shadow-sm border fw-bold" title="Clear Filters"><i class="bi bi-x-circle me-1"></i> Clear</a>
+
+            <a href="{{ url_for('work_orders.index') }}" class="btn btn-sm btn-outline-secondary ms-auto" title="Clear Filters"><i class="bi bi-x-circle"></i> Clear</a>
         </div>
-        
+
         <script>
             function handleTimeRangeChange() {
                 var val = document.getElementById('timeRangeSelect').value;
@@ -183,8 +174,8 @@ function switchView(mode) {
 {% if view_mode == 'list' or not view_mode %}
 <div class="settings-pane-card">
     <div class="card-body p-0">
-        <div class="table-responsive" style="font-size: 0.85rem;">
-            <table class="table table-hover table-premium align-middle mb-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 wo-table">
                 <thead class="table-light">
                     <tr>
                         <th style="width: 30px;" ><input class="form-check-input" type="checkbox"></th>
@@ -201,12 +192,12 @@ function switchView(mode) {
                 <tbody>
                     {% for wo in work_orders %}
                     <tr>
-                        <td ><input class="form-check-input" type="checkbox"></td>
-                        <td class="fw-bold"><a href="{{ url_for('work_orders.edit', id=wo.id) }}" class="text-decoration-none">{{ wo.code }}</a></td>
+                        <td class="wo-check"><input class="form-check-input" type="checkbox" aria-label="Pilih baris"></td>
+                        <td class="wo-code"><a href="{{ url_for('work_orders.edit', id=wo.id) }}" class="text-decoration-none">{{ wo.code }}</a></td>
                         <td class="text-nowrap text-muted" style="font-size: 0.75rem;">
                             {{ wo.suggested_start_date.strftime('%d %b %Y') if wo.suggested_start_date else '-' }}
                         </td>
-                        <td >
+                        <td class="wo-desc">
                             <span class="desc-text" title="{{ wo.description }}">{{ wo.description }}</span>
                         </td>
                         <td >
@@ -258,22 +249,22 @@ function switchView(mode) {
                                 <span class="badge bg-light text-dark border" style="font-size: 0.70rem;">No Status</span>
                             {% endif %}
                         </td>
-                        <td class="text-end">
+                        <td class="text-end text-nowrap">
                             {% if current_user.role in ['Admin', 'Supervisor'] %}
-                            <a href="{{ url_for('work_orders.create', copy_from=wo.id) }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" title="Duplicate / Salin WO"><i class="bi bi-copy"></i></a>
+                            <a href="{{ url_for('work_orders.create', copy_from=wo.id) }}" class="icon-btn" title="Duplicate / Salin WO" aria-label="Duplicate / Salin WO"><i class="bi bi-files"></i></a>
                             {% endif %}
-                            <a href="{{ url_for('work_orders.edit', id=wo.id) }}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" title="Edit WO"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('work_orders.edit', id=wo.id) }}" class="icon-btn is-brand" title="Edit WO" aria-label="Edit WO"><i class="bi bi-pencil"></i></a>
                             {% if current_user.role in ['Admin', 'Supervisor'] %}
                             <form action="{{ url_for('work_orders.delete', id=wo.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this work order?');">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 0.75rem;" title="Delete WO"><i class="bi bi-trash"></i></button>
+                                <button type="submit" class="icon-btn is-danger" title="Delete WO" aria-label="Delete WO"><i class="bi bi-trash"></i></button>
                             </form>
                             {% endif %}
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">No open work orders. Good job!</td>
+                        <td colspan="9" class="jt-empty"><i class="bi bi-inbox"></i>No open work orders. Good job!</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -553,64 +544,64 @@ function submitSaveView() {
 
 <style>
 /* Kanban Styles */
-.kanban-board { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; min-height: 60vh; }
-.kanban-column { background: #f1f5f9; border-radius: 0.75rem; min-width: 300px; max-width: 300px; display: flex; flex-direction: column; }
-.kanban-header { padding: 1rem; font-weight: 600; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-.kanban-cards { padding: 0.75rem; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 0.75rem; }
-.kanban-card { background: white; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; cursor: pointer; transition: transform 0.1s; }
-.kanban-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-.kanban-card-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 0.25rem; color: #1e293b; }
-.kanban-card-desc { font-size: 0.8rem; color: #64748b; margin-bottom: 0.75rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.kanban-board { display: flex; gap: 0.875rem; overflow-x: auto; padding-bottom: 1rem; min-height: 60vh; }
+.kanban-column { background: var(--color-sunken); border: 1px solid var(--color-line); border-radius: var(--radius-card); min-width: 300px; max-width: 300px; display: flex; flex-direction: column; }
+.kanban-header { padding: 0.75rem 1rem; font-size: 0.8125rem; font-weight: 650; border-bottom: 1px solid var(--color-line); display: flex; justify-content: space-between; align-items: center; }
+.kanban-cards { padding: 0.625rem; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 0.625rem; }
+.kanban-card { background: var(--color-surface); border-radius: var(--radius-ctl); padding: 0.875rem; box-shadow: var(--shadow-card); border: 1px solid var(--color-line); cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+.kanban-card:hover { border-color: var(--color-brand-300); box-shadow: var(--shadow-raised); }
+.kanban-card-title { font-weight: 650; font-size: 0.875rem; margin-bottom: 0.25rem; color: var(--color-ink); }
+.kanban-card-desc { font-size: 0.8rem; color: var(--color-ink-muted); margin-bottom: 0.75rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .kanban-card-footer { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; }
 
 /* Pivot Styles Override */
-.pvtTable { width: 100%; border-collapse: collapse; font-size: 0.875rem; background: white; margin-top: 0.5rem; }
-table.pvtTable th, table.pvtTable td { border: 1px solid #e2e8f0; padding: 0.85rem 1.25rem; vertical-align: middle; transition: background-color 0.2s; }
-table.pvtTable th { background: #f8fafc; font-weight: 600; color: #475569; text-align: center; }
-table.pvtTable th.pvtRowLabel { text-align: left; color: #1e293b; font-weight: 600; }
-table.pvtTable th.pvtAxisLabel { background: #f8fafc; font-size: 0; color: transparent; border: none; }
-table.pvtTable td.pvtVal, table.pvtTable td.pvtTotal { background: #ffffff; color: #334155; text-align: right; }
-table.pvtTable td.pvtTotal, table.pvtTable th.pvtTotalLabel { font-weight: 700; background: #f8fafc; color: #0f172a; }
-table.pvtTable tbody tr:hover td.pvtVal, table.pvtTable tbody tr:hover td.pvtTotal, table.pvtTable tbody tr:hover th.pvtRowLabel { background-color: #f1f5f9; cursor: default; }
+.pvtTable { width: 100%; border-collapse: collapse; font-size: 0.875rem; background: var(--color-surface); margin-top: 0.5rem; }
+table.pvtTable th, table.pvtTable td { border: 1px solid var(--color-line); padding: 0.85rem 1.25rem; vertical-align: middle; transition: background-color 0.2s; }
+table.pvtTable th { background: var(--color-sunken); font-weight: 600; color: var(--color-ink-soft); text-align: center; }
+table.pvtTable th.pvtRowLabel { text-align: left; color: var(--color-ink); font-weight: 600; }
+table.pvtTable th.pvtAxisLabel { background: var(--color-sunken); font-size: 0; color: transparent; border: none; }
+table.pvtTable td.pvtVal, table.pvtTable td.pvtTotal { background: var(--color-surface); color: var(--color-ink-soft); text-align: right; }
+table.pvtTable td.pvtTotal, table.pvtTable th.pvtTotalLabel { font-weight: 700; background: var(--color-sunken); color: var(--color-ink); }
+table.pvtTable tbody tr:hover td.pvtVal, table.pvtTable tbody tr:hover td.pvtTotal, table.pvtTable tbody tr:hover th.pvtRowLabel { background-color: var(--color-mute-bg); cursor: default; }
 table.pvtUi { width: 100%; }
 .pvtAxisContainer, .pvtVals { display: none; } /* Hide drag-and-drop containers */
-.pvtAttr { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.25rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; color: #1e293b; font-weight: 500; cursor: pointer; display: inline-block; margin: 0.2rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s; }
-.pvtAttr:hover { border-color: #94a3b8; background: #f1f5f9; }
-.pvtTriangle { color: #64748b; margin-left: 0.5rem; }
+.pvtAttr { background: var(--color-surface); border: 1px solid var(--color-line-strong); border-radius: 0.25rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; color: var(--color-ink); font-weight: 500; cursor: pointer; display: inline-block; margin: 0.2rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s; }
+.pvtAttr:hover { border-color: #aeb8c8; background: var(--color-mute-bg); }
+.pvtTriangle { color: var(--color-ink-muted); margin-left: 0.5rem; }
 select.pvtRenderer, select.pvtAggregator, select.pvtAttrDropdown { 
     display: inline-block;
     padding: 0.375rem 2.25rem 0.375rem 0.75rem;
     font-size: 0.85rem;
     font-weight: 500;
     line-height: 1.5;
-    color: #475569;
-    background-color: #fff;
+    color: var(--color-ink-soft);
+    background-color: var(--color-surface);
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
     background-size: 16px 12px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--color-line-strong);
     border-radius: 0.375rem;
     appearance: none;
     margin-bottom: 0.25rem;
     cursor: pointer;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
-select.pvtRenderer:focus, select.pvtAggregator:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25); }
-.pvtFilterBox { position: absolute; width: 300px; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: #ffffff; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 1rem; z-index: 1050; }
-.pvtFilterBox h4 { font-size: 1rem; font-weight: 600; margin-top: 0; margin-bottom: 1rem; color: #1e293b; text-align: center; }
+select.pvtRenderer:focus, select.pvtAggregator:focus { outline: none; border-color: var(--color-brand-600); box-shadow: 0 0 0 3px rgb(56 102 238 / 0.18); }
+.pvtFilterBox { position: absolute; width: 300px; border: 1px solid var(--color-line-strong); border-radius: 0.5rem; background: var(--color-surface); box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 1rem; z-index: 1050; }
+.pvtFilterBox h4 { font-size: 1rem; font-weight: 600; margin-top: 0; margin-bottom: 1rem; color: var(--color-ink); text-align: center; }
 .pvtFilterBox p { margin-bottom: 0.75rem; text-align: center; }
-.pvtFilterBox p input[type="text"] { width: 100%; padding: 0.375rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.85rem; }
-.pvtFilterBox p input[type="text"]:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 0.2rem rgba(59,130,246,0.25); }
-.pvtFilterBox p button { background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.8rem; margin: 0 0.15rem; cursor: pointer; transition: all 0.2s; }
-.pvtFilterBox p button:hover { background: #f1f5f9; color: #1e293b; }
-.pvtCheckContainer { padding: 0.5rem 0; margin: 0.5rem 0; max-height: 250px; overflow-y: auto; overflow-x: hidden; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; text-align: left; }
-.pvtCheckContainer label { font-size: 0.85rem; color: #334155; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; white-space: nowrap; cursor: pointer; }
-.pvtCheckContainer input[type="checkbox"] { margin: 0; width: 1rem; height: 1rem; border-radius: 0.25rem; border-color: #cbd5e1; cursor: pointer; }
-.pvtFilterBox > button { background: #3b82f6; color: white; border: none; padding: 0.4rem 1rem; border-radius: 0.375rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; margin-right: 0.5rem; }
-.pvtFilterBox > button:hover { background: #2563eb; }
-.pvtFilterBox > button:last-child { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 500; }
-.pvtFilterBox > button:last-child:hover { background: #e2e8f0; color: #1e293b; }
+.pvtFilterBox p input[type="text"] { width: 100%; padding: 0.375rem 0.75rem; border: 1px solid var(--color-line-strong); border-radius: 0.375rem; font-size: 0.85rem; }
+.pvtFilterBox p input[type="text"]:focus { outline: none; border-color: var(--color-brand-600); box-shadow: 0 0 0 3px rgb(56 102 238 / 0.18); }
+.pvtFilterBox p button { background: var(--color-sunken); color: var(--color-ink-soft); border: 1px solid var(--color-line-strong); padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.8rem; margin: 0 0.15rem; cursor: pointer; transition: all 0.2s; }
+.pvtFilterBox p button:hover { background: var(--color-mute-bg); color: var(--color-ink); }
+.pvtCheckContainer { padding: 0.5rem 0; margin: 0.5rem 0; max-height: 250px; overflow-y: auto; overflow-x: hidden; border-top: 1px solid var(--color-line); border-bottom: 1px solid var(--color-line); text-align: left; }
+.pvtCheckContainer label { font-size: 0.85rem; color: var(--color-ink-soft); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; white-space: nowrap; cursor: pointer; }
+.pvtCheckContainer input[type="checkbox"] { margin: 0; width: 1rem; height: 1rem; border-radius: 0.25rem; border-color: var(--color-line-strong); cursor: pointer; }
+.pvtFilterBox > button { background: var(--color-brand-600); color: white; border: none; padding: 0.4rem 1rem; border-radius: 0.375rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; margin-right: 0.5rem; }
+.pvtFilterBox > button:hover { background: var(--color-brand-700); }
+.pvtFilterBox > button:last-child { background: var(--color-mute-bg); color: var(--color-ink-soft); border: 1px solid var(--color-line-strong); font-weight: 500; }
+.pvtFilterBox > button:last-child:hover { background: var(--color-line); color: var(--color-ink); }
 </style>
 
 <script>
@@ -776,10 +767,10 @@ function kanbanDrop(ev, newStatus) {
 function renderCalendar(workOrders) {
     const calendarEl = document.getElementById('calendar-view-container');
     const events = workOrders.map(wo => {
-        let color = '#3b82f6'; // default primary
-        if(wo.status_control === 'Closed') color = '#10b981';
-        else if(wo.status_control === 'Pending') color = '#f59e0b';
-        else if(wo.status_control === 'Draft') color = '#64748b';
+        let color = '#3866ee'; // default primary
+        if(wo.status_control === 'Closed') color = '#15803d';
+        else if(wo.status_control === 'Pending') color = '#d98a00';
+        else if(wo.status_control === 'Draft') color = '#667085';
         
         const startVal = (wo.start_date && wo.start_date !== '-') ? wo.start_date : (wo.date_created && wo.date_created !== '-' ? wo.date_created : null);
         const endVal = (wo.target_date && wo.target_date !== '-') ? wo.target_date : startVal;
@@ -857,11 +848,11 @@ function renderGraph(workOrders) {
         }
 
         const ctx = document.getElementById('main-chart').getContext('2d');
-        const colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f43f5e', '#84cc16', '#64748b', '#d946ef'];
+        const colorPalette = ['#3866ee', '#15803d', '#d98a00', '#d92d20', '#7c5cdb', '#0e9fb8', '#e0457b', '#6b9a14', '#667085', '#b845c6'];
         
         let bgColors = colorPalette;
         if (typeSelect === 'bar' || typeSelect === 'line') {
-            bgColors = 'rgba(59, 130, 246, 0.85)';
+            bgColors = 'rgba(56, 102, 238, 0.85)';
         }
 
         mainChartInstance = new Chart(ctx, {
@@ -872,7 +863,7 @@ function renderGraph(workOrders) {
                     label: 'Total Work Orders',
                     data: dataValues,
                     backgroundColor: bgColors,
-                    borderColor: typeSelect === 'line' ? '#2563eb' : '#ffffff',
+                    borderColor: typeSelect === 'line' ? '#254fd9' : '#ffffff',
                     borderWidth: 2,
                     fill: typeSelect === 'line' ? false : true,
                     tension: 0.3,
@@ -899,7 +890,7 @@ function renderGraph(workOrders) {
                     y: { 
                         beginAtZero: true, 
                         ticks: { stepSize: 1, precision: 0 },
-                        grid: { borderDash: [4, 4], color: '#e2e8f0' }
+                        grid: { borderDash: [4, 4], color: '#e3e7ee' }
                     },
                     x: {
                         grid: { display: false }
@@ -1006,7 +997,7 @@ function renderPivot(workOrders) {
         const rowDropdownHtml = `
         <div class="dropdown d-inline-block" style="text-align: left;">
             <span class="dropdown-toggle text-decoration-none text-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
-                <i class="bi bi-plus-square-fill me-1" style="color: #343a40;"></i> Total
+                <i class="bi bi-plus-square-fill me-1" style="color: var(--color-ink-soft);"></i> Total
             </span>
             <ul class="dropdown-menu shadow" style="max-height: 300px; overflow-y: auto; font-size: 0.85rem;">
                 ${listItemsRow}
@@ -1016,7 +1007,7 @@ function renderPivot(workOrders) {
         const colDropdownHtml = `
         <div class="dropdown d-inline-block" style="text-align: center;">
             <span class="dropdown-toggle text-decoration-none text-dark fw-bold" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
-                <i class="bi bi-plus-square-fill me-1" style="color: #343a40;"></i> Total
+                <i class="bi bi-plus-square-fill me-1" style="color: var(--color-ink-soft);"></i> Total
             </span>
             <ul class="dropdown-menu shadow" style="max-height: 300px; overflow-y: auto; font-size: 0.85rem;">
                 ${listItemsCol}
@@ -1037,7 +1028,7 @@ function renderPivot(workOrders) {
         $(table).find('th.pvtRowLabel, th.pvtColLabel').each(function() {
             const text = $(this).text();
             // Just make them static or they can click to clear
-            $(this).html(`<i class="bi bi-plus-square-fill me-1" style="color: #343a40;"></i> ${text}`);
+            $(this).html(`<i class="bi bi-plus-square-fill me-1" style="color: var(--color-ink-soft);"></i> ${text}`);
         });
 
         // Special handling for completely empty pivot (Odoo style)
@@ -1048,17 +1039,17 @@ function renderPivot(workOrders) {
                 <thead>
                     <tr>
                         <th style="border: none; background: transparent;"></th>
-                        <th class="pvtTotalLabel" style="text-align: center; font-weight: 700; padding: 0.85rem; border: 1px solid #e2e8f0; background: #f8fafc;">${colDropdownHtml}</th>
+                        <th class="pvtTotalLabel" style="text-align: center; font-weight: 700; padding: 0.85rem; border: 1px solid var(--color-line); background: var(--color-sunken);">${colDropdownHtml}</th>
                     </tr>
                     <tr>
                         <th style="border: none; background: transparent;"></th>
-                        <th style="text-align: center; font-weight: 600; padding: 0.85rem; border: 1px solid #e2e8f0; background: #f8fafc;">Count</th>
+                        <th style="text-align: center; font-weight: 600; padding: 0.85rem; border: 1px solid var(--color-line); background: var(--color-sunken);">Count</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <th class="pvtTotalLabel" style="text-align: left; font-weight: 700; padding: 0.85rem; border: 1px solid #e2e8f0; background: #f8fafc;">${rowDropdownHtml}</th>
-                        <td style="text-align: center; padding: 0.85rem; border: 1px solid #e2e8f0; background: #ffffff;">${countValue}</td>
+                        <th class="pvtTotalLabel" style="text-align: left; font-weight: 700; padding: 0.85rem; border: 1px solid var(--color-line); background: var(--color-sunken);">${rowDropdownHtml}</th>
+                        <td style="text-align: center; padding: 0.85rem; border: 1px solid var(--color-line); background: var(--color-surface);">${countValue}</td>
                     </tr>
                 </tbody>
             `;

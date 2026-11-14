@@ -1,0 +1,16 @@
+/*
+  Reset untuk halaman asli Tailwind (tanpa Bootstrap), mis. login.
+  Halaman lama (Bootstrap) tidak memuat berkas ini.
+*/
+@layer override, bootstrap, theme, base, skin, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "./tokens.css";
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}

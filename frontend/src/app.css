@@ -1,0 +1,48 @@
+/*
+  Portal Engineer: CSS inti (Tailwind v4).
+  Sumber ada di frontend/src. Hasil build: static/css/app.css. Jangan edit hasilnya langsung.
+  Urutan lapisan sama di app.css, legacy.css, dan preflight.css. Lapisan di kanan menang.
+*/
+@layer override, bootstrap, theme, base, skin, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "./tokens.css";
+@import "./shell.css";
+@import "./patterns.css";
+
+@source "../../templates";
+@source "../../static/js";
+
+/* lapisan paling awal: !important di sini mengalahkan !important Bootstrap */
+@layer override {
+  [x-cloak] {
+    display: none !important;
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *:not(.spinner-border):not(.spinner-grow),
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

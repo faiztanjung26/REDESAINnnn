@@ -1,0 +1,244 @@
+/*
+  Aturan dengan !important untuk halaman lama (v2.1). build.mjs menaruh berkas ini di @layer override,
+  lapisan paling awal. Untuk !important urutannya terbalik: lapisan awal menang atas Bootstrap
+  dan atas CSS pustaka yang dimuat lewat <link> tanpa lapisan (Select2, FullCalendar).
+  Isi hanya yang memang harus menang atas keduanya.
+*/
+
+/* ---------- lencana lembut: tetap lembut walau template menambah text-white / text-dark ---------- */
+.badge.bg-success, .badge.text-bg-success {
+  background-color: var(--color-ok-bg) !important;
+  color: var(--color-ok-ink) !important;
+  box-shadow: inset 0 0 0 1px rgb(21 128 61 / 0.18);
+}
+.badge.bg-danger, .badge.text-bg-danger {
+  background-color: var(--color-bad-bg) !important;
+  color: var(--color-bad-ink) !important;
+  box-shadow: inset 0 0 0 1px rgb(217 45 32 / 0.18);
+}
+.badge.bg-warning, .badge.text-bg-warning {
+  background-color: var(--color-warn-bg) !important;
+  color: var(--color-warn-ink) !important;
+  box-shadow: inset 0 0 0 1px rgb(217 138 0 / 0.25);
+}
+.badge.bg-info, .badge.text-bg-info {
+  background-color: var(--color-info-bg) !important;
+  color: var(--color-info-ink) !important;
+  box-shadow: inset 0 0 0 1px rgb(29 127 224 / 0.2);
+}
+.badge.bg-primary, .badge.text-bg-primary {
+  background-color: var(--color-brand-100) !important;
+  color: var(--color-brand-800) !important;
+  box-shadow: inset 0 0 0 1px rgb(37 79 217 / 0.18);
+}
+.badge.bg-secondary, .badge.text-bg-secondary {
+  background-color: var(--color-mute-bg) !important;
+  color: var(--color-mute-ink) !important;
+  box-shadow: inset 0 0 0 1px rgb(71 84 103 / 0.15);
+}
+
+/* ---------- teks status: kuning dan cyan polos terlalu pucat di atas putih ---------- */
+.text-warning { color: #b45309 !important; }
+.text-info { color: var(--color-info-ink) !important; }
+
+/* ---------- bentuk: tombol dan kolom tidak lagi kapsul (kapsul tetap untuk lencana dan avatar) ---------- */
+.btn.rounded-pill,
+.btn-group > .btn.rounded-pill,
+.form-control.rounded-pill,
+.form-select.rounded-pill,
+.input-group-text.rounded-pill { border-radius: var(--radius-ctl) !important; }
+.btn-sm.rounded-pill,
+.btn-group-sm > .btn.rounded-pill { border-radius: 0.4375rem !important; }
+.input-group.rounded-pill,
+.btn-group.rounded-pill { border-radius: var(--radius-card) !important; }
+.input-group.rounded-pill > .form-control,
+.input-group.rounded-pill > .btn { border-radius: var(--radius-ctl) !important; }
+
+/* ---------- bayangan seragam di semua halaman lama ----------
+   :not(:focus) menjaga cincin fokus tombol dan kolom isian yang kebetulan memakai .shadow-sm. */
+.shadow-sm:not(:focus):not(:focus-visible) { box-shadow: var(--shadow-card) !important; }
+.shadow:not(:focus):not(:focus-visible) { box-shadow: var(--shadow-raised) !important; }
+.shadow-lg:not(:focus):not(:focus-visible) { box-shadow: var(--shadow-pop) !important; }
+
+/* ---------- Select2 tema bawaan: samakan dengan kolom isian ---------- */
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple,
+.select2-container--bootstrap-5 .select2-selection {
+  min-height: 2.375rem !important;
+  height: auto !important;
+  border: 1px solid var(--color-line-strong) !important;
+  border-radius: var(--radius-ctl) !important;
+  background-color: #fff !important;
+}
+.select2-container--default .select2-selection--single { display: flex !important; align-items: center !important; }
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  flex: 1 !important;
+  padding: 0 2rem 0 0.75rem !important;
+  color: var(--color-ink) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+  top: 0 !important;
+  right: 0.375rem !important;
+  height: 100% !important;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__rendered { padding: 0.125rem 0.5rem !important; }
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+  margin-top: 0.3125rem !important;
+  padding: 0.125rem 0.5rem !important;
+  border: 0 !important;
+  border-radius: 0.4375rem !important;
+  background: var(--color-brand-100) !important;
+  color: var(--color-brand-800) !important;
+}
+.select2-container--default.select2-container--focus .select2-selection--multiple,
+.select2-container--default.select2-container--open .select2-selection--single,
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--bootstrap-5.select2-container--focus .select2-selection,
+.select2-container--bootstrap-5.select2-container--open .select2-selection {
+  border-color: var(--color-brand-500) !important;
+  box-shadow: 0 0 0 3px rgb(56 102 238 / 0.18) !important;
+}
+.select2-dropdown {
+  overflow: hidden !important;
+  border-color: var(--color-line-strong) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+.select2-container--default .select2-search--dropdown .select2-search__field {
+  border: 1px solid var(--color-line-strong) !important;
+  border-radius: 0.4375rem !important;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected],
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable,
+.select2-container--bootstrap-5 .select2-results__option--highlighted {
+  background-color: var(--color-brand-600) !important;
+  color: #fff !important;
+}
+
+/* ---------- FullCalendar: warna dasar mengikuti merek ---------- */
+.fc {
+  --fc-border-color: var(--color-line) !important;
+  --fc-button-bg-color: var(--color-brand-600) !important;
+  --fc-button-border-color: var(--color-brand-600) !important;
+  --fc-button-hover-bg-color: var(--color-brand-700) !important;
+  --fc-button-hover-border-color: var(--color-brand-700) !important;
+  --fc-button-active-bg-color: var(--color-brand-800) !important;
+  --fc-button-active-border-color: var(--color-brand-800) !important;
+  --fc-today-bg-color: rgb(56 102 238 / 0.07) !important;
+  --fc-neutral-bg-color: var(--color-sunken) !important;
+  --fc-event-bg-color: var(--color-brand-600) !important;
+  --fc-event-border-color: var(--color-brand-600) !important;
+}
+.fc .fc-button {
+  border-radius: 0.4375rem !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+@media (max-width: 768px) {
+  .fc .fc-toolbar { flex-direction: column !important; gap: 0.75rem !important; }
+  .fc .fc-toolbar-title { font-size: 1.15rem !important; text-align: center; }
+  .fc .fc-toolbar-chunk { display: flex; justify-content: center; gap: 0.25rem; width: 100%; }
+  .fc .fc-button { padding: 0.375rem 0.75rem !important; font-size: 0.75rem !important; }
+  .fc .fc-view-harness { margin-top: 0.9375rem; }
+  .fc .fc-daygrid-event { margin: 1px 2px !important; padding: 2px 4px !important; border-radius: 4px !important; font-size: 10px !important; }
+  .fc .fc-col-header-cell-cushion { padding: 4px !important; font-size: 11px !important; }
+}
+
+/* ---------- gaya "premium" yang disalin ke banyak halaman ----------
+   Sekitar 20 template membawa <style> sendiri (tanpa lapisan) dengan nilai berbeda-beda untuk
+   .settings-pane-card, .filter-bar, .settings-header, .btn-premium, .toolbar-btn,
+   .form-select-premium dan .form-control-premium. Satu definisi di sini menang atas semuanya.
+   Dibungkus @media screen supaya CSS cetak laporan dan logsheet tetap utuh. */
+@media screen {
+  .settings-pane-card,
+  .filter-bar {
+    border: 1px solid var(--color-line) !important;
+    border-radius: var(--radius-card) !important;
+    background: var(--color-surface) !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+  .settings-pane-card:hover { transform: none !important; box-shadow: var(--shadow-card) !important; }
+  .filter-bar { padding: 0.875rem 1rem !important; }
+
+  /* banner judul: datar, tanpa gradien, mengikuti navy merek */
+  .settings-header {
+    padding: 1.125rem 1.5rem !important;
+    border-radius: var(--radius-card) !important;
+    background: var(--color-brand-950) !important;
+    box-shadow: var(--shadow-card) !important;
+    margin-bottom: 1.25rem !important;
+  }
+  .settings-header h3 {
+    font-family: var(--font-display);
+    font-size: 1.25rem !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  /* tombol: ukuran dan bentuk dari kulit Bootstrap, tanpa kapsul dan tanpa angkat saat disorot */
+  .btn-premium,
+  .toolbar-btn {
+    padding: var(--bs-btn-padding-y) var(--bs-btn-padding-x) !important;
+    border-radius: var(--bs-btn-border-radius) !important;
+    font-size: var(--bs-btn-font-size) !important;
+    box-shadow: var(--bs-btn-box-shadow) !important;
+    transform: none !important;
+  }
+  .btn-premium:hover,
+  .toolbar-btn:hover { transform: none !important; box-shadow: var(--bs-btn-box-shadow) !important; }
+  .btn-premium:focus-visible,
+  .toolbar-btn:focus-visible { box-shadow: var(--bs-btn-focus-box-shadow) !important; }
+
+  /* kolom isian */
+  .form-select-premium,
+  .form-control-premium {
+    padding: 0.4375rem 0.75rem !important;
+    border: 1px solid var(--color-line-strong) !important;
+    border-radius: var(--radius-ctl) !important;
+    box-shadow: none !important;
+  }
+  .form-select-premium { padding-right: 2.25rem !important; }
+  .form-select-sm.form-select-premium,
+  .form-control-sm.form-control-premium {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+    border-radius: 0.4375rem !important;
+    font-size: 0.8125rem !important;
+  }
+  .form-select-premium:focus,
+  .form-control-premium:focus {
+    border-color: var(--color-brand-500) !important;
+    box-shadow: 0 0 0 3px rgb(56 102 238 / 0.18) !important;
+  }
+
+  /* widget dashboard: kartu datar dengan garis tipis, tanpa gradien, bayangan besar, atau angkat saat disorot */
+  .widget-container .card {
+    border: 1px solid var(--color-line) !important;
+    border-radius: var(--radius-card) !important;
+    background: var(--color-surface) !important;
+    box-shadow: var(--shadow-card) !important;
+    transform: none !important;
+  }
+  .widget-container .card-header {
+    padding: 1rem 1.25rem 0.75rem !important;
+    border-bottom: 1px solid var(--color-line) !important;
+    background: transparent !important;
+    color: var(--color-ink) !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
+  }
+  .widget-container .card-header h6 { font-size: 0.9375rem; }
+  .widget-container .list-group-item {
+    padding: 0.75rem 1.25rem !important;
+    border-color: var(--color-line) !important;
+  }
+  .widget-container .list-group-item:hover { background-color: var(--color-sunken) !important; }
+
+  /* lencana lembut milik dashboard (dipakai juga oleh dashboard eksekutif) */
+  .soft-badge-danger { background-color: var(--color-bad-bg) !important; color: var(--color-bad-ink) !important; font-weight: 600; }
+  .soft-badge-warning { background-color: var(--color-warn-bg) !important; color: var(--color-warn-ink) !important; font-weight: 600; }
+  .soft-badge-info { background-color: var(--color-info-bg) !important; color: var(--color-info-ink) !important; font-weight: 600; }
+  .soft-badge-secondary { background-color: var(--color-mute-bg) !important; color: var(--color-mute-ink) !important; font-weight: 600; }
+  .soft-badge-success { background-color: var(--color-ok-bg) !important; color: var(--color-ok-ink) !important; font-weight: 600; }
+}

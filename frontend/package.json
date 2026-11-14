@@ -1,0 +1,16 @@
+{
+  "name": "portal-engineer-frontend",
+  "private": true,
+  "type": "module",
+  "description": "Build CSS Portal Engineer: Tailwind v4 + kulit Bootstrap. Hasil ditulis ke ../static/css.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "tailwindcss": "4.3.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

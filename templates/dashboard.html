@@ -1,23 +1,17 @@
 {% extends "base.html" %}
 
 {% block toolbar_left %}
-    <h3 class="mb-0 text-dark fw-bold me-3">Dashboard</h3>
-    
-    <div class="btn-group bg-white rounded-pill shadow-sm border p-1 me-3" role="group">
-        <a href="{{ url_for('dashboard', **request.args) }}" class="btn btn-sm rounded-pill btn-primary fw-bold px-3">
-            Internal
-        </a>
-        <a href="{{ url_for('reports.client_report', **request.args) }}" class="btn btn-sm rounded-pill btn-light text-muted border-0 bg-transparent px-3">
-            Client
-        </a>
+    <div class="seg" role="group" aria-label="Jenis dashboard">
+        <a href="{{ url_for('dashboard', **request.args) }}" class="seg-item is-active" aria-current="page">Internal</a>
+        <a href="{{ url_for('reports.client_report', **request.args) }}" class="seg-item">Client</a>
     </div>
-    
-    <form action="{{ url_for('dashboard') }}" method="GET" class="d-inline-flex align-items-center bg-white border rounded-pill px-3 shadow-sm py-1 me-2" id="dashboardFilterForm">
+
+    <form action="{{ url_for('dashboard') }}" method="GET" class="d-inline-flex flex-wrap align-items-center gap-2 m-0" id="dashboardFilterForm">
         <!-- Site Filter -->
         {% if available_sites %}
-        <div class="d-inline-flex align-items-center me-3 border-end pe-3">
-            <i class="bi bi-funnel text-muted me-2"></i>
-            <select name="site_id" class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark" style="min-width: 130px; box-shadow: none;" onchange="document.getElementById('dashboardFilterForm').submit();">
+        <div class="field-group">
+            <i class="bi bi-geo-alt"></i>
+            <select name="site_id" class="form-select form-select-sm fw-semibold" onchange="document.getElementById('dashboardFilterForm').submit();" aria-label="Site">
                 <option value="">All Sites</option>
                 {% for site in available_sites %}
                     <option value="{{ site.id }}" {% if selected_site_id == site.id %}selected{% endif %}>{{ site.name }}</option>
@@ -25,27 +19,27 @@
             </select>
         </div>
         {% endif %}
-        
+
         <!-- Time Range Filter -->
-        <div class="d-inline-flex align-items-center">
-            <i class="bi bi-calendar3 text-muted me-2"></i>
-            <select name="time_range" id="timeRangeSelect" class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark" style="min-width: 140px; box-shadow: none;" onchange="handleTimeRangeChange()">
+        <div class="field-group">
+            <i class="bi bi-calendar3"></i>
+            <select name="time_range" id="timeRangeSelect" class="form-select form-select-sm fw-semibold" onchange="handleTimeRangeChange()" aria-label="Rentang waktu">
                 <option value="today" {% if time_range == 'today' %}selected{% endif %}>Hari Ini</option>
                 <option value="this_month" {% if time_range == 'this_month' %}selected{% endif %}>Bulan Ini</option>
                 <option value="last_month" {% if time_range == 'last_month' %}selected{% endif %}>Bulan Lalu</option>
                 <option value="this_year" {% if time_range == 'this_year' %}selected{% endif %}>Tahun Ini</option>
                 <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Custom Range</option>
             </select>
-            
-            <div id="customDateRange" class="d-inline-flex align-items-center ms-2" style="{% if time_range != 'custom' %}display: none !important;{% endif %}">
-                <input type="date" name="start_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ start_date_str }}" style="width: 110px;">
-                <span class="mx-1 text-muted">-</span>
-                <input type="date" name="end_date" class="form-control form-control-sm border-0 bg-light rounded-pill px-2" value="{{ end_date_str }}" style="width: 110px;">
-                <button type="submit" class="btn btn-sm btn-primary rounded-pill ms-2"><i class="bi bi-search"></i></button>
+
+            <div id="customDateRange" class="d-inline-flex align-items-center gap-1 border-start ps-2 ms-1" style="{% if time_range != 'custom' %}display: none !important;{% endif %}">
+                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date_str }}" style="width: 8.5rem;" aria-label="Tanggal mulai">
+                <span class="text-muted">-</span>
+                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date_str }}" style="width: 8.5rem;" aria-label="Tanggal akhir">
+                <button type="submit" class="btn btn-sm btn-primary" aria-label="Terapkan rentang tanggal"><i class="bi bi-search"></i></button>
             </div>
         </div>
     </form>
-    
+
     <script>
         function handleTimeRangeChange() {
             var val = document.getElementById('timeRangeSelect').value;
@@ -57,114 +51,68 @@
             }
         }
     </script>
-    
-    <!-- Customize Dashboard Toggle -->
-    <div class="d-flex gap-2">
-        {% if current_user.role == 'Admin' %}
-        <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm" id="tvModeBtn" onclick="toggleTVMode()">
-            <i class="bi bi-tv me-1"></i> <span class="d-none d-md-inline">TV Mode</span>
-        </button>
-        {% endif %}
-        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" id="editModeBtn" onclick="toggleEditMode()">
-            <i class="bi bi-pencil-square me-1"></i> <span class="d-none d-md-inline">Customize</span>
-        </button>
-    </div>
-    
+{% endblock %}
+
+{% block toolbar_right %}
+    {% if current_user.role == 'Admin' %}
+    <button type="button" class="btn btn-outline-secondary" id="tvModeBtn" onclick="toggleTVMode()">
+        <i class="bi bi-tv"></i> <span class="d-none d-md-inline">TV Mode</span>
+    </button>
+    {% endif %}
+    <button type="button" class="btn btn-outline-primary" id="editModeBtn" onclick="toggleEditMode()">
+        <i class="bi bi-pencil-square"></i> <span class="d-none d-md-inline">Customize</span>
+    </button>
 {% endblock %}
 
 {% block content %}
 <style>
-    /* Premium Dashboard General Styling */
-    .widget-container .card {
-        border-radius: 20px !important;
-        box-shadow: 0 10px 30px -5px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04) !important;
-        border: none !important;
-        background: linear-gradient(145deg, #ffffff, #f8fafc) !important;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
-    }
-    .widget-container .card:hover {
-        box-shadow: 0 20px 40px -5px rgba(79, 70, 229, 0.15) !important;
-        transform: translateY(-4px);
-    }
-    .widget-container .card-header {
-        background-color: transparent !important;
-        border-bottom: 1px solid rgba(0,0,0,0.04) !important;
-        padding: 1.5rem 1.5rem 1rem !important;
-        font-weight: 800 !important;
-        letter-spacing: -0.02em;
-        color: #0f172a !important;
-    }
-    .widget-container .list-group-item {
-        border-color: rgba(0,0,0,0.03) !important;
-        padding: 1rem 1.5rem !important;
-        transition: background-color 0.2s ease;
-    }
-    .widget-container .list-group-item:hover {
-        background-color: rgba(248,250,252,0.8) !important;
-    }
-    .soft-badge-danger { background-color: #fee2e2 !important; color: #dc2626 !important; font-weight: 600; }
-    .soft-badge-warning { background-color: #fef3c7 !important; color: #d97706 !important; font-weight: 600; }
-    .soft-badge-info { background-color: #e0f2fe !important; color: #0284c7 !important; font-weight: 600; }
-    .soft-badge-secondary { background-color: #f1f5f9 !important; color: #475569 !important; font-weight: 600; }
-    .soft-badge-success { background-color: #dcfce7 !important; color: #16a34a !important; font-weight: 600; }
-    
-    /* Premium FullCalendar Styling */
-    .fc { font-family: 'Inter', sans-serif; }
+    /* Kartu widget, lencana lembut, dan daftar diatur di legacy-override.css (.widget-container .card, .soft-badge-*) */
+
+    /* Kalender di widget */
+    .fc { font-family: var(--font-sans); }
     .fc-theme-standard .fc-scrollgrid {
         border: none !important;
-        border-radius: 12px;
+        border-radius: var(--radius-ctl);
         overflow: hidden;
     }
     .fc-theme-standard th {
         border: none !important;
-        background-color: #f8f9fa;
-        color: #495057;
+        background-color: var(--color-sunken);
+        color: var(--color-ink-muted);
         font-weight: 600;
         text-transform: uppercase;
-        font-size: 0.85rem;
-        padding: 10px 0;
+        font-size: 0.75rem;
+        letter-spacing: 0.04em;
+        padding: 8px 0;
     }
     .fc-theme-standard td, .fc-theme-standard th {
-        border-color: #f1f3f5 !important;
+        border-color: var(--color-line) !important;
     }
     .fc .fc-day-today {
-        background-color: rgba(45, 97, 174, 0.05) !important;
+        background-color: rgb(56 102 238 / 0.06) !important;
     }
     .fc .fc-toolbar-title {
+        font-family: var(--font-display);
         font-weight: 700;
-        color: #1e293b;
-        font-size: 1.35rem;
-    }
-    .fc .fc-button-primary {
-        background-color: #2d61ae;
-        border-color: #2d61ae;
-        text-transform: capitalize;
-        font-weight: 500;
-        border-radius: 8px;
-        padding: 6px 14px;
-        box-shadow: 0 2px 4px rgba(45, 97, 174, 0.2);
-    }
-    .fc .fc-button-primary:hover, .fc .fc-button-primary:not(:disabled).fc-button-active {
-        background-color: #1e4279;
-        border-color: #1e4279;
+        color: var(--color-ink);
+        font-size: 1.125rem;
     }
     .fc-event {
-        border-radius: 6px;
+        border-radius: 5px;
         border: none;
         padding: 2px 4px;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 500;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         cursor: pointer;
     }
 
     /* Widget Edit Mode */
     .widget-container { transition: opacity 0.3s ease, transform 0.3s ease; } /* Fix drag-resize lag by removing width/all transition */
     .widget-container .widget-edit-toolbar { display: none; }
-    
+
     body.edit-mode .widget-container {
-        border: 2px dashed rgba(79, 70, 229, 0.3);
-        border-radius: 16px;
+        border: 2px dashed rgb(56 102 238 / 0.35);
+        border-radius: var(--radius-pop);
         padding: 4px;
         position: relative;
     }
@@ -177,41 +125,44 @@
         gap: 6px;
         align-items: center;
     }
-    body.edit-mode .widget-container:hover { 
-        border-color: var(--color-primary);
-        box-shadow: 0 0 20px rgba(79, 70, 229, 0.1);
+    body.edit-mode .widget-container:hover {
+        border-color: var(--color-brand-600);
     }
     body.edit-mode .widget-container.sortable-ghost {
         opacity: 0.4;
-        border-color: var(--color-primary);
-        background: rgba(79, 70, 229, 0.05);
+        border-color: var(--color-brand-600);
+        background: rgb(56 102 238 / 0.06);
     }
     body.edit-mode .widget-container.sortable-drag {
-        box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+        box-shadow: var(--shadow-pop);
     }
 
     .widget-edit-toolbar .drag-handle {
         cursor: grab;
         padding: 4px 8px;
-        background: rgba(0,0,0,0.05);
-        border-radius: 8px;
-        color: #64748b;
+        background: var(--color-surface);
+        border: 1px solid var(--color-line);
+        border-radius: 0.4375rem;
+        box-shadow: var(--shadow-card);
+        color: var(--color-ink-muted);
         font-size: 1.1rem;
     }
     .widget-edit-toolbar .drag-handle:active { cursor: grabbing; }
     .widget-edit-toolbar .btn-remove-widget {
-        border: none;
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
-        border-radius: 8px;
+        border: 1px solid var(--color-line);
+        background: var(--color-surface);
+        box-shadow: var(--shadow-card);
+        color: var(--color-bad);
+        border-radius: 0.4375rem;
         padding: 4px 8px;
         font-size: 1rem;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: background-color 0.15s, color 0.15s;
     }
     .widget-edit-toolbar .btn-remove-widget:hover {
-        background: #ef4444;
-        color: white;
+        background: var(--color-bad);
+        border-color: var(--color-bad);
+        color: #fff;
     }
 
     /* Drag-to-resize: a visible corner grip */
@@ -224,9 +175,9 @@
         height: 24px;
         cursor: nwse-resize;
         z-index: 20;
-        background: var(--color-primary, #4f46e5);
-        border-radius: 0 0 12px 0;
-        opacity: 0.7;
+        background: var(--color-brand-600);
+        border-radius: 0 0 var(--radius-card) 0;
+        opacity: 0.75;
         transition: opacity 0.2s, transform 0.2s;
     }
     body.edit-mode .widget-resize-grip { display: block; }
@@ -255,26 +206,26 @@
         border-bottom: 2px solid white;
     }
     .dash-size-indicator {
-        display: none; position: fixed; padding: 6px 14px; border-radius: 10px;
-        background: #1e293b; color: white; font-size: 0.85rem; font-weight: 700;
-        z-index: 9999; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        display: none; position: fixed; padding: 6px 14px; border-radius: 0.5rem;
+        background: var(--color-nav); color: white; font-size: 0.8125rem; font-weight: 700;
+        z-index: 9999; pointer-events: none; box-shadow: var(--shadow-pop);
     }
 
     /* Edit Mode Controls Bar */
     .edit-controls-bar {
         display: none;
-        background: linear-gradient(135deg, #f8fafc, #eef2ff);
-        border: 1px solid rgba(79, 70, 229, 0.2);
-        border-radius: 16px;
-        padding: 16px 24px;
-        margin-bottom: 20px;
+        background: var(--color-brand-50);
+        border: 1px solid var(--color-brand-200);
+        border-radius: var(--radius-card);
+        padding: 0.875rem 1.25rem;
+        margin-bottom: 1.25rem;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
         animation: slideDown 0.3s ease;
     }
     body.edit-mode .edit-controls-bar { display: flex; }
-    
+
     @keyframes slideDown {
         from { opacity: 0; transform: translateY(-10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -285,34 +236,33 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 14px 16px;
-        border: 1px solid var(--color-border);
-        border-radius: 12px;
-        background: white;
+        padding: 12px 14px;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-card);
+        background: var(--color-surface);
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: border-color 0.15s, background-color 0.15s;
         margin-bottom: 8px;
     }
     .widget-catalog-item:hover {
-        border-color: var(--color-primary);
-        background: rgba(79, 70, 229, 0.03);
-        transform: translateX(4px);
+        border-color: var(--color-brand-400);
+        background: var(--color-brand-50);
     }
     .widget-catalog-item.already-added {
         opacity: 0.5;
         pointer-events: none;
-        background: #f1f5f9;
+        background: var(--color-sunken);
     }
     .widget-catalog-item i.widget-icon {
-        font-size: 1.3rem;
-        color: var(--color-primary);
+        font-size: 1.15rem;
+        color: var(--color-brand-700);
         width: 36px;
         height: 36px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(79, 70, 229, 0.1);
-        border-radius: 10px;
+        background: var(--color-brand-100);
+        border-radius: 0.625rem;
     }
 </style>
 
@@ -326,16 +276,16 @@
         </div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="openWidgetCatalog()">
+        <button class="btn btn-sm btn-outline-primary" onclick="openWidgetCatalog()">
             <i class="bi bi-plus-circle me-1"></i> Tambah Widget
         </button>
-        <button class="btn btn-sm btn-outline-warning rounded-pill px-3" onclick="resetLayout()">
+        <button class="btn btn-sm btn-outline-warning" onclick="resetLayout()">
             <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
         </button>
-        <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" onclick="saveLayout()">
+        <button class="btn btn-sm btn-primary" onclick="saveLayout()">
             <i class="bi bi-check-lg me-1"></i> Simpan
         </button>
-        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="toggleEditMode()">
+        <button class="btn btn-sm btn-outline-secondary" onclick="toggleEditMode()">
             <i class="bi bi-x-lg me-1"></i> Batal
         </button>
     </div>
@@ -455,7 +405,7 @@
                         
                         // Sub text
                         ctx.font = "normal 14px 'Inter', sans-serif";
-                        ctx.fillStyle = '#64748b';
+                        ctx.fillStyle = '#667085';
                         ctx.fillText("Total WO", centerX, centerY + 15);
                         ctx.restore();
                     }
@@ -481,7 +431,7 @@
                     elements: {
                         center: {
                             text: totalWOs.toString(),
-                            color: '#1e293b'
+                            color: '#0f1626'
                         }
                     },
                     plugins: {
@@ -498,8 +448,8 @@
                         },
                         tooltip: {
                             backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                            titleColor: '#1e293b',
-                            bodyColor: '#475569',
+                            titleColor: '#0f1626',
+                            bodyColor: '#384256',
                             borderColor: 'rgba(0,0,0,0.05)',
                             borderWidth: 1,
                             padding: 10,
@@ -844,7 +794,8 @@
             grid.style.transformOrigin = 'top center';
             
             const toolbar = document.querySelector('.top-toolbar');
-            const toolbarHeight = toolbar ? toolbar.offsetHeight : 70;
+            const pageBar = document.querySelector('.page-bar');
+            const toolbarHeight = (toolbar ? toolbar.offsetHeight : 70) + (pageBar ? pageBar.offsetHeight : 0);
             // Subtract padding to fit perfectly inside the viewport
             const availableHeight = window.innerHeight - toolbarHeight - 60; 
             const trueHeight = grid.scrollHeight;
@@ -932,11 +883,11 @@
         // Create Fullscreen Overlay Container
         tvModeContainer = document.createElement('div');
         tvModeContainer.id = 'tvModeContainer';
-        tvModeContainer.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:#f8fafc; z-index:999999; display:flex; flex-direction:column;';
+        tvModeContainer.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:#f1f3f8; z-index:999999; display:flex; flex-direction:column;';
         
         // Header Signage
         const header = document.createElement('div');
-        header.style.cssText = 'background: #1e293b; color: white; padding: 15px 30px; display:flex; justify-content:space-between; align-items:center; font-size: 26px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 10;';
+        header.style.cssText = 'background: #0c111c; color: white; padding: 15px 30px; display:flex; justify-content:space-between; align-items:center; font-size: 26px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 10;';
         
         tvModeTitle = document.createElement('div');
         header.appendChild(tvModeTitle);

@@ -45,3 +45,6 @@ _TVE9B~8.DB
 .claude/
 .opencode/
 .qwen/
+
+# Frontend: node_modules tidak di-commit; hasil build di static/css sengaja di-commit
+frontend/node_modules/
