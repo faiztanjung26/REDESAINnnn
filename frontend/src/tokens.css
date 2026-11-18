@@ -1,19 +1,23 @@
 /*
-  Token desain Portal Engineer, versi 2 ("Teknik").
+  Token desain Portal Engineer, versi 4 ("Konsol Lapangan").
   Satu sumber untuk utilitas Tailwind (bg-brand-600, text-ink, rounded-card, shadow-card)
   dan untuk CSS kulit Bootstrap (var(--color-line), dst.).
   "static" = selalu ditulis ke hasil, walau belum dipakai kelas mana pun.
 
   Arah desain
-  - Aksi utama: biru kobalt. Ujung tergelapnya mengambil biru navy logo SOM.
-  - Merah (--color-signal) hanya penanda identitas Jaya Teknik (marker menu aktif, titik merek).
-    Jangan dipakai untuk aksi atau bahaya: bahaya punya merahnya sendiri (--color-bad).
-  - Netral: grafit dingin. Permukaan putih di atas kanvas abu kebiruan, garis tipis, bayangan ringan.
-  - Status selalu berpasangan: latar lembut (-bg) + teks pekat (-ink), supaya terbaca tanpa warna jenuh.
+  - Bingkai gelap (--color-frame) sewarna panel merek di halaman login membungkus sidebar dan
+    sebuah lembar konten terang yang membulat. Itu tanda pengenal visual v3.
+  - Aksi utama: biru kobalt. Merah (--color-signal) hanya penanda identitas Jaya Teknik.
+  - Netral: grafit dingin. Panel punya garis tepi 1px; bayangan hanya untuk benda melayang.
+  - Status selalu berpasangan: latar lembut (-bg) + teks pekat (-ink).
+  - Nilai yang dipakai halaman login (canvas, ink, line, surface, nav, shadow-pop) sengaja tidak diubah.
+  - Mode gelap: blok :root[data-bs-theme="dark"] di bawah menukar nilai token yang sama.
+    Peran yang perlu dibalik antara terang dan gelap (teks biru di atas latar muda, hover netral)
+    memakai token semantik --jt-*, bukan tangga warna merek.
 */
 @theme static {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   /* aksi utama: kobalt */
@@ -32,9 +36,14 @@
   /* identitas Jaya Teknik: penanda merek saja */
   --color-signal: #e5252b;
 
+  /* bingkai aplikasi */
+  --color-frame: #0b1020;
+  --color-frame-raised: #151c30;
+
   /* permukaan dan teks */
   --color-canvas: #f1f3f8;
   --color-surface: #ffffff;
+  --color-surface-2: #f8f9fd;
   --color-sunken: #f6f8fb;
   --color-line: #e3e7ee;
   --color-line-strong: #c9d0dc;
@@ -60,16 +69,104 @@
   --color-info-ink: #0b57a8;
   --color-mute-bg: #eaedf3;
   --color-mute-ink: #475467;
+  /* dua rona tambahan supaya status dan prioritas mudah dibedakan (ungu, jingga) */
+  --color-violet: #7a3fe0;
+  --color-violet-bg: #ece6fd;
+  --color-violet-ink: #5226b5;
+  --color-orange: #e8590c;
+  --color-orange-bg: #ffe8d9;
+  --color-orange-ink: #a23a05;
 
-  /* bentuk: kontrol 8px, kartu 12px, jendela melayang 16px */
-  --radius-ctl: 0.5rem;
-  --radius-card: 0.75rem;
-  --radius-pop: 1rem;
+  /* bentuk: kontrol 10px, panel 14px, lembar dan jendela melayang 24px */
+  --radius-ctl: 0.625rem;
+  --radius-card: 0.875rem;
+  --radius-pop: 1.5rem;
 
-  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.05), 0 0 0 1px rgb(16 24 40 / 0.015);
-  --shadow-raised: 0 6px 16px -4px rgb(16 24 40 / 0.1), 0 2px 4px -2px rgb(16 24 40 / 0.06);
+  --shadow-card: 0 1px 2px rgb(15 22 38 / 0.05);
+  --shadow-raised: 0 14px 32px -14px rgb(15 22 38 / 0.22), 0 2px 6px rgb(15 22 38 / 0.05);
+  --shadow-lift: 0 18px 40px -16px rgb(15 22 38 / 0.28), 0 4px 10px -4px rgb(15 22 38 / 0.08);
   --shadow-pop: 0 22px 48px -14px rgb(16 24 40 / 0.32), 0 2px 8px rgb(16 24 40 / 0.06);
 
-  --jt-sidebar-w: 16.5rem;
-  --jt-topbar-h: 3.5rem;
+  --jt-sidebar-w: 17rem;
+  --jt-topbar-h: 4rem;
+  --jt-frame: 0.625rem;
+}
+
+@layer base {
+  /* token semantik: peran yang berubah antara terang dan gelap */
+  :root {
+    --jt-brand-text: #1e3fb3;
+    --jt-brand-strong: #1d388f;
+    --jt-brand-soft: #dbe7ff;
+    --jt-brand-softer: #eef4ff;
+    --jt-brand-edge: #bcd1ff;
+    --jt-brand-solid: #254fd9;
+    --jt-brand-solid-hover: #1e3fb3;
+    --jt-brand-solid-active: #1d388f;
+    --jt-focus-ring: rgb(56 102 238 / 0.32);
+    --jt-hover: #eef1f7;
+    --jt-press: #e3e7ee;
+    --jt-veil: rgb(15 22 38 / 0.05);
+    --jt-glass: #ffffff;
+    --jt-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --jt-ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Mode gelap. Dibungkus screen supaya cetak laporan tetap terang. */
+  @media screen {
+    :root[data-bs-theme="dark"] {
+      --color-frame: #05080f;
+      --color-frame-raised: #0d1322;
+      --color-canvas: #0b101d;
+      --color-surface: #121a2b;
+      --color-surface-2: #172036;
+      --color-sunken: #0e1524;
+      --color-line: #202b44;
+      --color-line-strong: #324064;
+      --color-ink: #e8ecf6;
+      --color-ink-soft: #c2cae0;
+      --color-ink-muted: #93a0bd;
+      --color-ink-faint: #67738f;
+
+      --color-ok: #34d27b;
+      --color-ok-bg: #0f2c1f;
+      --color-ok-ink: #6ee7a7;
+      --color-warn: #f5b13a;
+      --color-warn-bg: #33260a;
+      --color-warn-ink: #fcd477;
+      --color-bad: #f2685c;
+      --color-bad-bg: #351513;
+      --color-bad-ink: #ffa59c;
+      --color-info: #4ea3f2;
+      --color-info-bg: #0e2845;
+      --color-info-ink: #8cc8fb;
+      --color-mute-bg: #1b2540;
+      --color-mute-ink: #aab5d0;
+      --color-violet: #a78bfa;
+      --color-violet-bg: #241a4a;
+      --color-violet-ink: #c9b8ff;
+      --color-orange: #fb923c;
+      --color-orange-bg: #38200d;
+      --color-orange-ink: #ffbf8a;
+
+      --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04);
+      --shadow-raised: 0 16px 34px -14px rgb(0 0 0 / 0.65), 0 2px 6px rgb(0 0 0 / 0.35);
+      --shadow-lift: 0 20px 44px -16px rgb(0 0 0 / 0.7), 0 4px 10px -4px rgb(0 0 0 / 0.4);
+      --shadow-pop: 0 24px 52px -14px rgb(0 0 0 / 0.75), 0 2px 8px rgb(0 0 0 / 0.4);
+
+      --jt-brand-text: #9db8ff;
+      --jt-brand-strong: #bcd0ff;
+      --jt-brand-soft: #1a2756;
+      --jt-brand-softer: #131c40;
+      --jt-brand-edge: #2b4095;
+      --jt-brand-solid: #3d66f2;
+      --jt-brand-solid-hover: #5780ff;
+      --jt-brand-solid-active: #7195ff;
+      --jt-focus-ring: rgb(120 158 255 / 0.4);
+      --jt-hover: #1a2338;
+      --jt-press: #222c47;
+      --jt-veil: rgb(255 255 255 / 0.06);
+      --jt-glass: #121a2b;
+    }
+  }
 }

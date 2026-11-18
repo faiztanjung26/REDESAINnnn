@@ -1,0 +1,36 @@
+{# Tren 6 bulan: WO dibuat dan selesai. Data dari ui_wo_trend (ui_extras.wo_trend). Kunci "keys" dibaca lewat ['keys']. #}
+{% from "_ui/macros.html" import empty_state %}
+{% set tr = ui_wo_trend %}
+{% set maxv = ((tr.created + tr.completed) | max) if tr else 0 %}
+<section class="jt-panel jt-panel--clip h-100" aria-labelledby="wt-{{ wkey }}">
+  <div class="jt-panel-head">
+    <h2 class="jt-panel-title" id="wt-{{ wkey }}"><i class="bi bi-graph-up" aria-hidden="true"></i>Tren work order 6 bulan</h2>
+    {% if maxv %}
+    <ul class="jt-legend jt-legend--inline jt-panel-tools">
+      <li class="tone-brand"><span class="jt-dot" aria-hidden="true"></span>Dibuat</li>
+      <li class="tone-ok"><span class="jt-dot" aria-hidden="true"></span>Selesai</li>
+    </ul>
+    {% endif %}
+  </div>
+  <div class="jt-panel-body">
+    {% if maxv %}
+    {% set n = tr.labels | length %}
+    <div class="jt-trend" style="--n: {{ n }}">
+      <span class="jt-trend-max" aria-hidden="true">{{ maxv }}</span>
+      <div class="jt-trend-plot">
+        {%- for lab in tr.labels %}{% set i = loop.index0 %}
+        <div class="jt-trend-col" tabindex="0" role="img"
+             data-tip="{{ lab }} {{ tr['keys'][i][:4] }}: dibuat {{ tr.created[i] }}, selesai {{ tr.completed[i] }}"
+             aria-label="{{ lab }} {{ tr['keys'][i][:4] }}: dibuat {{ tr.created[i] }}, selesai {{ tr.completed[i] }}">
+          <span class="jt-trend-bar tone-brand" style="--h: {{ (tr.created[i] * 100 / maxv) | round(1) }}%; --i: {{ i }}">{% if loop.last and tr.created[i] %}<b>{{ tr.created[i] }}</b>{% endif %}</span>
+          <span class="jt-trend-bar tone-ok" style="--h: {{ (tr.completed[i] * 100 / maxv) | round(1) }}%; --i: {{ i }}">{% if loop.last and tr.completed[i] %}<b>{{ tr.completed[i] }}</b>{% endif %}</span>
+        </div>
+        {%- endfor %}
+      </div>
+      <div class="jt-trend-labels" aria-hidden="true">{% for lab in tr.labels %}<span>{{ lab }}</span>{% endfor %}</div>
+    </div>
+    {% else %}
+    {{ empty_state('graph-up', 'Belum ada data tren', 'Grafik muncul setelah ada WO dalam 6 bulan terakhir.') }}
+    {% endif %}
+  </div>
+</section>

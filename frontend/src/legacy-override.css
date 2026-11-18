@@ -1,45 +1,69 @@
 /*
-  Aturan dengan !important untuk halaman lama (v2.1). build.mjs menaruh berkas ini di @layer override,
-  lapisan paling awal. Untuk !important urutannya terbalik: lapisan awal menang atas Bootstrap
-  dan atas CSS pustaka yang dimuat lewat <link> tanpa lapisan (Select2, FullCalendar).
-  Isi hanya yang memang harus menang atas keduanya.
+  Aturan dengan !important untuk halaman lama (v3). build.mjs menaruh berkas ini di @layer override,
+  lapisan paling awal. Untuk !important urutannya terbalik: lapisan awal menang atas Bootstrap,
+  atas CSS pustaka yang dimuat lewat <link> tanpa lapisan (Select2, Tom Select, FullCalendar, DataTables)
+  dan atas <style> di dalam template. Isi hanya yang memang harus menang atas semuanya.
+
+  Semua warna lewat token (tokens.css), jadi mode gelap ikut otomatis. Aturan yang khusus gelap
+  dibungkus @media screen supaya cetak laporan tetap terang.
+  Urutan penting: aturan umum dulu, aturan komponen (lencana, dst.) sesudahnya, karena spesifisitasnya sama.
 */
+
+/* ---------- utilitas Bootstrap yang warnanya harus ikut mode gelap ---------- */
+.text-warning { color: #b45309 !important; }
+.text-info { color: var(--color-info-ink) !important; }
+@media screen {
+  [data-bs-theme="dark"] .bg-white,
+  [data-bs-theme="dark"] .bg-body { background-color: var(--color-surface) !important; }
+  [data-bs-theme="dark"] .bg-light { background-color: var(--color-surface-2) !important; }
+  [data-bs-theme="dark"] .border-light,
+  [data-bs-theme="dark"] .border-white { border-color: var(--color-line) !important; }
+  /* .text-dark di atas latar kuning/cyan tetap gelap: latar itu tidak ikut menggelap */
+  [data-bs-theme="dark"] .text-dark:not(.bg-warning):not(.bg-info),
+  [data-bs-theme="dark"] .text-black:not(.bg-warning):not(.bg-info) { color: var(--color-ink) !important; }
+  [data-bs-theme="dark"] .text-secondary { color: var(--color-ink-muted) !important; }
+  [data-bs-theme="dark"] .text-primary { color: var(--jt-brand-text) !important; }
+  [data-bs-theme="dark"] .text-success { color: var(--color-ok) !important; }
+  [data-bs-theme="dark"] .text-danger { color: var(--color-bad) !important; }
+  [data-bs-theme="dark"] .text-warning { color: var(--color-warn) !important; }
+}
 
 /* ---------- lencana lembut: tetap lembut walau template menambah text-white / text-dark ---------- */
 .badge.bg-success, .badge.text-bg-success {
   background-color: var(--color-ok-bg) !important;
   color: var(--color-ok-ink) !important;
-  box-shadow: inset 0 0 0 1px rgb(21 128 61 / 0.18);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-ok) 26%, transparent);
 }
 .badge.bg-danger, .badge.text-bg-danger {
   background-color: var(--color-bad-bg) !important;
   color: var(--color-bad-ink) !important;
-  box-shadow: inset 0 0 0 1px rgb(217 45 32 / 0.18);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-bad) 26%, transparent);
 }
 .badge.bg-warning, .badge.text-bg-warning {
   background-color: var(--color-warn-bg) !important;
   color: var(--color-warn-ink) !important;
-  box-shadow: inset 0 0 0 1px rgb(217 138 0 / 0.25);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-warn) 32%, transparent);
 }
 .badge.bg-info, .badge.text-bg-info {
   background-color: var(--color-info-bg) !important;
   color: var(--color-info-ink) !important;
-  box-shadow: inset 0 0 0 1px rgb(29 127 224 / 0.2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-info) 26%, transparent);
 }
 .badge.bg-primary, .badge.text-bg-primary {
-  background-color: var(--color-brand-100) !important;
-  color: var(--color-brand-800) !important;
-  box-shadow: inset 0 0 0 1px rgb(37 79 217 / 0.18);
+  background-color: var(--jt-brand-soft) !important;
+  color: var(--jt-brand-text) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--jt-brand-solid) 24%, transparent);
 }
 .badge.bg-secondary, .badge.text-bg-secondary {
   background-color: var(--color-mute-bg) !important;
   color: var(--color-mute-ink) !important;
-  box-shadow: inset 0 0 0 1px rgb(71 84 103 / 0.15);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-mute-ink) 20%, transparent);
 }
-
-/* ---------- teks status: kuning dan cyan polos terlalu pucat di atas putih ---------- */
-.text-warning { color: #b45309 !important; }
-.text-info { color: var(--color-info-ink) !important; }
+.badge.bg-light, .badge.text-bg-light {
+  background-color: var(--color-surface-2) !important;
+  color: var(--color-ink-soft) !important;
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
 
 /* ---------- bentuk: tombol dan kolom tidak lagi kapsul (kapsul tetap untuk lencana dan avatar) ---------- */
 .btn.rounded-pill,
@@ -48,7 +72,7 @@
 .form-select.rounded-pill,
 .input-group-text.rounded-pill { border-radius: var(--radius-ctl) !important; }
 .btn-sm.rounded-pill,
-.btn-group-sm > .btn.rounded-pill { border-radius: 0.4375rem !important; }
+.btn-group-sm > .btn.rounded-pill { border-radius: 0.625rem !important; }
 .input-group.rounded-pill,
 .btn-group.rounded-pill { border-radius: var(--radius-card) !important; }
 .input-group.rounded-pill > .form-control,
@@ -60,15 +84,16 @@
 .shadow:not(:focus):not(:focus-visible) { box-shadow: var(--shadow-raised) !important; }
 .shadow-lg:not(:focus):not(:focus-visible) { box-shadow: var(--shadow-pop) !important; }
 
-/* ---------- Select2 tema bawaan: samakan dengan kolom isian ---------- */
+/* ---------- Select2: samakan dengan kolom isian ---------- */
 .select2-container--default .select2-selection--single,
 .select2-container--default .select2-selection--multiple,
 .select2-container--bootstrap-5 .select2-selection {
-  min-height: 2.375rem !important;
+  min-height: 2.5rem !important;
   height: auto !important;
   border: 1px solid var(--color-line-strong) !important;
   border-radius: var(--radius-ctl) !important;
-  background-color: #fff !important;
+  background-color: var(--color-surface-2) !important;
+  color: var(--color-ink) !important;
 }
 .select2-container--default .select2-selection--single { display: flex !important; align-items: center !important; }
 .select2-container--default .select2-selection--single .select2-selection__rendered {
@@ -78,6 +103,7 @@
   font-size: 0.875rem !important;
   line-height: 1.5 !important;
 }
+.select2-container--default .select2-selection--single .select2-selection__placeholder { color: var(--color-ink-faint) !important; }
 .select2-container--default .select2-selection--single .select2-selection__arrow {
   top: 0 !important;
   right: 0.375rem !important;
@@ -88,63 +114,186 @@
   margin-top: 0.3125rem !important;
   padding: 0.125rem 0.5rem !important;
   border: 0 !important;
-  border-radius: 0.4375rem !important;
-  background: var(--color-brand-100) !important;
-  color: var(--color-brand-800) !important;
+  border-radius: 0.5rem !important;
+  background: var(--jt-brand-soft) !important;
+  color: var(--jt-brand-text) !important;
 }
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove { color: var(--jt-brand-text) !important; }
 .select2-container--default.select2-container--focus .select2-selection--multiple,
 .select2-container--default.select2-container--open .select2-selection--single,
 .select2-container--default.select2-container--focus .select2-selection--single,
 .select2-container--bootstrap-5.select2-container--focus .select2-selection,
 .select2-container--bootstrap-5.select2-container--open .select2-selection {
-  border-color: var(--color-brand-500) !important;
-  box-shadow: 0 0 0 3px rgb(56 102 238 / 0.18) !important;
+  border-color: var(--jt-brand-solid) !important;
+  box-shadow: 0 0 0 4px var(--jt-focus-ring) !important;
+}
+.select2-container--default.select2-container--disabled .select2-selection--single,
+.select2-container--default.select2-container--disabled .select2-selection--multiple {
+  background-color: var(--color-mute-bg) !important;
 }
 .select2-dropdown {
   overflow: hidden !important;
-  border-color: var(--color-line-strong) !important;
+  border-color: var(--color-line) !important;
   border-radius: var(--radius-card) !important;
+  background-color: var(--color-surface) !important;
+  color: var(--color-ink) !important;
   box-shadow: var(--shadow-pop) !important;
 }
 .select2-container--default .select2-search--dropdown .select2-search__field {
   border: 1px solid var(--color-line-strong) !important;
-  border-radius: 0.4375rem !important;
+  border-radius: 0.625rem !important;
+  background-color: var(--color-surface-2) !important;
+  color: var(--color-ink) !important;
+}
+.select2-container--default .select2-results__option { color: var(--color-ink-soft) !important; }
+.select2-container--default .select2-results__option--selected,
+.select2-container--default .select2-results__option[aria-selected="true"] {
+  background-color: var(--jt-brand-soft) !important;
+  color: var(--jt-brand-strong) !important;
 }
 .select2-container--default .select2-results__option--highlighted[aria-selected],
 .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable,
 .select2-container--bootstrap-5 .select2-results__option--highlighted {
-  background-color: var(--color-brand-600) !important;
+  background-color: var(--jt-brand-solid) !important;
   color: #fff !important;
 }
 
-/* ---------- FullCalendar: warna dasar mengikuti merek ---------- */
+/* ---------- Tom Select ---------- */
+.ts-control,
+.ts-wrapper.single.input-active .ts-control,
+.ts-wrapper.focus .ts-control {
+  border-color: var(--color-line-strong) !important;
+  border-radius: var(--radius-ctl) !important;
+  background-color: var(--color-surface-2) !important;
+  color: var(--color-ink) !important;
+}
+.ts-wrapper.focus .ts-control { border-color: var(--jt-brand-solid) !important; box-shadow: 0 0 0 4px var(--jt-focus-ring) !important; }
+.ts-control > input { color: var(--color-ink) !important; }
+.ts-wrapper.multi .ts-control > div {
+  border-radius: 0.5rem !important;
+  background: var(--jt-brand-soft) !important;
+  color: var(--jt-brand-text) !important;
+}
+.ts-dropdown,
+.ts-dropdown.form-control,
+.ts-dropdown.form-select {
+  overflow: hidden !important;
+  border: 1px solid var(--color-line) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--color-surface) !important;
+  color: var(--color-ink) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+.ts-dropdown .option,
+.ts-dropdown .no-results,
+.ts-dropdown .create { color: var(--color-ink-soft) !important; }
+.ts-dropdown .active,
+.ts-dropdown .active.create {
+  background-color: var(--jt-brand-soft) !important;
+  color: var(--jt-brand-strong) !important;
+}
+
+/* ---------- FullCalendar: warna mengikuti token ---------- */
 .fc {
+  --fc-page-bg-color: var(--color-surface) !important;
   --fc-border-color: var(--color-line) !important;
-  --fc-button-bg-color: var(--color-brand-600) !important;
-  --fc-button-border-color: var(--color-brand-600) !important;
-  --fc-button-hover-bg-color: var(--color-brand-700) !important;
-  --fc-button-hover-border-color: var(--color-brand-700) !important;
-  --fc-button-active-bg-color: var(--color-brand-800) !important;
-  --fc-button-active-border-color: var(--color-brand-800) !important;
-  --fc-today-bg-color: rgb(56 102 238 / 0.07) !important;
   --fc-neutral-bg-color: var(--color-sunken) !important;
-  --fc-event-bg-color: var(--color-brand-600) !important;
-  --fc-event-border-color: var(--color-brand-600) !important;
+  --fc-neutral-text-color: var(--color-ink-muted) !important;
+  --fc-button-text-color: var(--color-ink-soft) !important;
+  --fc-button-bg-color: var(--color-surface) !important;
+  --fc-button-border-color: var(--color-line-strong) !important;
+  --fc-button-hover-bg-color: var(--jt-hover) !important;
+  --fc-button-hover-border-color: var(--color-ink-faint) !important;
+  --fc-button-active-bg-color: var(--jt-brand-soft) !important;
+  --fc-button-active-border-color: var(--jt-brand-edge) !important;
+  --fc-today-bg-color: var(--jt-brand-softer) !important;
+  --fc-highlight-color: var(--jt-brand-soft) !important;
+  --fc-list-event-hover-bg-color: var(--jt-hover) !important;
+  --fc-more-link-bg-color: var(--color-mute-bg) !important;
+  --fc-non-business-color: var(--jt-veil) !important;
+  --fc-event-bg-color: var(--jt-brand-solid) !important;
+  --fc-event-border-color: var(--jt-brand-solid) !important;
+  color: var(--color-ink);
 }
 .fc .fc-button {
-  border-radius: 0.4375rem !important;
-  font-weight: 600 !important;
+  min-height: 2.25rem;
+  border-radius: 0.625rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
   text-transform: none !important;
+  box-shadow: none !important;
 }
+.fc .fc-button-primary { color: var(--color-ink-soft) !important; }
+.fc .fc-button-primary:not(:disabled):is(.fc-button-active, :active) { color: var(--jt-brand-text) !important; }
+.fc .fc-button-primary:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--jt-focus-ring) !important; }
+.fc .fc-button-primary:disabled { opacity: 0.5 !important; }
+@media (pointer: coarse) {
+  .fc .fc-button { min-height: 2.75rem; }
+}
+/* Event dengan rona status (kelas tone-*): latar lembut, teks tegas, tepi tipis. Bukan blok warna jenuh. */
+.fc .fc-event.jt-ev {
+  --fc-event-bg-color: var(--tone-bg) !important;
+  --fc-event-border-color: color-mix(in srgb, var(--tone) 45%, transparent) !important;
+  --fc-event-text-color: var(--tone-ink) !important;
+  background-color: var(--tone-bg) !important;
+  border-color: color-mix(in srgb, var(--tone) 45%, transparent) !important;
+  color: var(--tone-ink) !important;
+}
+.fc .fc-event.jt-ev :is(.fc-event-main, .fc-event-title, .fc-event-time) { color: var(--tone-ink) !important; }
+.fc .fc-list-event.jt-ev { background-color: transparent !important; border-color: transparent !important; }
+.fc .fc-list-event.jt-ev .fc-list-event-dot { border-color: var(--tone) !important; }
+.fc .fc-list-event.jt-ev :is(.fc-list-event-title, .fc-list-event-title a, .fc-list-event-time) { color: var(--color-ink) !important; }
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number,
+.fc .fc-timegrid-slot-label-cushion,
+.fc .fc-timegrid-axis-cushion,
+.fc .fc-list-day-text,
+.fc .fc-list-day-side-text { color: var(--color-ink-soft) !important; }
+.fc .fc-toolbar-title { color: var(--color-ink) !important; font-family: var(--font-display); font-weight: 600 !important; letter-spacing: -0.02em; }
+.fc .fc-popover {
+  border-color: var(--color-line) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--color-surface) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+.fc .fc-popover-header { background: var(--color-surface-2) !important; color: var(--color-ink) !important; }
 @media (max-width: 768px) {
   .fc .fc-toolbar { flex-direction: column !important; gap: 0.75rem !important; }
   .fc .fc-toolbar-title { font-size: 1.15rem !important; text-align: center; }
   .fc .fc-toolbar-chunk { display: flex; justify-content: center; gap: 0.25rem; width: 100%; }
-  .fc .fc-button { padding: 0.375rem 0.75rem !important; font-size: 0.75rem !important; }
+  .fc .fc-button { padding: 0.5rem 0.875rem !important; font-size: 0.8125rem !important; }
   .fc .fc-view-harness { margin-top: 0.9375rem; }
-  .fc .fc-daygrid-event { margin: 1px 2px !important; padding: 2px 4px !important; border-radius: 4px !important; font-size: 10px !important; }
-  .fc .fc-col-header-cell-cushion { padding: 4px !important; font-size: 11px !important; }
+  .fc .fc-daygrid-event { margin: 1px 2px !important; padding: 2px 4px !important; border-radius: 4px !important; font-size: 12px !important; }
+  .fc .fc-col-header-cell-cushion { padding: 4px !important; font-size: 12px !important; }
 }
+
+/* ---------- ApexCharts dan PivotTable memakai warna terang bawaan; samakan dengan token ---------- */
+.apexcharts-text,
+.apexcharts-xaxis-label,
+.apexcharts-yaxis-label { fill: var(--color-ink-muted) !important; }
+.apexcharts-gridline,
+.apexcharts-xaxis-tick { stroke: var(--color-line) !important; }
+.apexcharts-legend-text { color: var(--color-ink-soft) !important; }
+.apexcharts-tooltip,
+.apexcharts-xaxistooltip,
+.apexcharts-yaxistooltip {
+  border-color: var(--color-line) !important;
+  background: var(--color-surface) !important;
+  color: var(--color-ink) !important;
+  box-shadow: var(--shadow-raised) !important;
+}
+.apexcharts-tooltip-title { border-bottom-color: var(--color-line) !important; background: var(--color-surface-2) !important; color: var(--color-ink) !important; }
+.pvtTable thead tr th,
+.pvtTable tbody tr th {
+  border-color: var(--color-line) !important;
+  background-color: var(--color-surface-2) !important;
+  color: var(--color-ink-soft) !important;
+}
+.pvtTable tbody tr td { border-color: var(--color-line) !important; color: var(--color-ink) !important; }
+.pvtAxisContainer,
+.pvtVals,
+.pvtRenderer { border-color: var(--color-line) !important; background: var(--color-surface-2) !important; color: var(--color-ink-soft) !important; }
+.pvtAxisContainer li span.pvtAttr { border-color: var(--color-line) !important; background: var(--jt-brand-soft) !important; color: var(--jt-brand-text) !important; }
 
 /* ---------- gaya "premium" yang disalin ke banyak halaman ----------
    Sekitar 20 template membawa <style> sendiri (tanpa lapisan) dengan nilai berbeda-beda untuk
@@ -162,18 +311,20 @@
   .settings-pane-card:hover { transform: none !important; box-shadow: var(--shadow-card) !important; }
   .filter-bar { padding: 0.875rem 1rem !important; }
 
-  /* banner judul: datar, tanpa gradien, mengikuti navy merek */
+  /* banner judul: panel navy polos, tanpa gradien */
   .settings-header {
-    padding: 1.125rem 1.5rem !important;
-    border-radius: var(--radius-card) !important;
-    background: var(--color-brand-950) !important;
-    box-shadow: var(--shadow-card) !important;
     margin-bottom: 1.25rem !important;
+    padding: 1.25rem 1.5rem !important;
+    border: 0 !important;
+    border-radius: var(--radius-card) !important;
+    background: var(--color-frame-raised) !important;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06) !important;
+    color: #fff;
   }
   .settings-header h3 {
     font-family: var(--font-display);
-    font-size: 1.25rem !important;
-    letter-spacing: -0.02em !important;
+    font-size: 1.3125rem !important;
+    letter-spacing: -0.025em !important;
   }
 
   /* tombol: ukuran dan bentuk dari kulit Bootstrap, tanpa kapsul dan tanpa angkat saat disorot */
@@ -193,47 +344,26 @@
   /* kolom isian */
   .form-select-premium,
   .form-control-premium {
-    padding: 0.4375rem 0.75rem !important;
+    padding: 0.5rem 0.75rem !important;
     border: 1px solid var(--color-line-strong) !important;
     border-radius: var(--radius-ctl) !important;
+    background-color: var(--color-surface-2) !important;
+    color: var(--color-ink) !important;
     box-shadow: none !important;
   }
   .form-select-premium { padding-right: 2.25rem !important; }
   .form-select-sm.form-select-premium,
   .form-control-sm.form-control-premium {
-    padding-top: 0.25rem !important;
-    padding-bottom: 0.25rem !important;
-    border-radius: 0.4375rem !important;
+    padding-top: 0.3125rem !important;
+    padding-bottom: 0.3125rem !important;
+    border-radius: 0.625rem !important;
     font-size: 0.8125rem !important;
   }
   .form-select-premium:focus,
   .form-control-premium:focus {
-    border-color: var(--color-brand-500) !important;
-    box-shadow: 0 0 0 3px rgb(56 102 238 / 0.18) !important;
+    border-color: var(--jt-brand-solid) !important;
+    box-shadow: 0 0 0 4px var(--jt-focus-ring) !important;
   }
-
-  /* widget dashboard: kartu datar dengan garis tipis, tanpa gradien, bayangan besar, atau angkat saat disorot */
-  .widget-container .card {
-    border: 1px solid var(--color-line) !important;
-    border-radius: var(--radius-card) !important;
-    background: var(--color-surface) !important;
-    box-shadow: var(--shadow-card) !important;
-    transform: none !important;
-  }
-  .widget-container .card-header {
-    padding: 1rem 1.25rem 0.75rem !important;
-    border-bottom: 1px solid var(--color-line) !important;
-    background: transparent !important;
-    color: var(--color-ink) !important;
-    font-weight: 650 !important;
-    letter-spacing: -0.01em !important;
-  }
-  .widget-container .card-header h6 { font-size: 0.9375rem; }
-  .widget-container .list-group-item {
-    padding: 0.75rem 1.25rem !important;
-    border-color: var(--color-line) !important;
-  }
-  .widget-container .list-group-item:hover { background-color: var(--color-sunken) !important; }
 
   /* lencana lembut milik dashboard (dipakai juga oleh dashboard eksekutif) */
   .soft-badge-danger { background-color: var(--color-bad-bg) !important; color: var(--color-bad-ink) !important; font-weight: 600; }
@@ -242,3 +372,48 @@
   .soft-badge-secondary { background-color: var(--color-mute-bg) !important; color: var(--color-mute-ink) !important; font-weight: 600; }
   .soft-badge-success { background-color: var(--color-ok-bg) !important; color: var(--color-ok-ink) !important; font-weight: 600; }
 }
+
+/* ---------- jaring pengaman mode gelap ----------
+   Banyak template menulis warna terang langsung di atribut style="" (latar putih, abu-abu muda,
+   teks biru-abu tua). Di mode gelap warna itu ditukar ke token. Hanya menyentuh style inline;
+   aturan di dalam <style> template diperiksa satu per satu dengan pemindai kebocoran. */
+@media screen {
+  [data-bs-theme="dark"] :is(
+    [style*="background:#fff" i], [style*="background: #fff" i],
+    [style*="background-color:#fff" i], [style*="background-color: #fff" i],
+    [style*="background:white" i], [style*="background: white" i],
+    [style*="background-color:white" i], [style*="background-color: white" i]
+  ) { background-color: var(--color-surface) !important; }
+  [data-bs-theme="dark"] :is(
+    [style*="#f8fafc" i], [style*="#f8f9fa" i], [style*="#f1f5f9" i], [style*="#fafafa" i],
+    [style*="#f5f5f5" i], [style*="#f3f4f6" i], [style*="#f9fafb" i], [style*="#f4f6f9" i]
+  ):is([style*="background"]) { background-color: var(--color-surface-2) !important; }
+  [data-bs-theme="dark"] :is([style*="#e2e8f0" i], [style*="#e9ecef" i], [style*="#eee" i]):is([style*="background"]) {
+    background-color: var(--color-mute-bg) !important;
+  }
+  [data-bs-theme="dark"] :is(
+    [style*="#eef2ff" i], [style*="#f5f3ff" i], [style*="#eff6ff" i], [style*="#f0f9ff" i], [style*="#e0f2fe" i], [style*="#e0e7ff" i]
+  ):is([style*="background"]) { background-color: var(--jt-brand-softer) !important; }
+  [data-bs-theme="dark"] :is([style*="#fef3c7" i], [style*="#fffbeb" i], [style*="#fef9c3" i], [style*="#fff3cd" i]):is([style*="background"]) {
+    background-color: var(--color-warn-bg) !important;
+  }
+  [data-bs-theme="dark"] :is([style*="#fee2e2" i], [style*="#fef2f2" i]):is([style*="background"]) {
+    background-color: var(--color-bad-bg) !important;
+  }
+  [data-bs-theme="dark"] :is([style*="#d1fae5" i], [style*="#f0fdf4" i], [style*="#dcfce7" i], [style*="#ecfdf5" i]):is([style*="background"]) {
+    background-color: var(--color-ok-bg) !important;
+  }
+  [data-bs-theme="dark"] :is([style*="color:#0f172a" i], [style*="color: #0f172a" i], [style*="color:#1e293b" i], [style*="color: #1e293b" i]) {
+    color: var(--color-ink) !important;
+  }
+  [data-bs-theme="dark"] :is([style*="color:#334155" i], [style*="color: #334155" i], [style*="color:#475569" i], [style*="color: #475569" i]) {
+    color: var(--color-ink-soft) !important;
+  }
+  [data-bs-theme="dark"] :is([style*="color:#64748b" i], [style*="color: #64748b" i], [style*="color:#94a3b8" i], [style*="color: #94a3b8" i]) {
+    color: var(--color-ink-muted) !important;
+  }
+}
+
+/* satu skala bobot huruf (400, 500, 600) dan tanpa kaca buram, di semua halaman lama */
+.fw-bold, .fw-bolder, .fw-semibold, b, strong { font-weight: 600 !important; }
+[style*="backdrop-filter"], .form-glass { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }

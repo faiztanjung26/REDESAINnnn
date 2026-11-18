@@ -1,22 +1,25 @@
-<!-- Low Stock Alerts Widget -->
-<div class="card h-100">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-bold text-danger"><i class="bi bi-exclamation-octagon me-2"></i> Low Stock Alerts</h6>
-        <span class="badge soft-badge-danger rounded-pill">{{ low_stock_items|length }}</span>
-    </div>
-    <div class="card-body p-0">
-        <ul class="list-group list-group-flush">
-            {% for item in low_stock_items %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                <a href="{{ url_for('supplies.part_detail', id=item.part.id) }}" class="fw-bold text-decoration-none text-dark small text-truncate" style="max-width: 70%;">{{ item.part.name }}</a>
-                <span class="badge soft-badge-danger rounded-pill"><i class="bi bi-box-seam me-1"></i>{{ item.qty_on_hand }} / {{ item.min_qty }}</span>
-            </li>
-            {% else %}
-            <li class="list-group-item text-center text-muted py-4 d-flex flex-column align-items-center">
-                <i class="bi bi-check-circle fs-3 text-success mb-2"></i>
-                <div class="small">No low stock items.</div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-</div>
+{# Stok di bawah minimum (rute membatasi 10 baris) #}
+{% from "_ui/macros.html" import empty_state %}
+<section class="jt-panel jt-panel--clip h-100" aria-labelledby="wt-{{ wkey }}">
+  <div class="jt-panel-head">
+    <h2 class="jt-panel-title" id="wt-{{ wkey }}"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i>Stok menipis</h2>
+    <span class="jt-count{% if low_stock_items %} tone-warn{% endif %}">{{ low_stock_items|length }}</span>
+  </div>
+  <div class="jt-panel-body jt-panel-body--flush">
+    {% if low_stock_items %}
+    <ul class="jt-list">
+      {% for item in low_stock_items %}
+      <li>
+        <a class="jt-item" href="{{ url_for('supplies.part_detail', id=item.part.id) }}">
+          <div class="jt-item-main"><div class="jt-item-title">{{ item.part.name }}</div><div class="jt-item-sub">Stok saat ini dari minimum</div></div>
+          <div class="jt-item-side"><span class="jt-badge tone-warn"><i class="bi bi-box-seam" aria-hidden="true"></i>{{ item.qty_on_hand }} / {{ item.min_qty }}</span></div>
+          <i class="bi bi-chevron-right jt-item-go" aria-hidden="true"></i>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    {{ empty_state('check-circle', 'Stok aman', 'Tidak ada suku cadang di bawah stok minimum.', ok=True) }}
+    {% endif %}
+  </div>
+</section>

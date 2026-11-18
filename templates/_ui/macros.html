@@ -1,0 +1,75 @@
+{#
+  Makro tampilan bersama untuk dashboard dan daftar Work Order.
+  Impor: {% from "_ui/macros.html" import wo_item, status_badge, priority_badge, due_badge, empty_state, person, fmt_date %}
+  Nama rona sama dengan kelas tone-* di frontend/src/patterns.css. Makro hanya memakai url_for (global Jinja).
+#}
+
+{#- Satu sumber untuk rona status WO: lencana, batang distribusi, dan legenda memakai pemetaan yang sama. -#}
+{% macro status_tone(name) -%}
+{{ {'Draft': 'mute', 'Assigned': 'violet', 'In Progress': 'info', 'Hold': 'warn', 'Solved': 'brand', 'Completed': 'ok', 'Incompleted': 'orange'}.get(name, 'mute') }}
+{%- endmacro %}
+
+{% macro status_badge(name) -%}
+{%- if name -%}
+<span class="jt-badge tone-{{ status_tone(name)|trim }}"><span class="jt-dot" aria-hidden="true"></span>{{ name }}</span>
+{%- else -%}
+<span class="text-muted">&mdash;</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro priority_badge(p) -%}
+{%- set cfg = {'Highest': ('bad', 'chevron-double-up'), 'High': ('orange', 'chevron-up'), 'Medium': ('warn', 'dash'), 'Low': ('info', 'chevron-down')}.get(p, ('mute', 'dot')) -%}
+<span class="jt-badge tone-{{ cfg[0] }}"><i class="bi bi-{{ cfg[1] }}" aria-hidden="true"></i>{{ p or 'None' }}</span>
+{%- endmacro %}
+
+{% macro due_badge(text, tone='mute', icon='calendar-event') -%}
+<span class="jt-badge tone-{{ tone }}"><i class="bi bi-{{ icon }}" aria-hidden="true"></i>{{ text }}</span>
+{%- endmacro %}
+
+{#- "17 Nov 2026" dari objek tanggal -#}
+{% macro fmt_date(dt) -%}
+{%- if dt -%}{{ dt.day }} {{ ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][dt.month - 1] }} {{ dt.year }}{%- endif -%}
+{%- endmacro %}
+
+{#- "17/11/2026" dari teks YYYY-MM-DD -#}
+{% macro fmt_date_str(s) -%}
+{%- if s and s|length == 10 -%}{{ s[8:10] }}/{{ s[5:7] }}/{{ s[0:4] }}{%- else -%}{{ s }}{%- endif -%}
+{%- endmacro %}
+
+{% macro person(name) -%}
+{%- set parts = (name or '?').split() -%}
+<span class="jt-person" title="{{ name }}">{{ (parts[0][:1] ~ (parts[1][:1] if parts|length > 1 else ' ')|trim)|upper }}</span>
+{%- endmacro %}
+
+{#- Satu baris WO di daftar: kode, deskripsi, aset, prioritas, dan lencana sisi (tenggat). -#}
+{% macro wo_item(wo, chip=None, tone='mute', icon='calendar-event') -%}
+<li>
+  <a class="jt-item" href="{{ url_for('work_orders.edit', id=wo.id) }}">
+    <div class="jt-item-main">
+      <div class="jt-item-title" title="{{ wo.description or '' }}"><span class="jt-code">{{ wo.code }}</span> {{ wo.description or '' }}</div>
+      <div class="jt-item-meta">
+        <span class="jt-item-asset">{{ wo.asset.name if wo.asset else 'Tanpa aset' }}{% if wo.maintenance_type %} &middot; {{ wo.maintenance_type }}{% endif %}</span>
+        {{ priority_badge(wo.priority) }}
+      </div>
+    </div>
+    {%- if chip %}
+    <div class="jt-item-side">{{ due_badge(chip, tone, icon) }}</div>
+    {%- endif %}
+    <i class="bi bi-chevron-right jt-item-go" aria-hidden="true"></i>
+  </a>
+</li>
+{%- endmacro %}
+
+{#- Keadaan kosong. Bisa dipanggil dengan {% call empty_state(...) %} untuk menaruh tombol aksi. -#}
+{% macro empty_state(icon, title, text=None, ok=False) -%}
+<div class="jt-empty{% if ok %} is-ok{% endif %}">
+  <i class="bi bi-{{ icon }}" aria-hidden="true"></i>
+  <strong>{{ title }}</strong>
+  {%- if text %}
+  <p>{{ text }}</p>
+  {%- endif %}
+  {%- if caller %}
+  <div class="jt-empty-actions">{{ caller() }}</div>
+  {%- endif %}
+</div>
+{%- endmacro %}

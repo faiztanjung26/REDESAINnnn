@@ -1,12 +1,31 @@
-<!-- WO Status Doughnut Chart Widget -->
-<div class="card shadow-sm border-0 h-100">
-    <div class="card-header bg-white pt-3 pb-2 border-bottom-0 d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-bold"><i class="bi bi-pie-chart text-primary me-2"></i> Work Order Status</h6>
-        {% if draft_wos_count is defined %}
-        <span class="badge bg-secondary">Draft: {{ draft_wos_count }}</span>
-        {% endif %}
+{# Distribusi status WO: batang bersegmen + legenda berangka. Warna dari pemetaan status_tone, bukan hex dari server. #}
+{% from "_ui/macros.html" import status_tone, empty_state %}
+{% set total = wo_status_data | sum %}
+<section class="jt-panel jt-panel--clip h-100" aria-labelledby="wt-{{ wkey }}">
+  <div class="jt-panel-head">
+    <h2 class="jt-panel-title" id="wt-{{ wkey }}"><i class="bi bi-pie-chart" aria-hidden="true"></i>Status work order</h2>
+    {% if draft_wos_count is defined and draft_wos_count %}
+    <div class="jt-panel-tools"><span class="jt-badge tone-mute">Draft: {{ draft_wos_count }}</span></div>
+    {% endif %}
+  </div>
+  <div class="jt-panel-body">
+    {% if total %}
+    <div class="jt-dist-total"><b>{{ total }}</b><span>WO pada periode ini</span></div>
+    <div class="jt-dist-bar" role="img" aria-label="Jumlah WO per status: {% for label in wo_status_labels %}{{ label }} {{ wo_status_data[loop.index0] }}{% if not loop.last %}, {% endif %}{% endfor %}">
+      {%- for label in wo_status_labels %}{% set n = wo_status_data[loop.index0] %}{% if n %}
+      <i class="tone-{{ status_tone(label)|trim }}" style="--n: {{ n }}" title="{{ label }}: {{ n }}"></i>
+      {%- endif %}{% endfor %}
     </div>
-    <div class="card-body">
-        <canvas id="woStatusChart" style="max-height: 250px;"></canvas>
-    </div>
-</div>
+    <ul class="jt-legend">
+      {%- for label in wo_status_labels %}{% set n = wo_status_data[loop.index0] %}
+      <li class="tone-{{ status_tone(label)|trim }}{% if not n %} is-zero{% endif %}">
+        <span class="jt-dot" aria-hidden="true"></span><span>{{ label }}</span>
+        <span class="jt-legend-n">{{ n }}</span><span class="jt-legend-p">{{ (n * 100 / total) | round | int }}%</span>
+      </li>
+      {%- endfor %}
+    </ul>
+    {% else %}
+    {{ empty_state('pie-chart', 'Belum ada WO', 'WO yang dibuat pada periode ini akan muncul di sini.') }}
+    {% endif %}
+  </div>
+</section>

@@ -1083,6 +1083,17 @@ Pedoman Menjawab:
         view_mode = request.args.get('view', '')
         template = 'dashboard/executive.html' if view_mode == 'executive' else 'dashboard.html'
 
+        # Tambahan tampilan (baca-saja): sapaan, Tugas Saya, tren WO. Bila gagal, bagian itu kosong.
+        ui_greeting, ui_my_tasks, ui_wo_trend = 'Halo', None, None
+        try:
+            import ui_extras as _ui
+            ui_greeting = _ui.greeting()
+            ui_my_tasks = _ui.my_tasks(current_user, filter_site_id)
+            ui_wo_trend = _ui.wo_trend(filter_site_id, current_user.id if current_user.role == 'Technician' else None)
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('ui_extras gagal; dashboard tetap tampil tanpa tambahan')
+
         return render_template(template, 
                                draft_wos_count=draft_wos_count,
                                wo_status_labels=wo_status_labels,
@@ -1118,7 +1129,10 @@ Pedoman Menjawab:
                                end_date_str=end_date_str,
                                active_breakdowns=active_breakdowns,
                                active_alerts=active_alerts,
-                               total_assets=total_assets)
+                               total_assets=total_assets,
+                               ui_greeting=ui_greeting,
+                               ui_my_tasks=ui_my_tasks,
+                               ui_wo_trend=ui_wo_trend)
 
     # ============================================
     # LOGSHEET SCHEDULE ROUTES - For Admin/Supervisor

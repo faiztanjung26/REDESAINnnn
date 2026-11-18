@@ -119,12 +119,7 @@ def index():
     completeness_filter = request.args.get('completeness')
     
     from sqlalchemy.orm import selectinload
-    query = WorkOrder.query.options(
-        selectinload(WorkOrder.asset).selectinload(Asset.site),
-        selectinload(WorkOrder.team),
-        selectinload(WorkOrder.current_status),
-        selectinload(WorkOrder.tasklist)
-    )
+    query = WorkOrder.query
     
     # Time Range Filtering
     time_range = request.args.get('time_range', 'this_month')
@@ -182,14 +177,6 @@ def index():
     if current_user.role == 'Technician':
         query = query.filter(WorkOrder.assignees.any(id=current_user.id))
     
-    if status_filter:
-        if status_filter in ['Active', 'Pending', 'Closed', 'Draft']:
-            query = query.join(WorkOrderStatus).filter(WorkOrderStatus.control_type == status_filter)
-        else:
-            if str(status_filter).isdigit():
-                query = query.filter(WorkOrder.status_id == int(status_filter))
-            else:
-                query = query.join(WorkOrderStatus).filter(WorkOrderStatus.name == status_filter)
     if assigned_filter:
         query = query.filter(WorkOrder.assignees.any(id=assigned_filter))
     if mt_filter:
@@ -209,8 +196,32 @@ def index():
             )
         )
         
-    work_orders = query.all()
+    # Dasar hitungan tab status: kueri yang sama tanpa filter status (hanya baca)
+    query_no_status = query
+    if status_filter:
+        if status_filter in ['Active', 'Pending', 'Closed', 'Draft']:
+            query = query.join(WorkOrderStatus).filter(WorkOrderStatus.control_type == status_filter)
+        else:
+            if str(status_filter).isdigit():
+                query = query.filter(WorkOrder.status_id == int(status_filter))
+            else:
+                query = query.join(WorkOrderStatus).filter(WorkOrderStatus.name == status_filter)
+
     statuses = WorkOrderStatus.query.all()
+    try:
+        from ui_extras import status_tabs as _status_tabs
+        status_tabs = _status_tabs(query_no_status, statuses, request.args, status_filter)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Hitungan tab status gagal; daftar tetap tampil')
+        status_tabs = None
+
+    work_orders = query.options(
+        selectinload(WorkOrder.asset).selectinload(Asset.site),
+        selectinload(WorkOrder.team),
+        selectinload(WorkOrder.current_status),
+        selectinload(WorkOrder.tasklist)
+    ).all()
     users = User.query.all()
     
     # Get available sites for filter (only for users without fixed site)
@@ -272,7 +283,7 @@ def index():
         db.or_(SavedWorkOrderView.is_public == True, SavedWorkOrderView.user_id == current_user.id)
     ).order_by(SavedWorkOrderView.name).all()
 
-    return render_template('work_orders/index.html', work_orders=work_orders, statuses=statuses, users=users, available_sites=available_sites, selected_site_id=site_filter, maintenance_types=maintenance_types, selected_mt=mt_filter, search_query=search_query, completeness_filter=completeness_filter, view_mode=view_mode, work_orders_json=work_orders_json, time_range=time_range, start_date_str=start_date_str, end_date_str=end_date_str, saved_views=saved_views)
+    return render_template('work_orders/index.html', work_orders=work_orders, statuses=statuses, users=users, available_sites=available_sites, selected_site_id=site_filter, maintenance_types=maintenance_types, selected_mt=mt_filter, search_query=search_query, completeness_filter=completeness_filter, view_mode=view_mode, work_orders_json=work_orders_json, time_range=time_range, start_date_str=start_date_str, end_date_str=end_date_str, saved_views=saved_views, status_tabs=status_tabs, selected_status=status_filter)
 
 @work_orders_bp.route('/save-view', methods=['POST'])
 @login_required

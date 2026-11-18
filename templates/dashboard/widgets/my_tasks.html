@@ -1,0 +1,24 @@
+{# Tugas saya: WO aktif atau tertunda yang ditugaskan ke pengguna. Data dari ui_my_tasks (ui_extras.my_tasks). #}
+{% from "_ui/macros.html" import wo_item, empty_state %}
+{% set mt = ui_my_tasks %}
+<section class="jt-panel jt-panel--clip h-100" aria-labelledby="wt-{{ wkey }}">
+  <div class="jt-panel-head">
+    <h2 class="jt-panel-title" id="wt-{{ wkey }}"><i class="bi bi-check2-square" aria-hidden="true"></i>Tugas saya</h2>
+    {% if mt %}<span class="jt-count{% if mt.overdue %} tone-bad{% endif %}">{{ mt.total }}</span>{% endif %}
+    <div class="jt-panel-tools"><a class="jt-panel-link" href="{{ url_for('work_orders.index') }}">Semua WO</a></div>
+  </div>
+  <div class="jt-panel-body jt-panel-body--flush">
+    {% if mt and mt['items'] %}
+    <ul class="jt-list">
+      {% for it in mt['items'] %}{{ wo_item(it.wo, it.due_text, it.due_tone, 'exclamation-circle' if it.due_tone == 'bad' else 'calendar-event') }}{% endfor %}
+    </ul>
+    {% elif mt %}
+    {{ empty_state('check2-circle', 'Tidak ada tugas aktif', 'WO yang ditugaskan ke Anda akan muncul di sini.', ok=True) }}
+    {% else %}
+    {{ empty_state('exclamation-triangle', 'Tugas belum bisa dimuat', 'Muat ulang halaman. Bila berlanjut, hubungi admin.') }}
+    {% endif %}
+  </div>
+  {% if mt and mt.total > mt['items']|length %}
+  <div class="jt-panel-foot">Menampilkan {{ mt['items']|length }} dari {{ mt.total }} tugas, tenggat terdekat dulu.</div>
+  {% endif %}
+</section>

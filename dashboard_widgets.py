@@ -5,24 +5,17 @@ Each widget defines its key, display label, icon, default column span, and allow
 
 WIDGET_CATALOG = [
     {
-        'key': 'kpi_cards',
-        'label': 'KPI Cards (MTBF / MTTR / PM / Availability)',
-        'icon': 'bi-activity',
-        'default_col': 12,
+        'key': 'my_tasks',
+        'label': 'Tugas Saya',
+        'icon': 'bi-check2-square',
+        'default_col': 6,
         'roles': ['Admin', 'Supervisor', 'Technician'],
-    },
-    {
-        'key': 'wo_status_chart',
-        'label': 'Work Order Status Chart',
-        'icon': 'bi-pie-chart',
-        'default_col': 4,
-        'roles': ['Admin', 'Supervisor'],
     },
     {
         'key': 'overdue_wos',
         'label': 'Overdue Work Orders',
         'icon': 'bi-exclamation-circle',
-        'default_col': 4,
+        'default_col': 6,
         'roles': ['Admin', 'Supervisor', 'Technician'],
     },
     {
@@ -31,20 +24,6 @@ WIDGET_CATALOG = [
         'icon': 'bi-calendar-day',
         'default_col': 4,
         'roles': ['Admin', 'Supervisor', 'Technician'],
-    },
-    {
-        'key': 'calendar',
-        'label': 'Maintenance Calendar',
-        'icon': 'bi-calendar-event',
-        'default_col': 12,
-        'roles': ['Admin', 'Supervisor', 'Technician'],
-    },
-    {
-        'key': 'top_downtime',
-        'label': 'Top 5 Downtime Assets',
-        'icon': 'bi-shield-exclamation',
-        'default_col': 8,
-        'roles': ['Admin', 'Supervisor'],
     },
     {
         'key': 'upcoming_wos',
@@ -61,17 +40,52 @@ WIDGET_CATALOG = [
         'roles': ['Admin', 'Supervisor', 'Technician'],
     },
     {
+        'key': 'kpi_cards',
+        'label': 'KPI Cards (MTBF / MTTR / PM / Availability)',
+        'icon': 'bi-activity',
+        'default_col': 12,
+        'roles': ['Admin', 'Supervisor', 'Technician'],
+    },
+    {
+        'key': 'wo_status_chart',
+        'label': 'Work Order Status Chart',
+        'icon': 'bi-pie-chart',
+        'default_col': 5,
+        'roles': ['Admin', 'Supervisor'],
+    },
+    {
+        'key': 'wo_trend',
+        'label': 'Tren Work Order 6 Bulan',
+        'icon': 'bi-graph-up',
+        'default_col': 7,
+        'roles': ['Admin', 'Supervisor'],
+    },
+    {
+        'key': 'calendar',
+        'label': 'Maintenance Calendar',
+        'icon': 'bi-calendar-event',
+        'default_col': 12,
+        'roles': ['Admin', 'Supervisor', 'Technician'],
+    },
+    {
+        'key': 'top_downtime',
+        'label': 'Top 5 Downtime Assets',
+        'icon': 'bi-shield-exclamation',
+        'default_col': 4,
+        'roles': ['Admin', 'Supervisor'],
+    },
+    {
         'key': 'low_stock',
         'label': 'Low Stock Alerts',
         'icon': 'bi-exclamation-octagon',
-        'default_col': 6,
+        'default_col': 4,
         'roles': ['Admin', 'Supervisor'],
     },
     {
         'key': 'pending_prs',
         'label': 'Pending Purchase Requests',
         'icon': 'bi-cart',
-        'default_col': 6,
+        'default_col': 4,
         'roles': ['Admin', 'Supervisor'],
     },
     {
@@ -90,6 +104,9 @@ def get_catalog_for_role(role):
 def get_default_layout(role):
     """Return the default widget layout for a given role."""
     widgets = get_catalog_for_role(role)
+    if role != 'Technician' and len(widgets) > 1:
+        # Admin dan Supervisor: Overdue di kiri atas, Tugas Saya di sebelahnya
+        widgets = [widgets[1], widgets[0]] + widgets[2:]
     return [
         {'widget_key': w['key'], 'position': i, 'col_span': w['default_col'], 'is_visible': True}
         for i, w in enumerate(widgets)

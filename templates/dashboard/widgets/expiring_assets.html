@@ -1,99 +1,66 @@
-<style>
-@keyframes fadeZoomIn {
-    from { opacity: 0; transform: scale(0.98); }
-    to { opacity: 1; transform: scale(1); }
-}
-.exp-asset-item.filtered-in {
-    animation: fadeZoomIn 0.3s ease forwards;
-}
-.pulse-danger {
-    animation: pulseRed 2s infinite;
-}
-@keyframes pulseRed {
-    0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-    70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-}
-</style>
-
-<div class="card h-100">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-hourglass-split text-warning me-2"></i> Aset Mendekati Kedaluwarsa</h6>
-        <select class="form-select form-select-sm w-auto rounded-pill ps-3 shadow-sm border-0 bg-light" id="expAssetsFilter_{{ wkey }}" onchange="filterExpiringAssets_{{ wkey }}(this.value)">
-            <option value="365">1 Tahun</option>
-            <option value="180">6 Bulan</option>
-            <option value="90">3 Bulan</option>
-            <option value="30">30 Hari</option>
-        </select>
+{# Aset mendekati kedaluwarsa. Penyaring rentang ada di sisi peramban (fungsi per widget), data tetap dari server. #}
+{% from "_ui/macros.html" import empty_state, fmt_date %}
+<section class="jt-panel jt-panel--clip h-100" aria-labelledby="wt-{{ wkey }}">
+  <div class="jt-panel-head">
+    <h2 class="jt-panel-title" id="wt-{{ wkey }}"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Aset mendekati kedaluwarsa</h2>
+    {% if expiring_assets %}
+    <div class="jt-panel-tools">
+      <label class="visually-hidden" for="expAssetsFilter_{{ wkey }}">Rentang kedaluwarsa</label>
+      <select class="form-select form-select-sm w-auto" id="expAssetsFilter_{{ wkey }}" onchange="filterExpiringAssets_{{ wkey }}(this.value)">
+        <option value="365">1 tahun</option>
+        <option value="180">6 bulan</option>
+        <option value="90">3 bulan</option>
+        <option value="30">30 hari</option>
+      </select>
     </div>
-    <div class="card-body p-0">
-        <ul class="list-group list-group-flush" id="expAssetsList_{{ wkey }}">
-            {% if expiring_assets %}
-                {% for exp in expiring_assets %}
-                <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 exp-asset-item" data-days="{{ exp.days_left }}">
-                    <div class="ms-2 me-auto">
-                        <div class="fw-bold"><a href="{{ url_for('assets.view', id=exp.asset.id) }}" class="text-decoration-none text-primary">{{ exp.asset.name }}</a></div>
-                        <div class="text-muted small">
-                            {{ exp.asset.code }} &bull; {{ exp.exp_type }} ({{ exp.expiry_date.strftime('%d %b %Y') }})
-                        </div>
-                    </div>
-                    {% set badge_color = 'soft-badge-success' %}
-                    {% set pulse_class = '' %}
-                    {% if exp.days_left <= 30 %}
-                        {% set badge_color = 'soft-badge-danger' %}
-                        {% set pulse_class = 'pulse-danger' %}
-                    {% elif exp.days_left <= 90 %}
-                        {% set badge_color = 'soft-badge-warning' %}
-                    {% endif %}
-                    <span class="badge {{ badge_color }} {{ pulse_class }} rounded-pill px-3 py-2">
-                        {% if exp.days_left == 0 %}<i class="bi bi-exclamation-circle me-1"></i>Hari Ini
-                        {% elif exp.days_left < 0 %}<i class="bi bi-x-circle me-1"></i>Terlewat {{ exp.days_left|abs }} Hari
-                        {% else %}<i class="bi bi-clock me-1"></i>{{ exp.days_left }} Hari Lagi{% endif %}
-                    </span>
-                </li>
-                {% endfor %}
-            {% else %}
-                <li class="list-group-item text-center text-muted py-4 align-items-center justify-content-center d-flex flex-column border-0">
-                    <i class="bi bi-shield-check fs-2 text-success mb-2"></i>
-                    Semua garansi/umur aset masih aman! Paling cepat >1 Tahun.
-                </li>
-            {% endif %}
-        </ul>
-        <div id="expAssetsEmptyMsg_{{ wkey }}" class="text-center text-muted py-4 d-none">
-            <i class="bi bi-check-circle fs-3 text-secondary mb-2 d-block"></i>
-            Tidak ada aset yang kadaluarsa dalam rentang waktu filter ini.
-        </div>
+    {% endif %}
+  </div>
+  <div class="jt-panel-body jt-panel-body--flush">
+    {% if expiring_assets %}
+    <ul class="jt-list" id="expAssetsList_{{ wkey }}">
+      {% for exp in expiring_assets %}
+      {% set tone = 'bad' if exp.days_left <= 30 else ('warn' if exp.days_left <= 90 else 'ok') %}
+      <li class="exp-asset-item" data-days="{{ exp.days_left }}">
+        <a class="jt-item" href="{{ url_for('assets.view', id=exp.asset.id) }}">
+          <div class="jt-item-main">
+            <div class="jt-item-title">{{ exp.asset.name }}</div>
+            <div class="jt-item-sub">{{ exp.asset.code }} &middot; {{ exp.exp_type }} ({{ fmt_date(exp.expiry_date) }})</div>
+          </div>
+          <div class="jt-item-side">
+            <span class="jt-badge tone-{{ tone }}">
+              {%- if exp.days_left == 0 %}<i class="bi bi-exclamation-circle" aria-hidden="true"></i>Hari ini
+              {%- elif exp.days_left < 0 %}<i class="bi bi-x-circle" aria-hidden="true"></i>Terlewat {{ exp.days_left|abs }} hari
+              {%- else %}<i class="bi bi-clock" aria-hidden="true"></i>{{ exp.days_left }} hari lagi{% endif -%}
+            </span>
+          </div>
+          <i class="bi bi-chevron-right jt-item-go" aria-hidden="true"></i>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    <div id="expAssetsEmptyMsg_{{ wkey }}" hidden>
+      {{ empty_state('check-circle', 'Tidak ada yang kedaluwarsa', 'Tidak ada aset yang habis dalam rentang ini.', ok=True) }}
     </div>
-</div>
+    {% else %}
+    {{ empty_state('shield-check', 'Semua aset aman', 'Tidak ada garansi atau umur aset yang habis dalam 1 tahun.', ok=True) }}
+    {% endif %}
+  </div>
+</section>
 
+{% if expiring_assets %}
 <script>
-    function filterExpiringAssets_{{ wkey }}(maxDays) {
-        let max = parseInt(maxDays);
-        let items = document.querySelectorAll('#expAssetsList_{{ wkey }} .exp-asset-item');
-        let visibleCount = 0;
-        
-        items.forEach(item => {
-            let days = parseInt(item.getAttribute('data-days'));
-            if (days <= max) {
-                item.style.setProperty('display', 'flex', 'important');
-                item.classList.remove('filtered-in');
-                void item.offsetWidth; // trigger reflow for animation
-                item.classList.add('filtered-in');
-                visibleCount++;
-            } else {
-                item.style.setProperty('display', 'none', 'important');
-                item.classList.remove('filtered-in');
-            }
-        });
-        
-        let emptyMsg = document.getElementById('expAssetsEmptyMsg_{{ wkey }}');
-        if (visibleCount === 0 && items.length > 0) {
-            emptyMsg.classList.remove('d-none');
-        } else {
-            emptyMsg.classList.add('d-none');
-        }
-    }
-    
-    // Init default filter (all items initially have display flex naturally, but we run it anyway just in case)
-    filterExpiringAssets_{{ wkey }}(365);
+  function filterExpiringAssets_{{ wkey }}(maxDays) {
+    var max = parseInt(maxDays, 10);
+    var items = document.querySelectorAll('#expAssetsList_{{ wkey }} .exp-asset-item');
+    var visible = 0;
+    items.forEach(function (item) {
+      var show = parseInt(item.getAttribute('data-days'), 10) <= max;
+      item.hidden = !show;
+      if (show) visible++;
+    });
+    var empty = document.getElementById('expAssetsEmptyMsg_{{ wkey }}');
+    if (empty) empty.hidden = visible !== 0;
+  }
+  filterExpiringAssets_{{ wkey }}(365);
 </script>
+{% endif %}

@@ -1,0 +1,580 @@
+/*
+  CSS halaman Dashboard. Pola 4 (Dashboard): ringkasan sekilas, tanpa jelajah data.
+  Bentuk: kepala (sapaan + kalimat ringkas + aksi cepat), bar penyaring, jalur perhatian, lalu kisi widget.
+  Memakai komponen bersama di patterns.css (jt-panel, jt-list, jt-badge, ...) dan token di tokens.css.
+  Kelas jt-* baru; nama lama (.widget-container, .widget-edit-toolbar, ...) dipertahankan karena skrip menyebutnya.
+*/
+
+@layer components {
+  /* ---------- kepala dan bar penyaring ---------- */
+  .dash-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .dash-title { flex: 1 1 22rem; min-width: 0; }
+  .dash-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .jt-btn-lg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 1.125rem;
+    font-weight: 500;
+  }
+  .jt-btn-lg > i { font-size: 1.125rem; line-height: 1; }
+  .dash-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+  }
+  .dash-bar-start,
+  .dash-bar-end { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-width: 0; }
+  .dash-bar-end { margin-left: auto; }
+  .dash-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-width: 0; margin: 0; }
+  .dash-filters .field-group { max-width: 100%; }
+  .dash-filters .form-select { min-width: 7.5rem; }
+
+  /* rentang tanggal kustom: panel berlabel di bawah bar, bukan dua kolom sempit di dalam kolom pilih */
+  .jt-range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+    max-width: 40rem;
+    margin-top: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+  .jt-range[hidden] { display: none; }
+  .jt-range-field { flex: 1 1 9.5rem; min-width: 0; }
+  .jt-range-field .form-control { width: 100%; }
+  .jt-range .jt-field-error { flex: 1 1 100%; margin: 0; }
+  .jt-range .jt-field-error[hidden] { display: none; }
+
+  @media (max-width: 640px) {
+    .dash-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+    .jt-btn-lg { min-height: 3rem; padding: 0 0.5rem; font-size: 0.875rem; }
+    .dash-bar-start,
+    .dash-bar-end,
+    .dash-filters { flex: 1 1 100%; }
+    .dash-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+    .dash-filters .field-group { display: flex; min-width: 0; }
+    .dash-filters .field-group .form-select { flex: 1 1 auto; width: 100%; min-width: 0; text-overflow: ellipsis; }
+    .dash-bar-end { margin-left: 0; }
+    .jt-range .btn { flex: 1 1 100%; }
+  }
+
+  /* ---------- jalur perhatian ---------- */
+  .jt-attn { margin-bottom: 1.25rem; }
+  .jt-attn-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    /* garis hanya di kanan dan bawah tiap sel; tepi luar dipotong panel */
+    margin: 0 -1px -1px 0;
+  }
+  .jt-attn-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-height: 5.5rem;
+    padding: 1rem 1.25rem;
+    border-right: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+    color: inherit;
+    text-decoration: none;
+    transition: background-color 0.15s var(--jt-ease-std);
+  }
+  a.jt-attn-item:hover { background: var(--jt-hover); color: inherit; text-decoration: none; }
+  a.jt-attn-item:active { background: var(--jt-press); }
+  a.jt-attn-item:focus-visible { outline: 2px solid var(--jt-brand-solid); outline-offset: -2px; }
+  .jt-attn-n {
+    color: var(--tone-ink, var(--color-ink));
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .jt-attn-l { color: var(--color-ink); font-size: 0.875rem; font-weight: 500; line-height: 1.4; }
+  .jt-attn-s { color: var(--color-ink-muted); font-size: 0.75rem; line-height: 1.4; }
+  .jt-attn-go {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    color: var(--color-ink-faint);
+    font-size: 1.5rem;
+    line-height: 1;
+    transition: transform 0.15s var(--jt-ease-std), color 0.15s var(--jt-ease-std);
+  }
+  a.jt-attn-item:hover .jt-attn-go { color: var(--color-ink-muted); transform: translateX(2px); }
+  .jt-attn-ok {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    color: var(--color-ink-soft);
+    font-size: 0.875rem;
+  }
+  .jt-attn-ok > i { color: var(--color-ok); font-size: 1.25rem; line-height: 1; }
+
+  @media (max-width: 640px) {
+    .jt-kpis > .jt-kpi:last-child:nth-child(odd),
+    .jt-attn-grid > .jt-attn-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  }
+
+  /* ---------- kisi widget ---------- */
+  .jt-grid > .widget-container { display: flex; }
+  .jt-grid .widget-wrapper { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+  .jt-grid .widget-wrapper > .jt-panel { flex: 1 1 auto; }
+  .jt-grid .jt-panel-body[style*="overflow"] { min-height: 0; }
+
+  /* ---------- baris WO di daftar widget ---------- */
+  .jt-code { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .jt-item-meta { display: flex; align-items: center; gap: 0.5rem; min-width: 0; margin-top: 0.125rem; }
+  .jt-item-asset {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-ink-muted);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ---------- indikator kinerja ---------- */
+  .jt-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    margin: 0 -1px -1px 0;
+  }
+  .jt-kpi {
+    min-width: 0;
+    padding: 1rem 1.25rem;
+    border-right: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+  }
+  .jt-kpi-label { color: var(--color-ink-muted); font-size: 0.875rem; font-weight: 500; line-height: 1.4; }
+  .jt-kpi-value {
+    margin-top: 0.25rem;
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .jt-kpi-value small {
+    margin-left: 0.25rem;
+    color: var(--color-ink-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+  .jt-kpi-note { margin-top: 0.25rem; color: var(--color-ink-muted); font-size: 0.75rem; line-height: 1.4; }
+  .jt-meter {
+    height: 0.375rem;
+    margin-top: 0.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-mute-bg);
+  }
+  .jt-meter--thin { height: 0.25rem; }
+  .jt-meter > i {
+    display: block;
+    width: var(--w, 0%);
+    height: 100%;
+    border-radius: inherit;
+    background: var(--tone, var(--jt-brand-solid));
+    transform-origin: left;
+    animation: jt-grow-x 0.5s var(--jt-ease) backwards;
+  }
+
+  /* ---------- distribusi status ---------- */
+  .jt-dist-total { display: flex; align-items: baseline; gap: 0.5rem; }
+  .jt-dist-total b {
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .jt-dist-total span { color: var(--color-ink-muted); font-size: 0.875rem; }
+  .jt-dist-bar {
+    display: flex;
+    gap: 2px;
+    height: 0.75rem;
+    margin: 1rem 0;
+    overflow: hidden;
+    border-radius: 0.375rem;
+    background: var(--color-mute-bg);
+  }
+  .jt-dist-bar > i {
+    flex: var(--n, 1) 1 0;
+    min-width: 0.25rem;
+    background: var(--tone, var(--color-ink-faint));
+    transform-origin: left;
+    animation: jt-grow-x 0.5s var(--jt-ease) backwards;
+  }
+  .jt-legend { display: grid; gap: 0.125rem; margin: 0; padding: 0; list-style: none; }
+  .jt-legend > li {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 2rem;
+    color: var(--color-ink-soft);
+    font-size: 0.875rem;
+  }
+  .jt-legend > li.is-zero { color: var(--color-ink-faint); }
+  .jt-legend-n {
+    margin-left: auto;
+    color: var(--color-ink);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .is-zero .jt-legend-n { color: var(--color-ink-faint); font-weight: 500; }
+  .jt-legend-p {
+    width: 2.75rem;
+    color: var(--color-ink-muted);
+    font-size: 0.75rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .jt-legend--inline { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; }
+  .jt-legend--inline > li { min-height: 0; color: var(--color-ink-muted); font-size: 0.75rem; }
+  .jt-legend--inline > li { gap: 0.375rem; }
+
+  /* ---------- tren: batang berpasangan per bulan ---------- */
+  .jt-trend { position: relative; }
+  .jt-trend-max {
+    position: absolute;
+    top: -0.25rem;
+    left: 0;
+    color: var(--color-ink-muted);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .jt-trend-plot {
+    display: grid;
+    grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr));
+    gap: 0.5rem;
+    height: 12rem;
+    margin-top: 0.875rem;
+    border-bottom: 1px solid var(--color-line-strong);
+    background:
+      linear-gradient(var(--color-line), var(--color-line)) 0 0 / 100% 1px no-repeat,
+      linear-gradient(var(--color-line), var(--color-line)) 0 50% / 100% 1px no-repeat;
+  }
+  .jt-trend-col {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+    height: 100%;
+    border-radius: 0.25rem;
+    outline-offset: 2px;
+  }
+  .jt-trend-col:hover { background: var(--jt-veil); }
+  .jt-trend-col:focus-visible { outline: 2px solid var(--jt-brand-solid); }
+  .jt-trend-bar {
+    position: relative;
+    width: min(1.25rem, 40%);
+    min-height: 2px;
+    height: var(--h, 0%);
+    border-radius: 4px 4px 0 0;
+    background: var(--tone, var(--jt-brand-solid));
+    transform-origin: bottom;
+    animation: jt-grow-y 0.55s var(--jt-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+  .jt-trend-bar > b {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    margin-bottom: 2px;
+    color: var(--color-ink);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    transform: translateX(-50%);
+    font-variant-numeric: tabular-nums;
+  }
+  .jt-trend-col::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 3;
+    padding: 0.375rem 0.625rem;
+    border-radius: var(--radius-ctl);
+    background: var(--color-frame-raised);
+    color: #fff;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%);
+    transition: opacity 0.12s var(--jt-ease-std);
+  }
+  .jt-trend-col:nth-child(-n + 2)::after { left: 0; transform: none; }
+  .jt-trend-col:nth-last-child(-n + 2)::after { right: 0; left: auto; transform: none; }
+  .jt-trend-col:hover::after,
+  .jt-trend-col:focus::after { opacity: 1; }
+  .jt-trend-labels {
+    display: grid;
+    grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    color: var(--color-ink-muted);
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  /* ---------- skor performa aset ---------- */
+  .jt-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.5rem;
+    border: 0;
+    border-radius: var(--radius-ctl);
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    transition: background-color 0.15s var(--jt-ease-std);
+  }
+  .jt-score:hover { background: var(--jt-hover); }
+  .jt-score:focus-visible { outline: 2px solid var(--jt-brand-solid); outline-offset: 1px; }
+  .jt-score > b { min-width: 1.75rem; color: var(--tone-ink, var(--color-ink)); font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .jt-score .jt-meter { width: 5rem; margin: 0; }
+  .jt-score > .bi { color: var(--color-ink-faint); }
+  .jt-score-big { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+  .jt-score-big > b {
+    color: var(--tone-ink, var(--color-ink));
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .jt-kv { margin: 0; border: 1px solid var(--color-line); border-radius: var(--radius-card); }
+  .jt-kv > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.625rem 1rem; }
+  .jt-kv > div + div { border-top: 1px solid var(--color-line); }
+  .jt-kv dt { color: var(--color-ink-muted); font-size: 0.875rem; font-weight: 500; }
+  .jt-kv dd { margin: 0; color: var(--color-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .jt-kv dd small { color: var(--color-ink-muted); font-size: 0.75rem; font-weight: 400; }
+
+  /* ---------- mode atur tampilan ---------- */
+  .widget-edit-toolbar { display: none; }
+  body.edit-mode .widget-container { position: relative; }
+  body.edit-mode .widget-edit-toolbar {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+  .widget-edit-toolbar :is(.drag-handle, .btn-remove-widget) {
+    display: inline-grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-ctl);
+    background: var(--color-surface);
+    color: var(--color-ink-muted);
+    box-shadow: var(--shadow-card);
+    font-size: 1.0625rem;
+    line-height: 1;
+    touch-action: none;
+    transition: background-color 0.15s var(--jt-ease-std), border-color 0.15s var(--jt-ease-std), color 0.15s var(--jt-ease-std);
+  }
+  .widget-edit-toolbar .drag-handle { cursor: grab; }
+  .widget-edit-toolbar .drag-handle:active { cursor: grabbing; }
+  .widget-edit-toolbar .btn-remove-widget { color: var(--color-bad-ink); cursor: pointer; }
+  .widget-edit-toolbar .btn-remove-widget:hover { border-color: var(--color-bad); background: var(--color-bad-bg); }
+  .widget-edit-toolbar :is(.drag-handle, .btn-remove-widget):focus-visible { outline: 2px solid var(--jt-brand-solid); outline-offset: 2px; }
+  @media (pointer: coarse) {
+    .widget-edit-toolbar :is(.drag-handle, .btn-remove-widget) { width: 2.75rem; height: 2.75rem; }
+  }
+  body.edit-mode .widget-wrapper {
+    border-radius: calc(var(--radius-card) + 3px);
+    outline: 2px dashed var(--jt-brand-edge);
+    outline-offset: 3px;
+    transition: outline-color 0.15s var(--jt-ease-std);
+  }
+  body.edit-mode .widget-container:hover .widget-wrapper { outline-color: var(--jt-brand-solid); }
+  body.edit-mode .jt-panel-head { padding-right: 6.5rem; }
+  .widget-container.sortable-ghost { opacity: 0.4; }
+  .widget-container.sortable-drag { box-shadow: var(--shadow-pop); }
+
+  .widget-resize-grip {
+    position: absolute;
+    right: calc(var(--bs-gutter-x, 1.5rem) * 0.5);
+    bottom: 0;
+    z-index: 6;
+    display: none;
+    width: 2.75rem;
+    height: 2.75rem;
+    cursor: nwse-resize;
+    touch-action: none;
+  }
+  body.edit-mode .widget-resize-grip { display: block; }
+  .widget-resize-grip::before {
+    content: "";
+    position: absolute;
+    right: 0.375rem;
+    bottom: 0.375rem;
+    width: 1rem;
+    height: 1rem;
+    border-right: 3px solid var(--jt-brand-solid);
+    border-bottom: 3px solid var(--jt-brand-solid);
+    border-radius: 0 0 0.375rem 0;
+    opacity: 0.7;
+    transition: opacity 0.15s var(--jt-ease-std);
+  }
+  .widget-resize-grip:hover::before,
+  .widget-resize-grip.active::before { opacity: 1; }
+  .dash-size-indicator {
+    position: fixed;
+    z-index: 2000;
+    display: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-ctl);
+    background: var(--color-frame-raised);
+    color: #fff;
+    box-shadow: var(--shadow-pop);
+    font-size: 0.875rem;
+    font-weight: 500;
+    pointer-events: none;
+  }
+  .edit-controls-bar {
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    padding: 0.875rem 1.25rem;
+    border: 1px solid var(--jt-brand-edge);
+    border-radius: var(--radius-card);
+    background: var(--jt-brand-softer);
+  }
+  body.edit-mode .edit-controls-bar { display: flex; animation: jt-pop-in 0.2s var(--jt-ease) backwards; }
+  .edit-controls-title { margin: 0; color: var(--color-ink); font-size: 1rem; font-weight: 600; line-height: 1.3; }
+  .edit-controls-hint { margin: 0.125rem 0 0; color: var(--color-ink-muted); font-size: 0.875rem; }
+  .edit-controls-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+  /* katalog widget (panel samping) */
+  .widget-catalog-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 3.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s var(--jt-ease-std), background-color 0.15s var(--jt-ease-std);
+  }
+  .widget-catalog-item:hover { border-color: var(--jt-brand-edge); background: var(--jt-brand-softer); }
+  .widget-catalog-item:focus-visible { outline: 2px solid var(--jt-brand-solid); outline-offset: 2px; }
+  .widget-catalog-item.already-added { background: var(--color-sunken); opacity: 0.6; pointer-events: none; }
+  .widget-catalog-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radius-ctl);
+    background: var(--color-mute-bg);
+    color: var(--color-mute-ink);
+    font-size: 1.0625rem;
+  }
+  .widget-catalog-name { color: var(--color-ink); font-size: 0.875rem; font-weight: 600; line-height: 1.4; }
+  .widget-catalog-meta { color: var(--color-ink-muted); font-size: 0.75rem; }
+  .widget-catalog-item:not(.already-added) .jt-badge { display: none; }
+  .widget-catalog-item.already-added .widget-catalog-add { display: none; }
+  .widget-catalog-add { margin-left: auto; color: var(--jt-brand-text); font-size: 1.125rem; }
+  .widget-catalog-item .jt-badge { margin-left: auto; }
+}
+
+/* FullCalendar menyuntikkan CSS tanpa lapisan; hanya lapisan override yang bisa mengalahkannya */
+@layer override {
+  .jt-cal .fc .fc-toolbar-title { font-size: 1.0625rem !important; }
+  .jt-cal .fc .fc-col-header-cell-cushion { font-size: 0.75rem !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: 0 !important; }
+  .jt-cal .fc .fc-event { border-radius: 0.375rem !important; font-size: 0.75rem !important; font-weight: 500 !important; }
+  .jt-cal .fc .fc-daygrid-day-number { font-size: 0.8125rem !important; font-variant-numeric: tabular-nums; }
+  .jt-cal .fc .fc-scrollgrid { border-radius: var(--radius-ctl); overflow: hidden; }
+}
+
+@layer components {
+  /* ---------- tambahan: keadaan dan kebiasaan kecil ---------- */
+  .dash-head .ph-title { font-size: 1.75rem; }
+  @media (max-width: 640px) {
+    .dash-head .ph-title { font-size: 1.5rem; }
+  }
+  /* tombol "Atur tampilan" menandai keadaan lewat aria-pressed, teksnya tetap */
+  #editModeBtn[aria-pressed="true"] {
+    border-color: var(--jt-brand-edge);
+    background: var(--jt-brand-soft);
+    color: var(--jt-brand-text);
+  }
+  .edit-controls-bar:focus { outline: 0; }
+  .widget-container[hidden] { display: none; }
+  .jt-grid > [id^="w-"] { scroll-margin-top: calc(var(--jt-topbar-h, 4rem) + 1rem); }
+  .widget-container { transition: opacity 0.18s var(--jt-ease-std), transform 0.18s var(--jt-ease-std); }
+  .widget-container.is-leaving { opacity: 0; transform: scale(0.96); }
+  .widget-resize-grip { padding: 0; border: 0; background: transparent; }
+  .widget-catalog-item:disabled { cursor: not-allowed; opacity: 0.6; }
+  .jt-cal-skel { min-height: 22rem; border-radius: var(--radius-ctl); }
+
+  /* ---------- mode TV: layar penuh bergilir ---------- */
+  .jt-tv {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-canvas);
+  }
+  .jt-tv-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: var(--color-frame);
+    color: #fff;
+  }
+  .jt-tv-title { min-width: 0; font-size: 1.5rem; font-weight: 500; line-height: 1.3; }
+  .jt-tv-title strong { font-weight: 600; }
+  .jt-tv-frame { flex: 1 1 auto; width: 100%; border: 0; }
+}
+
+@layer override {
+  .jt-cal .fc .fc-header-toolbar { flex-wrap: wrap; gap: 0.5rem; }
+}

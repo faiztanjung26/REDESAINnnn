@@ -10,6 +10,8 @@
 @import "./tokens.css";
 @import "./shell.css";
 @import "./patterns.css";
+@import "./surface-dashboard.css";
+@import "./surface-wo.css";
 
 @source "../../templates";
 @source "../../static/js";
@@ -24,6 +26,12 @@
 @layer base {
   :root {
     color-scheme: light;
+  }
+  /* kontrol bawaan peramban (bilah gulir, kolom tanggal, kotak centang) ikut gelap */
+  @media screen {
+    :root[data-bs-theme="dark"] {
+      color-scheme: dark;
+    }
   }
   html {
     -webkit-text-size-adjust: 100%;
