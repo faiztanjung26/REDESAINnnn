@@ -1,1 +1,396 @@
-/* CSS halaman Daftar Work Order. Diisi saat daftar WO ditulis ulang. */
+/*
+  CSS halaman Daftar Work Order. Pola 1 (List / Index): menjelajah banyak baris, mencari, menyaring, mengganti tampilan.
+  Semua WO tampil sekaligus (aturan atasan: tanpa paginasi). Baris yang belum terlihat tidak digambar
+  (content-visibility), tetapi tetap ada di halaman, jadi Ctrl+F menemukannya.
+  Kelas berawalan wol- (Work Order List). Komponen bersama (jt-panel, jt-tabs, jt-badge, seg, field-group)
+  ada di patterns.css; token di tokens.css.
+*/
+
+@layer components {
+  /* ---------- kepala halaman: judul, kalimat ringkas, aksi ---------- */
+  .wol-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .wol-head-text { flex: 1 1 20rem; min-width: 0; }
+  .wol-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.5rem; }
+  .wol-actions .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.5rem; }
+  .wol-actions .btn > i { font-size: 1.0625rem; line-height: 1; }
+  @media (max-width: 768px) {
+    /* judul sudah ada di top bar */
+    .wol-head .ph-title { display: none; }
+    .wol-head { margin-bottom: 0.75rem; }
+    .wol-head-text { flex-basis: 100%; }
+    .wol-actions { flex: 1 1 100%; flex-wrap: nowrap; }
+    .wol-actions .btn { min-height: 2.75rem; }
+    .wol-actions .wol-btn-main { flex: 1 1 auto; }
+    .wol-actions .btn:not(.wol-btn-main) { width: 2.75rem; padding: 0; }
+    .wol-actions .btn:not(.wol-btn-main) .wol-btn-text { display: none; }
+    .wol-actions .dropdown-toggle::after { display: none; }
+  }
+
+  /* ---------- kontrol: cari, periode, saring, tampilan ---------- */
+  .wol-controls { display: flex; flex-direction: column; gap: 0.75rem; margin: 0 0 0.75rem; }
+  .wol-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+  .wol-search { flex: 1 1 16rem; }
+  .wol-selects { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-width: 0; }
+  .wol-selects .field-group { max-width: 100%; }
+  .wol-selects .form-select { min-width: 7.5rem; }
+  .wol-bar-end { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-left: auto; }
+  .wol-btn-filter,
+  .wol-btn-sv { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.5rem; }
+  .wol-btn-filter[aria-expanded="true"] {
+    border-color: var(--jt-brand-edge);
+    background: var(--jt-brand-softer);
+    color: var(--jt-brand-text);
+  }
+  .wol-n {
+    min-width: 1.25rem;
+    padding: 0 0.25rem;
+    border-radius: 0.25rem;
+    background: var(--jt-brand-solid);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .wol-seg-label { display: none; }
+  @media (min-width: 640px) { .wol-seg-label { display: inline; } }
+  /* di HP hanya tampilan aktif yang memakai label; yang lain berupa ikon */
+  @media (max-width: 639px) { .seg-item[aria-current="page"] .wol-seg-label { display: inline; } }
+  @media (pointer: coarse), (max-width: 768px) {
+    .wol-btn-filter,
+    .wol-btn-sv { min-height: 2.75rem; }
+  }
+  @media (max-width: 640px) {
+    .wol-search { flex-basis: 100%; max-width: none; }
+    .wol-selects { display: grid; flex: 1 1 100%; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+    .wol-selects .field-group { display: flex; min-width: 0; }
+    .wol-selects .field-group .form-select { flex: 1 1 auto; width: 100%; min-width: 0; text-overflow: ellipsis; }
+    /* Saring dan Tersimpan di satu baris, pemilih tampilan di baris sendiri selebar layar */
+    .wol-bar-end { display: grid; flex: 1 1 100%; grid-template-columns: minmax(0, 1fr) auto; min-width: 0; margin-left: 0; }
+    .wol-bar-end .seg { display: flex; grid-column: 1 / -1; }
+    .wol-bar-end .seg-item { flex: 1 1 auto; }
+  }
+  .wol-controls .jt-filters { margin: 0; }
+  .wol-controls .jt-range { margin-top: 0; }
+  .wol-tabs { margin: 0 0 0.75rem; }
+  .wol-chips { margin: 0 0 0.75rem; }
+  .wol-chips .jt-chip-x { text-decoration: none; }
+  .wol-sv-menu { min-width: 16rem; max-width: min(22rem, 92vw); padding: 0.25rem; }
+  .wol-sv-item { display: flex; align-items: center; gap: 0.25rem; }
+  .wol-sv-item .dropdown-item { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wol-sv-empty { padding: 0.5rem 0.75rem; color: var(--color-ink-muted); font-size: 0.8125rem; }
+
+  /* ---------- daftar: kartu di layar sempit, tabel di layar lebar ---------- */
+  .wol-list { container: wol / inline-size; margin-bottom: 1.5rem; }
+  .wol-list[aria-busy="true"] .wol-tbody { opacity: 0.5; }
+  .wol-table {
+    --wol-cols: minmax(0, 1fr) auto;
+    --wol-areas: "code status" "desc desc" "asset asset" "prio people";
+    font-size: 0.875rem;
+  }
+  /* aksi ikut satu baris dengan prioritas dan teknisi supaya kartu tidak bertambah tinggi */
+  .wol-table.has-actions {
+    --wol-cols: auto minmax(0, 1fr) auto;
+    --wol-areas: "code code status" "desc desc desc" "asset asset asset" "prio people actions";
+  }
+  .wol-thead { display: none; }
+  .wol-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--wol-cols);
+    grid-template-areas: var(--wol-areas);
+    align-items: center;
+    gap: 0.375rem 0.75rem;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--color-line);
+    content-visibility: auto;
+    contain-intrinsic-size: auto 9.5rem;
+    transition: background-color 0.15s var(--jt-ease-std);
+  }
+  .wol-tbody > .wol-row:last-child { border-bottom: 0; }
+  .wol-tbody > .wol-row:hover { background: var(--jt-hover); }
+  .wol-tbody > .wol-row:active { background: var(--jt-press); }
+  .wol-row:has(.wol-link:focus-visible) { outline: 2px solid var(--jt-brand-solid); outline-offset: -2px; }
+  .wol-code { grid-area: code; display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
+  .wol-link {
+    color: var(--jt-brand-text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+    text-decoration: none;
+  }
+  /* tautan membentang: seluruh baris atau kartu bisa diketuk tanpa JS */
+  .wol-link::after { content: ""; position: absolute; inset: 0; }
+  .wol-link:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+  .wol-link:focus-visible { outline: none; }
+  .wol-sub { color: var(--color-ink-muted); font-size: 0.75rem; line-height: 1.4; font-variant-numeric: tabular-nums; }
+  .wol-muted { color: var(--color-ink-muted); font-size: 0.8125rem; }
+  .wol-desc {
+    display: -webkit-box;
+    grid-area: desc;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-ink);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .wol-asset { grid-area: asset; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.5rem; min-width: 0; }
+  .wol-asset-name { color: var(--color-ink-soft); font-weight: 500; overflow-wrap: anywhere; }
+  .wol-prio { grid-area: prio; justify-self: start; }
+  .wol-status { grid-area: status; justify-self: end; }
+  .wol-people { grid-area: people; justify-self: end; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+  .wol-people .jt-person { flex: none; }
+  .wol-names { min-width: 0; overflow: hidden; color: var(--color-ink-soft); font-size: 0.8125rem; text-overflow: ellipsis; white-space: nowrap; }
+  .wol-more { color: var(--color-ink-muted); font-variant-numeric: tabular-nums; }
+  .wol-act { grid-area: actions; position: relative; z-index: 1; display: flex; align-items: center; justify-content: flex-end; gap: 0.25rem; }
+  .wol-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--color-line);
+    color: var(--color-ink-muted);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .wol-foot b { color: var(--color-ink); font-weight: 600; }
+
+  /* tablet: dua baris per WO, kode di kiri */
+  @container wol (min-width: 36rem) {
+    .wol-table {
+      --wol-cols: 8.5rem minmax(0, 1fr) auto auto;
+      --wol-areas: "code desc desc status" "code asset prio people";
+    }
+    .wol-table.has-actions {
+      --wol-cols: 8.5rem minmax(0, 1fr) auto auto auto;
+      --wol-areas: "code desc desc status actions" "code asset prio people actions";
+    }
+    .wol-row { contain-intrinsic-size: auto 5.5rem; }
+    .wol-asset { flex-direction: column; flex-wrap: nowrap; gap: 0.0625rem; }
+    .wol-asset-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
+
+  /* layar lebar: satu baris per WO seperti tabel; kepala kolom lengket di bawah top bar saat daftar digulir */
+  @container wol (min-width: 58rem) {
+    .wol-table {
+      --wol-cols: 8.5rem minmax(9rem, 1fr) minmax(8rem, 13rem) 6rem 7.5rem 7rem;
+      --wol-areas: "code desc asset prio status people";
+    }
+    .wol-table.has-actions {
+      --wol-cols: 8.5rem minmax(9rem, 1fr) minmax(8rem, 13rem) 6rem 7.5rem 7rem 4.5rem;
+      --wol-areas: "code desc asset prio status people actions";
+    }
+    .wol-thead {
+      display: block;
+      position: sticky;
+      top: var(--jt-topbar-h);
+      z-index: 2;
+      border-bottom: 1px solid var(--color-line);
+      background: var(--color-sunken);
+    }
+    .wol-row { gap: 0.75rem; padding: 0.75rem 1rem; contain-intrinsic-size: auto 4rem; }
+    .wol-row--head {
+      padding-top: 0.625rem;
+      padding-bottom: 0.625rem;
+      border-bottom: 0;
+      content-visibility: visible;
+      contain-intrinsic-size: none;
+      color: var(--color-ink-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .wol-hc-code { grid-area: code; }
+    .wol-hc-desc { grid-area: desc; }
+    .wol-hc-asset { grid-area: asset; }
+    .wol-hc-prio { grid-area: prio; }
+    .wol-hc-status { grid-area: status; }
+    .wol-hc-people { grid-area: people; }
+    .wol-hc-actions { grid-area: actions; }
+    .wol-status,
+    .wol-people { justify-self: start; }
+    /* kepala kolom sudah menyebut nama kolomnya; awalan tersembunyi dibuang agar tidak terbaca dua kali */
+    .wol-lbl { display: none; }
+  }
+
+  /* ---------- keadaan kosong dan gagal muat di dalam bingkai ---------- */
+  .wol-state { padding: 3rem 1.5rem; }
+  .wol-state .jt-empty { padding: 0; }
+  .wol-load { padding: 1rem; }
+  .wol-load .jt-skel { height: 22rem; border-radius: var(--radius-card); }
+
+  /* ---------- kanban ---------- */
+  .wol-kanban {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.125rem 0.125rem 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+  .wol-kcol {
+    display: flex;
+    flex: 0 0 18.5rem;
+    flex-direction: column;
+    max-height: calc(100vh - 13rem);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background: var(--color-sunken);
+    scroll-snap-align: start;
+    transition: background-color 0.15s var(--jt-ease-std), box-shadow 0.15s var(--jt-ease-std);
+  }
+  .wol-kcol.is-over { background: var(--jt-brand-softer); box-shadow: 0 0 0 2px var(--jt-brand-solid); }
+  .wol-khead {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--color-line);
+    color: var(--color-ink);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .wol-khead h2 { margin: 0; font-size: 0.875rem; font-weight: 600; }
+  .wol-khead .jt-tab-n { margin-left: auto; }
+  .wol-kbody { display: flex; flex-direction: column; gap: 0.5rem; min-height: 4.5rem; padding: 0.5rem; overflow-y: auto; }
+  .wol-kempty { padding: 1rem 0.5rem; color: var(--color-ink-muted); font-size: 0.8125rem; text-align: center; }
+  .wol-kcard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-ctl);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+    content-visibility: auto;
+    contain-intrinsic-size: auto 7.5rem;
+    transition: border-color 0.15s var(--jt-ease-std), box-shadow 0.15s var(--jt-ease-std), opacity 0.15s var(--jt-ease-std);
+  }
+  .wol-kcard:hover { border-color: var(--color-line-strong); box-shadow: var(--shadow-raised); }
+  .wol-kcard:has(.wol-link:focus-visible) { outline: 2px solid var(--jt-brand-solid); outline-offset: 1px; }
+  .wol-kcard.is-dragging { opacity: 0.45; }
+  .wol-ktop { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .wol-kdesc {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .wol-kfoot { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+  .wol-kfoot .wol-sub { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wol-kmove { position: relative; z-index: 1; flex: none; margin: -0.25rem -0.25rem -0.25rem 0; }
+  @media (max-width: 640px) {
+    .wol-kcol { flex-basis: min(85vw, 18.5rem); max-height: 70vh; }
+  }
+
+  /* ---------- kalender ---------- */
+  /* warna, tombol, dan event FullCalendar diatur di legacy-override.css (CSS pustaka tanpa lapisan, hanya !important yang menang) */
+  .wol-cal { padding: 1rem; }
+  .wol-cal .fc .fc-toolbar { flex-wrap: wrap; gap: 0.5rem; }
+  .wol-cal .fc .fc-toolbar-title { font-size: 1.125rem !important; }
+  @media (max-width: 640px) { .wol-cal { padding: 0.75rem; } }
+
+  /* ---------- grafik ---------- */
+  .wol-chart { padding: 1.25rem; }
+  .wol-chart-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1rem; margin-bottom: 1.25rem; }
+  .wol-chart-title { flex: 1 1 14rem; margin: 0; color: var(--color-ink); font-size: 1rem; font-weight: 600; }
+  .wol-field { min-width: 11rem; }
+  .wol-field .form-select { width: 100%; }
+  .wol-chart-wrap { position: relative; width: 100%; height: clamp(18rem, 52vh, 28rem); }
+  .wol-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: 0.25rem 1.5rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.875rem;
+  }
+  .wol-legend li { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+  .wol-legend .sw { flex: none; width: 0.75rem; height: 0.75rem; border-radius: 0.1875rem; }
+  .wol-legend.is-plain .sw { display: none; }
+  .wol-legend .lbl { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--color-ink-soft); text-overflow: ellipsis; white-space: nowrap; }
+  .wol-legend .n { color: var(--color-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  /* HP: dua pilihan berdampingan bila muat, supaya grafik dan tabel naik lebih dekat ke atas layar */
+  @media (max-width: 640px) {
+    .wol-chart { padding: 1rem; }
+    .wol-chart-title { flex-basis: 100%; }
+    .wol-field { flex: 1 1 7.5rem; min-width: 0; }
+  }
+
+  /* ---------- pivot: tabel hitung WO per baris dan kolom, dibangun di peramban tanpa pustaka ---------- */
+  .wol-pivot-wrap { padding: 1.25rem; }
+  .wol-pivot { max-height: 70vh; overflow: auto; border: 1px solid var(--color-line); border-radius: var(--radius-ctl); }
+  .wol-pvt { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+  .wol-pvt :is(th, td) { padding: 0.625rem 0.875rem; border-right: 1px solid var(--color-line); border-bottom: 1px solid var(--color-line); }
+  .wol-pvt :is(th, td):last-child { border-right: 0; }
+  .wol-pvt thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-sunken);
+    color: var(--color-ink-soft);
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .wol-pvt tbody th {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-weight: 500;
+    text-align: left;
+  }
+  .wol-pvt thead th:first-child { left: 0; z-index: 3; text-align: left; }
+  .wol-pvt td { background: var(--color-surface); color: var(--color-ink-soft); text-align: right; }
+  .wol-pvt td.is-zero { color: var(--color-ink-faint); }
+  .wol-pvt :is(td, th).is-total { background: var(--color-sunken); color: var(--color-ink); font-weight: 600; }
+  .wol-pvt tfoot :is(th, td) { position: sticky; bottom: 0; z-index: 1; border-bottom: 0; background: var(--color-sunken); color: var(--color-ink); font-weight: 600; text-align: right; }
+  .wol-pvt tfoot th { left: 0; z-index: 2; text-align: left; }
+  .wol-pvt :is(tbody, tfoot) th { min-width: 6.75rem; }
+  .wol-pvt tbody tr:hover :is(td, th):not(.is-total) { background: color-mix(in srgb, var(--color-surface) 94%, var(--color-ink)); }
+  .wol-note { margin: 0; padding: 1.5rem 1rem; color: var(--color-ink-muted); font-size: 0.875rem; text-align: center; }
+  @media (max-width: 640px) { .wol-pivot-wrap { padding: 1rem; } }
+
+  /* ---------- modal pindah status ---------- */
+  .wol-choices { display: grid; gap: 0.5rem; margin: 0; padding: 0; border: 0; }
+  .wol-choice {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-ctl);
+    cursor: pointer;
+    transition: background-color 0.15s var(--jt-ease-std), border-color 0.15s var(--jt-ease-std);
+  }
+  .wol-choice:hover { background: var(--jt-hover); }
+  .wol-choice:has(input:checked) { border-color: var(--jt-brand-edge); background: var(--jt-brand-softer); }
+  .wol-choice:has(input:focus-visible) { outline: 2px solid var(--jt-brand-solid); outline-offset: 2px; }
+  .wol-choice input { flex: none; width: 1.125rem; height: 1.125rem; margin: 0; accent-color: var(--jt-brand-solid); }
+
+  /* tombol aksi per baris dan per kartu: target 44px di layar sentuh */
+  @media (pointer: coarse), (max-width: 768px) {
+    .wol-act .icon-btn,
+    .wol-kmove { width: 2.75rem; height: 2.75rem; }
+  }
+}

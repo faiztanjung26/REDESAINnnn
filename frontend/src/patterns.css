@@ -169,6 +169,17 @@
     color: var(--jt-brand-text);
     font-weight: 500;
   }
+  /* di dalam gugus kolom, seluruh gugus yang tersorot (bukan hanya pilihannya) agar tidak ada sambungan dua warna */
+  .field-group .form-select.is-set { border-color: transparent; background-color: transparent; }
+  .field-group:has(.form-select.is-set) {
+    background: var(--jt-brand-softer);
+    box-shadow: inset 0 0 0 1px var(--jt-brand-edge);
+    color: var(--jt-brand-text);
+  }
+  .field-group:has(.form-select.is-set):hover { box-shadow: inset 0 0 0 1px var(--jt-brand-solid); }
+  .field-group:has(.form-select.is-set):focus-within {
+    box-shadow: inset 0 0 0 1px var(--jt-brand-solid), 0 0 0 3px var(--jt-focus-ring);
+  }
 
   /* ---------- label dan pesan galat kolom ---------- */
   .jt-label {

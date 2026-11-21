@@ -5,21 +5,26 @@
 #}
 
 {#- Satu sumber untuk rona status WO: lencana, batang distribusi, dan legenda memakai pemetaan yang sama. -#}
-{% macro status_tone(name) -%}
-{{ {'Draft': 'mute', 'Assigned': 'violet', 'In Progress': 'info', 'Hold': 'warn', 'Solved': 'brand', 'Completed': 'ok', 'Incompleted': 'orange'}.get(name, 'mute') }}
+{#- control_type (Draft, Pending, Active, Closed) dipakai bila nama status tidak dikenal, mis. status buatan sendiri. -#}
+{% macro status_tone(name, control_type=None) -%}
+{{ {'Draft': 'mute', 'Assigned': 'violet', 'In Progress': 'info', 'Hold': 'warn', 'Solved': 'brand', 'Completed': 'ok', 'Incompleted': 'orange'}.get(name) or {'Draft': 'mute', 'Pending': 'warn', 'Active': 'info', 'Closed': 'ok'}.get(control_type, 'mute') }}
 {%- endmacro %}
 
-{% macro status_badge(name) -%}
+{% macro status_badge(name, control_type=None) -%}
 {%- if name -%}
-<span class="jt-badge tone-{{ status_tone(name)|trim }}"><span class="jt-dot" aria-hidden="true"></span>{{ name }}</span>
+<span class="jt-badge tone-{{ status_tone(name, control_type)|trim }}"><span class="jt-dot" aria-hidden="true"></span>{{ name }}</span>
 {%- else -%}
 <span class="text-muted">&mdash;</span>
 {%- endif -%}
 {%- endmacro %}
 
 {% macro priority_badge(p) -%}
+{%- if p and p != '-' -%}
 {%- set cfg = {'Highest': ('bad', 'chevron-double-up'), 'High': ('orange', 'chevron-up'), 'Medium': ('warn', 'dash'), 'Low': ('info', 'chevron-down')}.get(p, ('mute', 'dot')) -%}
-<span class="jt-badge tone-{{ cfg[0] }}"><i class="bi bi-{{ cfg[1] }}" aria-hidden="true"></i>{{ p or 'None' }}</span>
+<span class="jt-badge tone-{{ cfg[0] }}"><i class="bi bi-{{ cfg[1] }}" aria-hidden="true"></i>{{ p }}</span>
+{%- else -%}
+<span class="text-muted">&mdash;</span>
+{%- endif -%}
 {%- endmacro %}
 
 {% macro due_badge(text, tone='mute', icon='calendar-event') -%}
