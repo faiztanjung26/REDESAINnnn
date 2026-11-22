@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cmms-full-cache-v14';
+const CACHE_NAME = 'cmms-full-cache-v15';
 const CORE_ROUTES = [
   '/static/offline.html',
   '/static/css/app.css',

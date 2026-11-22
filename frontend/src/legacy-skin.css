@@ -332,7 +332,7 @@ summary:focus-visible,
   border-radius: 1rem;
   font-size: 1rem;
 }
-.form-control::placeholder { color: var(--color-ink-faint); }
+.form-control::placeholder { color: var(--color-ink-muted); }
 .form-control:hover:not(:focus):not(:disabled),
 .form-select:hover:not(:focus):not(:disabled) { border-color: var(--color-ink-faint); }
 .form-control:focus,

@@ -35,8 +35,8 @@
     </script>
 
     <!-- CSS hasil build (sumber: frontend/src). Naikkan angka v setiap selesai build ulang. -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=8) }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/legacy.css', v=8) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=9) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/legacy.css', v=9) }}">
 
     {% block head %}{% endblock %}
     <script defer src="{{ url_for('static', filename='vendor/alpine/alpine.min.js') }}"></script>
@@ -449,7 +449,8 @@
 
             // 2. Fallback to localStorage for this specific page
             if (!activated) {
-                var activeTab = localStorage.getItem('activeTab_' + currentPath);
+                var activeTab = null;
+                try { activeTab = localStorage.getItem('activeTab_' + currentPath); } catch (e) {}
                 if (activeTab) {
                     var tabEl = document.querySelector('button[data-bs-target="' + activeTab + '"]');
                     if (tabEl) {
@@ -464,7 +465,7 @@
             tabButtons.forEach(function(btn) {
                 btn.addEventListener('shown.bs.tab', function(e) {
                     var target = e.target.getAttribute('data-bs-target');
-                    localStorage.setItem('activeTab_' + currentPath, target);
+                    try { localStorage.setItem('activeTab_' + currentPath, target); } catch (e) {}
                     if(history.replaceState) {
                         history.replaceState(null, null, target);
                     }
@@ -514,6 +515,7 @@
                             // DOM, bukan innerHTML: nama dashboard buatan pengguna tidak boleh jadi HTML
                             const icon = document.createElement('i');
                             icon.className = 'bi ' + dash.icon;
+                            icon.setAttribute('aria-hidden', 'true');
                             link.append(icon, ' ', dash.name);
                             container.appendChild(link);
                         });
@@ -553,7 +555,7 @@
             window.jtChartTheme = function () {
                 if (typeof Chart === 'undefined' || !Chart.defaults) return;
                 var cs = getComputedStyle(root);
-                Chart.defaults.color = cs.getPropertyValue('--color-ink-muted').trim() || '#667085';
+                Chart.defaults.color = cs.getPropertyValue('--color-ink-muted').trim() || '#5b6579';
                 Chart.defaults.borderColor = cs.getPropertyValue('--color-line').trim() || '#e3e7ee';
             };
 
@@ -589,6 +591,14 @@
 
             document.addEventListener('DOMContentLoaded', window.jtChartTheme);
         })();
+    </script>
+
+    <script>
+        // Ikon Bootstrap Icons di sini hanya hiasan. Halaman lama sering lupa menandainya, jadi disembunyikan dari pembaca layar.
+        document.addEventListener('DOMContentLoaded', function () {
+            var icons = document.querySelectorAll('i.bi:not([aria-hidden]):not([role]):not([title]):not([aria-label])');
+            for (var i = 0; i < icons.length; i++) { icons[i].setAttribute('aria-hidden', 'true'); }
+        });
     </script>
 
     {% block scripts %}{% endblock %}

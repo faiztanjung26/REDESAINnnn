@@ -473,7 +473,7 @@
     transition: border-color 0.16s, box-shadow 0.16s;
   }
   .tb-search input::placeholder {
-    color: var(--color-ink-faint);
+    color: var(--color-ink-muted);
   }
   .tb-search input:focus {
     border-color: var(--color-brand-500);

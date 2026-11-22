@@ -11,7 +11,8 @@ jadi app **tidak butuh Node** untuk berjalan. Backend Flask (model, rute, logika
 | `src/shell.css` | Kerangka halaman: sidebar, top bar, bilah halaman `.page-bar`, navigasi bawah HP, chatbot |
 | `src/patterns.css` | Pola bersama (versi 4): `tone-*`, `.jt-panel`, `.jt-badge`, `.jt-tabs`, `.jt-search`, `.jt-chips`, `.jt-list`, `.seg`, `.field-group`, `.icon-btn`, `.jt-empty` |
 | `src/surface-dashboard.css` | CSS khusus halaman Dashboard: kepala, jalur perhatian, kisi widget, mode atur tampilan, mode TV |
-| `src/surface-wo.css` | CSS khusus halaman daftar Work Order (masih kosong; diisi saat halaman itu didesain ulang) |
+| `src/surface-wo.css` | CSS khusus halaman daftar Work Order (`wol-`): tab status, saringan aktif, kartu di HP, kanban, kalender, grafik, pivot |
+| `src/surface-wo-form.css` | CSS khusus halaman Buat Work Order (`cwf-`): kartu per bagian, pilihan segmen, daftar tugas dan checklist, bilah simpan yang menempel |
 | `src/legacy-skin.css` | Kulit untuk halaman Bootstrap lama: tombol, kartu, tabel, form, modal |
 | `src/legacy-override.css` | Aturan `!important` yang harus menang atas Bootstrap dan CSS di dalam template |
 | `src/app.css` | Titik masuk Tailwind (tema dan utilitas) |
@@ -21,6 +22,7 @@ jadi app **tidak butuh Node** untuk berjalan. Backend Flask (model, rute, logika
 ## Berkas pendukung di luar folder ini
 
 - `templates/_ui/macros.html`: makro Jinja bersama (lencana status dan prioritas, lencana tenggat, keadaan kosong, inisial orang).
+- `static/js/wo-create.js`: perilaku form Buat WO (galat per kolom, Project Code mengikuti aset, template tugas dan checklist, draf otomatis di peramban). Datanya lewat `#woCreateData` di `templates/work_orders/create.html`; isian wajib dan isi kiriman ke server sama seperti form lama.
 - `ui_extras.py`: pembantu baca-saja untuk dashboard dan daftar WO (sapaan, Tugas Saya, tren WO 6 bulan, hitungan tab status). Tidak menulis ke database.
 
 ## Hasil build (jangan diedit tangan)

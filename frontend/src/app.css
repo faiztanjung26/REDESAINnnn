@@ -12,6 +12,7 @@
 @import "./patterns.css";
 @import "./surface-dashboard.css";
 @import "./surface-wo.css";
+@import "./surface-wo-form.css";
 
 @source "../../templates";
 @source "../../static/js";
