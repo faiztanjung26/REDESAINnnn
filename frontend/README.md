@@ -13,6 +13,7 @@ jadi app **tidak butuh Node** untuk berjalan. Backend Flask (model, rute, logika
 | `src/surface-dashboard.css` | CSS khusus halaman Dashboard: kepala, jalur perhatian, kisi widget, mode atur tampilan, mode TV |
 | `src/surface-wo.css` | CSS khusus halaman daftar Work Order (`wol-`): tab status, saringan aktif, kartu di HP, kanban, kalender, grafik, pivot |
 | `src/surface-wo-form.css` | CSS khusus halaman Buat Work Order (`cwf-`): kartu per bagian, pilihan segmen, daftar tugas dan checklist, bilah simpan yang menempel |
+| `src/surface-wo-edit.css` | CSS khusus halaman Isi/Edit Work Order (`woe-`): bar aksi dan tombol alur kerja, kartu aset ringkas, bilah tab yang bisa digulir, satu kartu per tugas prosedur, sasaran ketuk 44px di layar sentuh |
 | `src/legacy-skin.css` | Kulit untuk halaman Bootstrap lama: tombol, kartu, tabel, form, modal |
 | `src/legacy-override.css` | Aturan `!important` yang harus menang atas Bootstrap dan CSS di dalam template |
 | `src/app.css` | Titik masuk Tailwind (tema dan utilitas) |

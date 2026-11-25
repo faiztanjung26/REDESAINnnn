@@ -1,0 +1,567 @@
+/*
+  CSS halaman Isi/Edit Work Order (templates/work_orders/edit.html). Fase 1: tata letak dan ukuran sasaran ketuk.
+  Logika, status, dan izin tidak diubah. Kelas berawalan woe- (Work-Order Edit).
+
+  Halaman ini masih membawa banyak utilitas Bootstrap ber-!important (d-flex, me-2, border-5, p-4, ...) dan JS
+  menukar sebagian kelas itu saat baris tugas berubah (border-success, border-warning). Aturan yang harus
+  mengalahkan utilitas itu juga !important dan duduk di @layer override, lapisan paling awal. Semuanya dikunci ke
+  .woe atau kelas woe-*, jadi tidak bocor ke halaman lain. Warna lewat token (tokens.css), jadi mode gelap ikut.
+  Ukuran besar untuk jari hanya di layar sentuh atau layar sempit: (pointer: coarse), (max-width: 768px).
+  Dibungkus @media screen supaya cetak tidak berubah.
+*/
+
+@layer override {
+  @media screen {
+    /* ---------- bar aksi: judul, status, tombol alur kerja, ekspor ---------- */
+    .page-bar .woe-title {
+      display: block !important;
+      min-width: 0 !important;
+      margin: 0 !important;
+      font-size: 1.1875rem !important;
+      line-height: 1.3 !important;
+    }
+    .woe-code { white-space: nowrap; }
+    .woe-back {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.375rem !important;
+      min-height: 2.5rem !important;
+      margin: 0 !important;
+      padding: 0 0.875rem !important;
+      border-radius: var(--radius-ctl) !important;
+      font-size: 0.875rem !important;
+    }
+    .woe-status {
+      display: inline-flex !important;
+      align-items: center !important;
+      margin: 0 !important;
+    }
+    .woe-status .jt-badge {
+      height: 2rem !important;
+      padding: 0 0.75rem !important;
+      border-radius: 0.5rem !important;
+      font-size: 0.8125rem !important;
+    }
+    .woe-actions:has(> *),
+    .woe-tools:has(> *) {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+    }
+    .woe-actions:not(:has(> *)),
+    .woe-tools:not(:has(> *)) {
+      display: none !important;
+    }
+    .woe-actions > .btn,
+    .woe-tools > .btn,
+    .pb-end > .woe-save {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0.5rem !important;
+      min-height: 2.5rem !important;
+      margin: 0 !important;
+      padding: 0 1rem !important;
+      border-radius: var(--radius-ctl) !important;
+      font-size: 0.875rem !important;
+      line-height: 1.2 !important;
+      white-space: nowrap !important;
+    }
+    .woe-actions > .btn > i,
+    .woe-tools > .btn > i,
+    .pb-end > .woe-save > i {
+      font-size: 1.0625rem !important;
+      line-height: 1 !important;
+    }
+    /* ekspor dan salin: tombol tenang, supaya aksi alur kerja yang menonjol */
+    .woe-tools > .woe-tool {
+      border-color: var(--color-line-strong) !important;
+      background-color: var(--color-surface) !important;
+      box-shadow: none !important;
+      color: var(--color-ink) !important;
+    }
+    .woe-tools > .woe-tool:hover,
+    .woe-tools > .woe-tool:focus-visible {
+      background-color: var(--color-surface-2) !important;
+      color: var(--color-ink) !important;
+    }
+    .woe-tools > .woe-tool:active {
+      background-color: var(--color-sunken) !important;
+    }
+    .woe-ico-pdf { color: var(--color-bad) !important; }
+    .woe-ico-ppt { color: var(--color-orange) !important; }
+
+    @media (pointer: coarse), (max-width: 768px) {
+      .woe-back { min-height: 2.75rem !important; padding: 0 1rem !important; }
+      .woe-actions > .btn,
+      .woe-tools > .btn,
+      .pb-end > .woe-save { min-height: 2.75rem !important; }
+    }
+    @media (max-width: 768px) {
+      .pb-start:has(> .woe-back) { flex-wrap: nowrap !important; }
+      .pb-end:has(> .woe-status, > .woe-actions, > .woe-save) { gap: 0.625rem !important; }
+      .woe-status { flex: 1 1 100% !important; }
+      .woe-actions:has(> *) {
+        display: grid !important;
+        flex: 1 1 100% !important;
+        grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)) !important;
+      }
+      .woe-tools:has(> *) {
+        display: grid !important;
+        flex: 1 1 100% !important;
+        grid-template-columns: repeat(auto-fit, minmax(7.25rem, 1fr)) !important;
+      }
+      .woe-actions > .btn,
+      .pb-end > .woe-save {
+        min-height: 2.875rem !important;
+        font-size: 0.9375rem !important;
+      }
+      .pb-end > .woe-save { flex: 1 1 100% !important; }
+    }
+
+    /* ---------- tata letak: kartu aset ringkas di atas, kartu isian selebar halaman di bawahnya ---------- */
+    .woe {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) !important;
+      gap: 1rem !important;
+      margin: 0 !important;
+    }
+    .woe > * {
+      width: auto !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .woe .woe-card {
+      height: auto !important;
+      margin: 0 !important;
+    }
+
+    /* ---------- kartu aset: nama, kode, lokasi di kiri, QR di kanan; ikon kotak polos disembunyikan ---------- */
+    .woe-asset .woe-card > .card-header {
+      padding: 0.625rem 1rem !important;
+      background: transparent !important;
+    }
+    .woe-asset .woe-card > .card-header h6 {
+      color: var(--color-ink-muted) !important;
+      font-size: 0.8125rem !important;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .woe-asset .woe-card > .card-body {
+      padding: 0.875rem 1rem 1rem !important;
+      text-align: left !important;
+    }
+    .woe-asset fieldset:has(> h5) {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 1rem;
+      align-items: center;
+    }
+    .woe-asset fieldset > .bg-light.rounded { display: none !important; }
+    .woe-asset fieldset > h5 {
+      grid-column: 1;
+      margin: 0 0 0.125rem !important;
+      font-size: 1.0625rem !important;
+      text-align: left !important;
+      overflow-wrap: anywhere;
+    }
+    .woe-asset fieldset > p {
+      grid-column: 1;
+      margin: 0 !important;
+      font-size: 0.875rem !important;
+    }
+    .woe-asset fieldset > .border-top {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      text-align: center;
+    }
+    .woe-asset fieldset > .border-top h6 {
+      margin: 0 0 0.25rem !important;
+      font-size: 0.6875rem !important;
+    }
+    .woe-asset fieldset > .border-top img {
+      width: 5.5rem;
+      height: 5.5rem;
+      padding: 0.125rem !important;
+    }
+    .woe-asset fieldset > .mt-4 {
+      grid-column: 1 / -1;
+      margin-top: 1rem !important;
+    }
+
+    /* ---------- kartu isian dan bilah tab ---------- */
+    .woe-main .woe-card > .card-body { padding: 1.5rem !important; }
+    @media (max-width: 768px) {
+      .woe-main .woe-card > .card-body { padding: 0.75rem !important; }
+    }
+    .woe-tabs {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      gap: 0.125rem !important;
+      margin: 0 !important;
+      padding: 0 0.5rem !important;
+      overflow-x: auto !important;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+      border-bottom: 1px solid var(--color-line) !important;
+    }
+    .woe-tabs::-webkit-scrollbar { display: none; }
+    .woe-tabs > .nav-item {
+      flex: none !important;
+      scroll-snap-align: center;
+    }
+    .woe-tabs .nav-link {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.375rem !important;
+      min-height: 3rem !important;
+      margin: 0 !important;
+      padding: 0.75rem 0.875rem !important;
+      border: 0 !important;
+      border-bottom: 3px solid transparent !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      color: var(--color-ink-soft) !important;
+      font-size: 0.875rem !important;
+      font-weight: 600 !important;
+      white-space: nowrap !important;
+      transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease !important;
+    }
+    .woe-tabs .nav-link > i { margin: 0 !important; font-size: 1rem; }
+    .woe-tabs .nav-link .badge { margin: 0 !important; }
+    .woe-tabs .nav-link:hover {
+      background: var(--color-surface-2) !important;
+      color: var(--color-ink) !important;
+    }
+    .woe-tabs .nav-link.active {
+      border-bottom-color: var(--jt-brand-solid) !important;
+      color: var(--jt-brand-text) !important;
+    }
+    .woe-tabs .nav-link:focus-visible {
+      outline: 0 !important;
+      box-shadow: inset 0 0 0 3px var(--jt-focus-ring) !important;
+    }
+    @media (max-width: 768px) {
+      .woe-tabs .nav-link { padding: 0.75rem 1rem !important; font-size: 0.9375rem !important; }
+    }
+
+    /* judul bagian di dalam tab: judul di kiri, hitungan dan tombol membungkus di bawahnya bila sempit */
+    .woe-pane-head {
+      flex-wrap: wrap !important;
+      gap: 0.5rem 0.75rem !important;
+      margin: 0 0 1rem !important;
+    }
+    .woe-pane-head > div {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+    }
+    .woe-pane-head .btn,
+    .woe-pane-head .badge { margin: 0 !important; }
+    @media (pointer: coarse), (max-width: 768px) {
+      .woe-pane-head .btn {
+        min-height: 2.75rem !important;
+        padding-inline: 1rem !important;
+      }
+    }
+
+    /* label isian: abu terang pada putih tidak terbaca (2,5:1), pakai tinta redup dari token */
+    .woe .form-label.text-muted {
+      color: var(--color-ink-muted) !important;
+      letter-spacing: 0.04em !important;
+    }
+
+    /* ---------- daftar prosedur: satu kartu per tugas ---------- */
+    .woe [id^="proc_row_"] {
+      display: block !important;
+      margin: 0 0 0.625rem !important;
+      padding: 0.75rem 0.875rem !important;
+      border: 1px solid var(--color-line) !important;
+      border-radius: var(--radius-card) !important;
+      background: var(--color-surface) !important;
+      transition: background-color 0.2s ease, border-color 0.2s ease !important;
+    }
+    /* JS menukar kelas border-success dan border-warning saat tugas selesai atau dilewati: dipakai sebagai penanda warna */
+    .woe [id^="proc_row_"].border-success {
+      border-color: color-mix(in srgb, var(--color-ok) 40%, var(--color-line)) !important;
+      background: var(--color-ok-bg) !important;
+    }
+    .woe [id^="proc_row_"].border-warning {
+      border-color: color-mix(in srgb, var(--color-warn) 45%, var(--color-line)) !important;
+      background: var(--color-warn-bg) !important;
+    }
+    .woe [id^="proc_row_"].border-success small.text-success { color: var(--color-ok-ink) !important; }
+    .woe [id^="proc_row_"].border-warning small.text-warning { color: var(--color-warn-ink) !important; }
+    /* kolom kiri: tombol status (centang, lingkaran, kamera); kolom kanan: isi tugas */
+    .woe [id^="proc_row_"] > .d-flex:not(.flex-shrink-0) {
+      display: grid !important;
+      grid-template-columns: 2.75rem minmax(0, 1fr) !important;
+      column-gap: 0.5rem !important;
+      align-items: start !important;
+      overflow: visible !important;
+    }
+    .woe [id^="proc_row_"] > .d-flex:not(.flex-shrink-0) > :first-child {
+      display: flex !important;
+      justify-content: center !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .woe [id^="proc_row_"] > .d-flex:not(.flex-shrink-0) > :first-child button {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-width: 2.75rem !important;
+      min-height: 2.75rem !important;
+      border-radius: 50% !important;
+    }
+    .woe [id^="proc_row_"] > .d-flex:not(.flex-shrink-0) > :first-child .bi {
+      font-size: 1.75rem !important;
+      line-height: 1 !important;
+    }
+    /* lingkaran kosong yang bisa diketuk tidak boleh pudar (25 persen): harus jelas sebagai tombol */
+    .woe [id^="proc_row_"] > .d-flex:not(.flex-shrink-0) > :first-child button.opacity-25,
+    .woe [id^="proc_row_"] > .d-flex:not(.flex-shrink-0) > :first-child button.opacity-50 {
+      opacity: 1 !important;
+      color: var(--color-ink-muted) !important;
+    }
+    .woe [id^="proc_row_"] > .d-flex:not(.flex-shrink-0) > :first-child button.opacity-25:hover,
+    .woe [id^="proc_row_"] > .d-flex:not(.flex-shrink-0) > :first-child button.opacity-50:hover {
+      color: var(--jt-brand-solid) !important;
+    }
+    .woe [id^="proc_row_"] .flex-grow-1 {
+      min-width: 0 !important;
+      container-type: inline-size;
+    }
+
+    /* Ubah dan Hapus (hanya Admin atau Supervisor pada status Draft): satu deret di bawah isi tugas, rata kanan */
+    .woe [id^="proc_row_"] > .d-flex.flex-shrink-0 {
+      display: flex !important;
+      justify-content: flex-end !important;
+      gap: 0.5rem !important;
+      margin: 0.5rem 0 0 !important;
+      padding: 0.5rem 0 0 !important;
+      border-top: 1px solid var(--color-line);
+    }
+    .woe [id^="proc_row_"] > .d-flex.flex-shrink-0 .btn { margin: 0 !important; }
+    .woe [id^="proc_row_"] > .d-flex.flex-shrink-0 form { margin: 0 !important; padding: 0 !important; }
+
+    /* baris judul: nama tugas, lencana, lalu tombol Keterangan dan Skip/Fail di bawahnya (sempit) atau di kanan (lebar) */
+    .woe [id^="proc_row_"] .flex-grow-1 > .justify-content-between {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 0.75rem !important;
+    }
+    .woe [id^="proc_row_"] .justify-content-between > div:first-child {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      align-items: center !important;
+      gap: 0.25rem 0.5rem !important;
+      min-width: 0 !important;
+    }
+    .woe [id^="proc_row_"] [id^="proc_name_"] {
+      flex: 1 1 100% !important;
+      font-size: 1rem !important;
+      line-height: 1.4 !important;
+      overflow-wrap: anywhere;
+    }
+    .woe [id^="proc_row_"] [id^="proc_photo_badges_"] { display: contents !important; }
+    .woe [id^="proc_row_"] .badge {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.25rem !important;
+      min-height: 1.5rem !important;
+      margin: 0 !important;
+      font-size: 0.75rem !important;
+    }
+    .woe [id^="proc_row_"] .justify-content-between > .d-flex {
+      display: grid !important;
+      grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)) !important;
+      gap: 0.5rem !important;
+    }
+    .woe [id^="proc_row_"] [id^="proc_skip_btn_"]:not(.d-none) {
+      display: block !important;
+      margin: 0 !important;
+    }
+    .woe [id^="proc_row_"] .justify-content-between > .d-flex > .btn,
+    .woe [id^="proc_row_"] [id^="proc_skip_btn_"] > .btn {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0.375rem !important;
+      width: 100% !important;
+      min-height: 2.5rem !important;
+      margin: 0 !important;
+      padding: 0 0.75rem !important;
+      font-size: 0.875rem !important;
+      white-space: nowrap !important;
+    }
+    @container (min-width: 34rem) {
+      .woe [id^="proc_row_"] .flex-grow-1 > .justify-content-between {
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        justify-content: space-between !important;
+      }
+      .woe [id^="proc_row_"] .justify-content-between > .d-flex {
+        display: flex !important;
+        flex: none !important;
+      }
+      .woe [id^="proc_row_"] .justify-content-between > .d-flex > .btn,
+      .woe [id^="proc_row_"] [id^="proc_skip_btn_"] > .btn {
+        width: auto !important;
+        min-height: 2.25rem !important;
+      }
+    }
+
+    /* foto: pil "View Photo n" dengan tombol hapus, dan "Tambah Foto". Sasaran ketuk 36px (44px di layar sentuh). */
+    .woe [id^="proc_photo_pills_"] {
+      gap: 0.5rem !important;
+      margin-top: 0.75rem !important;
+    }
+    .woe [id^="proc_photo_pills_"] > .badge {
+      min-height: 2.25rem !important;
+      padding: 0 !important;
+      border-radius: 0.625rem !important;
+      font-size: 0.8125rem !important;
+      gap: 0 !important;
+    }
+    .woe [id^="proc_photo_pills_"] > .badge > a {
+      display: inline-flex;
+      align-items: center;
+      align-self: stretch;
+      padding: 0 0.5rem 0 0.75rem;
+      color: var(--jt-brand-text) !important;
+    }
+    .woe [id^="proc_photo_pills_"] .btn-close {
+      align-self: stretch;
+      width: 2.25rem !important;
+      height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-radius: 0 0.625rem 0.625rem 0 !important;
+      border-left: 1px solid color-mix(in srgb, var(--jt-brand-text) 25%, transparent) !important;
+      background-size: 0.75rem !important;
+      font-size: 0.75rem !important;
+      filter: none !important;
+      opacity: 0.65 !important;
+    }
+    .woe [id^="proc_photo_pills_"] .btn-close:hover,
+    .woe [id^="proc_photo_pills_"] .btn-close:focus-visible { opacity: 1 !important; }
+    .woe [id^="proc_photo_pills_"] > button.badge {
+      gap: 0.375rem !important;
+      padding: 0 0.875rem !important;
+    }
+    @media (pointer: coarse), (max-width: 768px) {
+      .woe [id^="proc_photo_pills_"] > .badge { min-height: 2.75rem !important; }
+      .woe [id^="proc_photo_pills_"] .btn-close { width: 2.75rem !important; }
+      .woe [id^="proc_row_"] .justify-content-between > .d-flex > .btn,
+      .woe [id^="proc_row_"] [id^="proc_skip_btn_"] > .btn { min-height: 2.75rem !important; }
+    }
+
+    /* catatan pengerjaan: tautan "+ Catatan pengerjaan", lencana catatan, dan editor */
+    .woe [id^="proc_row_"] [id^="note_btn_toggle_"] .btn-link {
+      min-height: 2.25rem !important;
+      padding: 0 0.25rem !important;
+      font-size: 0.875rem !important;
+    }
+    .woe [id^="proc_row_"] [id^="note_btn_toggle_"] .btn-link span {
+      opacity: 1 !important;
+      color: var(--color-ink-muted) !important;
+    }
+    .woe [id^="proc_row_"] [id^="note_badge_"] { max-width: 100%; }
+    .woe [id^="proc_row_"] [id^="note_badge_"] > a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+      min-height: 2rem;
+    }
+    .woe [id^="note_editor_"] { max-width: none !important; }
+    .woe [id^="note_editor_"] input {
+      min-height: 2.5rem !important;
+      font-size: 1rem !important;
+    }
+    .woe [id^="note_editor_"] .btn-primary { min-height: 2.5rem !important; }
+    .woe [id^="note_editor_"] .rounded-circle {
+      width: 2.5rem !important;
+      height: 2.5rem !important;
+    }
+    @media (pointer: coarse), (max-width: 768px) {
+      .woe [id^="proc_row_"] [id^="note_btn_toggle_"] .btn-link { min-height: 2.75rem !important; }
+      .woe [id^="proc_row_"] [id^="note_badge_"] > a { min-width: 2.75rem; min-height: 2.75rem; }
+    }
+
+    /* kotak catatan tasklist */
+    .woe-note-box {
+      padding: 0.25rem;
+      border: 1px solid var(--color-line-strong);
+      border-radius: var(--radius-ctl);
+      background: var(--color-surface);
+    }
+    .woe-note-box:focus-within {
+      border-color: var(--jt-brand-solid);
+      box-shadow: 0 0 0 4px var(--jt-focus-ring);
+    }
+
+    /* ---------- sasaran ketuk 44px di layar sentuh: tombol ikon polos, tautan berkas, lencana foto ---------- */
+    @media (pointer: coarse), (max-width: 768px) {
+      .woe .btn { min-width: 2.75rem !important; }
+      /* nama berkas: tautan blok setinggi baris, tombol ubah dan hapus di sebelahnya diberi jarak */
+      .woe #files .flex-grow-1 > a {
+        display: flex !important;
+        align-items: center !important;
+        min-height: 2.75rem !important;
+      }
+      .woe #files .d-flex.align-items-center > .btn {
+        margin: 0 !important;
+      }
+      .woe #files .flex-grow-1 + .d-flex.align-items-center { gap: 0.5rem !important; }
+      .woe #files .flex-grow-1.overflow-hidden { margin-right: 0.5rem !important; }
+      /* lencana "Progress Foto n/m" bisa diketuk: lencana tetap kecil, area ketuk diperluas lewat bidang tak terlihat */
+      .woe [id^="proc_row_"] .task-photo-clickable { position: relative !important; }
+      .woe [id^="proc_row_"] .task-photo-clickable::after {
+        content: "";
+        position: absolute;
+        inset: -0.875rem 0 -0.375rem;
+      }
+      /* tautan catatan di bawah deretan tombol: jarak 8px */
+      .woe [id^="proc_row_"] [id^="note_btn_toggle_"] { margin-top: 0.5rem !important; }
+      /* Ubah dan Hapus parameter checklist (Draft): jarak 8px */
+      .woe td.text-center > .d-inline-flex { gap: 0.5rem !important; }
+      .woe td.text-center > .d-inline-flex .btn { margin: 0 !important; }
+    }
+
+    /* ---------- baris checklist yang sedang diisi: latar lembut dan cincin, tanpa garis tebal di sisi ---------- */
+    .woe .checklist-row.checklist-row-active,
+    .woe .checklist-row:focus-within,
+    .woe .checklist-row.checklist-row-active td,
+    .woe .checklist-row:focus-within td {
+      background-color: var(--jt-brand-softer) !important;
+    }
+    .woe .checklist-row.checklist-row-active td.param-cell,
+    .woe .checklist-row:focus-within td.param-cell {
+      box-shadow: none !important;
+    }
+    .woe .checklist-row.checklist-row-active .param-name-text,
+    .woe .checklist-row:focus-within .param-name-text {
+      color: var(--jt-brand-text) !important;
+    }
+    .woe .checklist-row.checklist-row-active .chk-value-input,
+    .woe .checklist-row:focus-within .chk-value-input,
+    .woe .checklist-row.checklist-row-active .input-group-text,
+    .woe .checklist-row:focus-within .input-group-text {
+      border-color: var(--jt-brand-solid) !important;
+      background-color: var(--color-surface) !important;
+    }
+    .woe .checklist-row.checklist-row-active .chk-value-input:focus,
+    .woe .checklist-row:focus-within .chk-value-input:focus {
+      box-shadow: 0 0 0 4px var(--jt-focus-ring) !important;
+    }
+  }
+}

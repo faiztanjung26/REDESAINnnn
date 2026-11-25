@@ -1,16 +1,17 @@
 {% extends "base.html" %}
+{% from "_ui/macros.html" import status_badge %}
 
 
 
 {% block toolbar_left %}
 
-<a href="{{ url_for('work_orders.index') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i>
+<a href="{{ url_for('work_orders.index') }}" class="btn btn-sm btn-outline-secondary woe-back"><i class="bi bi-arrow-left"></i>
 
     Back</a>
 
-<h5 class="mb-0 ms-3 d-flex align-items-center">
+<h5 class="mb-0 ms-3 d-flex align-items-center woe-title">
 
-    {% if wo %}Edit Work Order: {{ wo.code }}{% else %}New Work Order{% endif %}
+    {% if wo %}Edit Work Order: <span class="woe-code">{{ wo.code }}</span>{% else %}New Work Order{% endif %}
 
 </h5>
 
@@ -22,33 +23,10 @@
 
 {% if wo and wo.current_status %}
 
-{% if wo.current_status.control_type == 'Draft' %}
-
-<span class="badge bg-secondary fs-6 me-3"><i class="bi bi-pencil"></i> {{ wo.current_status.name }}</span>
-
-{% elif wo.current_status.control_type == 'Pending' %}
-
-<span class="badge bg-warning text-dark fs-6 me-3"><i class="bi bi-hourglass-split"></i> {{ wo.current_status.name
-
-    }}</span>
-
-{% elif wo.current_status.control_type == 'Active' %}
-
-<span class="badge bg-primary fs-6 me-3"><i class="bi bi-play-circle"></i> {{ wo.current_status.name }}</span>
-
-{% elif wo.current_status.control_type == 'Closed' or wo.current_status.name == 'Completed' %}
-
-<span class="badge bg-success fs-6 me-3"><i class="bi bi-check-circle"></i> {{ wo.current_status.name }}</span>
-
-{% else %}
-
-<span class="badge bg-light text-dark border fs-6 me-3">{{ wo.current_status.name }}</span>
-
-{% endif %}
-
-
+<span class="woe-status">{{ status_badge(wo.current_status.name, wo.current_status.control_type) }}</span>
 
 <!-- Workflow Action Buttons -->
+<div class="woe-actions">
 
 {% if current_user.role in ['Admin', 'Supervisor'] and wo.current_status.name == 'Solved' %}
 
@@ -118,23 +96,24 @@
 
 
 
+</div>
+
 {% endif %}
 
 {% if wo %}
+<div class="woe-tools">
 
 {% if current_user.role in ['Admin', 'Supervisor'] %}
 
-<a href="{{ url_for('work_orders.create', copy_from=wo.id) }}" class="btn btn-sm btn-outline-secondary shadow-sm me-2" title="Duplicate Work Order"><i class="bi bi-files"></i> Duplicate WO</a>
+<a href="{{ url_for('work_orders.create', copy_from=wo.id) }}" class="btn btn-sm btn-outline-secondary woe-tool" title="Duplicate Work Order"><i class="bi bi-files"></i> Duplicate WO</a>
 
 {% endif %}
 
-<a href="{{ url_for('work_orders.export_pdf', id=wo.id) }}" class="btn btn-sm btn-danger shadow-sm me-2"><i
+<a href="{{ url_for('work_orders.export_pdf', id=wo.id) }}" class="btn btn-sm btn-outline-secondary woe-tool"><i class="bi bi-file-earmark-pdf woe-ico-pdf"></i> Export PDF</a>
 
-        class="bi bi-file-earmark-pdf"></i> Export PDF</a>
+<a href="{{ url_for('work_orders.export_ppt', id=wo.id) }}" class="btn btn-sm btn-outline-secondary woe-tool"><i class="bi bi-file-earmark-slides woe-ico-ppt"></i> Export PPT</a>
 
-<a href="{{ url_for('work_orders.export_ppt', id=wo.id) }}" class="btn btn-sm text-white shadow-sm me-2" style="background-color: #d24726; border-color: #d24726;"><i
-
-        class="bi bi-file-earmark-slides"></i> Export PPT</a>
+</div>
 
 {% endif %}
 
@@ -142,7 +121,7 @@
 
 %}
 
-<button type="submit" form="woForm" class="btn btn-sm btn-secondary shadow-sm"><i class="bi bi-save"></i> Save
+<button type="submit" form="woForm" class="btn btn-sm btn-secondary shadow-sm woe-save"><i class="bi bi-save"></i> Save
 
     Notes</button>
 
@@ -300,15 +279,15 @@
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/></form>
 
-<div class="row g-4">
+<div class="row g-4 woe">
 
 
 
     <!-- Left Column: Asset Info -->
 
-    <div class="col-md-4">
+    <div class="col-md-4 woe-asset">
 
-        <div class="settings-pane-card h-100">
+        <div class="settings-pane-card woe-card h-100">
 
             <div class="card-header bg-transparent border-bottom">
 
@@ -414,13 +393,13 @@
 
     <!-- Right Column: Form Tabs -->
 
-    <div class="col-md-8">
+    <div class="col-md-8 woe-main">
 
-        <div class="settings-pane-card mb-4">
+        <div class="settings-pane-card woe-card mb-4">
 
             <div class="card-header bg-transparent p-0 border-bottom-0">
 
-                <ul class="nav nav-tabs px-3 pt-3" id="woTabs" role="tablist">
+                <ul class="nav nav-tabs px-3 pt-3 woe-tabs" id="woTabs" role="tablist">
 
                     <li class="nav-item" role="presentation">
 
@@ -864,7 +843,7 @@
 
                         {% if wo %}
 
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3 woe-pane-head">
 
                             <h6 class="fw-bold mb-0">Task Procedures</h6>
 
@@ -1708,7 +1687,7 @@
 
                             </div>
 
-                            <div class="rounded-2 p-1 bg-white" style="border: 2px solid #111 !important;">
+                            <div class="woe-note-box">
 
                                 <textarea class="form-control border-0 shadow-none text-dark" 
 
@@ -1774,7 +1753,7 @@
 
                         {% if wo %}
 
-                        <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3 mt-4 woe-pane-head">
 
                             <h6 class="fw-bold mb-0">Checklist Data Collection</h6>
 
@@ -3237,6 +3216,26 @@
 </div>
 
 
+
+<script>
+// Tab yang dipilih ikut tergulung ke tengah bilah tab di layar sempit. Hanya menggeser bilah; tab dan isinya tidak berubah.
+(function () {
+    function centerTab(btn) {
+        var strip = document.getElementById('woTabs');
+        if (!strip || !btn || strip.scrollWidth <= strip.clientWidth) return;
+        var delta = btn.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+        var left = strip.scrollLeft + delta - (strip.clientWidth - btn.offsetWidth) / 2;
+        var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        strip.scrollTo({ left: Math.max(0, left), behavior: calm ? 'auto' : 'smooth' });
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        var strip = document.getElementById('woTabs');
+        if (!strip) return;
+        strip.addEventListener('click', function (e) { centerTab(e.target.closest('.nav-link')); });
+        setTimeout(function () { centerTab(strip.querySelector('.nav-link.active')); }, 0);
+    });
+})();
+</script>
 
 {% endblock %}{% block scripts %}
 

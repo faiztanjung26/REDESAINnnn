@@ -19,8 +19,8 @@
   [data-bs-theme="dark"] .border-light,
   [data-bs-theme="dark"] .border-white { border-color: var(--color-line) !important; }
   /* .text-dark di atas latar kuning/cyan tetap gelap: latar itu tidak ikut menggelap */
-  [data-bs-theme="dark"] .text-dark:not(.bg-warning):not(.bg-info),
-  [data-bs-theme="dark"] .text-black:not(.bg-warning):not(.bg-info) { color: var(--color-ink) !important; }
+  [data-bs-theme="dark"] .text-dark:not(.bg-warning):not(.bg-info):not(.btn-warning):not(.btn-info),
+  [data-bs-theme="dark"] .text-black:not(.bg-warning):not(.bg-info):not(.btn-warning):not(.btn-info) { color: var(--color-ink) !important; }
   [data-bs-theme="dark"] .text-secondary { color: var(--color-ink-muted) !important; }
   [data-bs-theme="dark"] .text-primary { color: var(--jt-brand-text) !important; }
   [data-bs-theme="dark"] .text-success { color: var(--color-ok) !important; }
@@ -96,13 +96,25 @@
   color: var(--color-ink) !important;
 }
 .select2-container--default .select2-selection--single { display: flex !important; align-items: center !important; }
+.select2-container--bootstrap-5 .select2-selection--single { display: flex !important; align-items: center !important; }
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+  flex: 1 !important;
+  padding: 0 2rem 0 0.75rem !important;
+  color: var(--color-ink) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+.select2-container--bootstrap-5 .select2-selection__placeholder { color: var(--color-ink-muted) !important; }
 /* layar sentuh: sama tingginya dengan .form-select (44px+), huruf 16px, baris hasil cukup besar untuk jari */
 @media (pointer: coarse), (max-width: 768px) {
   .select2-container--default .select2-selection--single,
-  .select2-container--default .select2-selection--multiple { min-height: 2.875rem !important; }
-  .select2-container--default .select2-selection--single .select2-selection__rendered { font-size: 1rem !important; }
+  .select2-container--default .select2-selection--multiple,
+  .select2-container--bootstrap-5 .select2-selection { min-height: 2.875rem !important; }
+  .select2-container--default .select2-selection--single .select2-selection__rendered,
+  .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered { font-size: 1rem !important; }
   .select2-container--default .select2-results > .select2-results__options { max-height: min(22rem, 55vh) !important; }
-  .select2-container--default .select2-results__option { min-height: 2.75rem; padding: 0.75rem !important; font-size: 0.9375rem; }
+  .select2-container--default .select2-results__option,
+  .select2-container--bootstrap-5 .select2-results__option { min-height: 2.75rem; padding: 0.75rem !important; font-size: 0.9375rem; }
   .select2-container--default .select2-search--dropdown .select2-search__field { min-height: 2.75rem; font-size: 1rem !important; }
 }
 /* kolom Buat WO yang gagal validasi */

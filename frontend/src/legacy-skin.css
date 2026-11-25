@@ -275,6 +275,41 @@ summary:focus-visible,
   --bs-btn-disabled-color: var(--color-ink-faint);
   --bs-btn-disabled-border-color: var(--color-line);
 }
+.btn-outline-warning {
+  --bs-btn-color: var(--color-warn-ink);
+  --bs-btn-border-color: var(--color-warn);
+  --bs-btn-hover-color: var(--color-warn-ink);
+  --bs-btn-hover-bg: var(--color-warn-bg);
+  --bs-btn-hover-border-color: var(--color-warn);
+  --bs-btn-active-color: var(--color-warn-ink);
+  --bs-btn-active-bg: var(--color-warn-bg);
+  --bs-btn-active-border-color: var(--color-warn);
+  --bs-btn-disabled-color: var(--color-ink-faint);
+  --bs-btn-disabled-border-color: var(--color-line);
+}
+.btn-outline-info {
+  --bs-btn-color: var(--color-info-ink);
+  --bs-btn-border-color: var(--color-info);
+  --bs-btn-hover-color: var(--color-info-ink);
+  --bs-btn-hover-bg: var(--color-info-bg);
+  --bs-btn-hover-border-color: var(--color-info);
+  --bs-btn-active-color: var(--color-info-ink);
+  --bs-btn-active-bg: var(--color-info-bg);
+  --bs-btn-active-border-color: var(--color-info);
+  --bs-btn-disabled-color: var(--color-ink-faint);
+  --bs-btn-disabled-border-color: var(--color-line);
+}
+/* template menambah text-white pada .btn-info: biru dasar digelapkan supaya putih di atasnya lolos 4,5:1 */
+.btn-info.text-white {
+  --bs-btn-bg: #0b66b0;
+  --bs-btn-border-color: #0b66b0;
+  --bs-btn-hover-bg: #0a5a9d;
+  --bs-btn-hover-border-color: #0a5a9d;
+  --bs-btn-active-bg: #094f8c;
+  --bs-btn-active-border-color: #094f8c;
+  --bs-btn-disabled-bg: #0b66b0;
+  --bs-btn-disabled-border-color: #0b66b0;
+}
 .btn-light {
   --bs-btn-color: var(--color-ink-soft);
   --bs-btn-bg: var(--color-mute-bg);
@@ -685,6 +720,20 @@ summary:focus-visible,
   --bs-btn-active-color: var(--color-ink);
   --bs-btn-active-bg: var(--jt-press);
 }
+[data-bs-theme="dark"] .btn-secondary {
+  --bs-btn-color: var(--color-ink);
+  --bs-btn-bg: var(--jt-press);
+  --bs-btn-border-color: var(--color-line-strong);
+  --bs-btn-hover-color: var(--color-ink);
+  --bs-btn-hover-bg: var(--color-line-strong);
+  --bs-btn-hover-border-color: var(--color-line-strong);
+  --bs-btn-active-color: var(--color-ink);
+  --bs-btn-active-bg: var(--color-line-strong);
+  --bs-btn-active-border-color: var(--color-line-strong);
+  --bs-btn-disabled-color: var(--color-ink-faint);
+  --bs-btn-disabled-bg: var(--color-mute-bg);
+  --bs-btn-disabled-border-color: var(--color-line);
+}
 [data-bs-theme="dark"] .btn-outline-success { --bs-btn-color: var(--color-ok); --bs-btn-border-color: var(--color-ok); --bs-btn-hover-bg: var(--color-ok-bg); --bs-btn-hover-color: var(--color-ok-ink); --bs-btn-active-bg: var(--color-ok-bg); --bs-btn-active-color: var(--color-ok-ink); }
 [data-bs-theme="dark"] .btn-outline-danger { --bs-btn-color: var(--color-bad); --bs-btn-border-color: var(--color-bad); --bs-btn-hover-bg: var(--color-bad-bg); --bs-btn-hover-color: var(--color-bad-ink); --bs-btn-active-bg: var(--color-bad-bg); --bs-btn-active-color: var(--color-bad-ink); }
 [data-bs-theme="dark"] .btn-outline-warning { --bs-btn-color: var(--color-warn); --bs-btn-border-color: var(--color-warn); --bs-btn-hover-bg: var(--color-warn-bg); --bs-btn-hover-color: var(--color-warn-ink); --bs-btn-active-bg: var(--color-warn-bg); --bs-btn-active-color: var(--color-warn-ink); }
@@ -700,13 +749,13 @@ summary:focus-visible,
   .form-control-lg,
   .form-select-lg { font-size: 1rem; }
   .form-control, .form-select { min-height: 2.875rem; }
-  .form-control-sm, .form-select-sm { min-height: 2.625rem; }
+  .form-control-sm, .form-select-sm { min-height: 2.75rem; }
   .form-control-lg, .form-select-lg { min-height: 3.25rem; }
   .btn { min-height: 2.875rem; }
-  .btn-sm, .btn-group-sm > .btn { min-height: 2.625rem; }
+  .btn-sm, .btn-group-sm > .btn { min-height: 2.75rem; }
   .btn-lg, .btn-group-lg > .btn { min-height: 3.25rem; }
   .input-group-sm > .form-control,
-  .input-group-sm > .btn { min-height: 2.625rem; }
+  .input-group-sm > .btn { min-height: 2.75rem; }
   .form-check-input { width: 1.25rem; height: 1.25rem; margin-top: 0.125rem; }
   .form-switch .form-check-input { width: 2.5rem; height: 1.375rem; }
   .dropdown-item { min-height: 2.875rem; }
@@ -714,6 +763,18 @@ summary:focus-visible,
   .nav-tabs:not(.card-header-tabs) .nav-link { min-height: 2.75rem; }
   .nav-pills .nav-link { min-height: 2.75rem; display: inline-flex; align-items: center; }
   .accordion-button { min-height: 3rem; }
+  /* tombol tutup modal, panel samping, dan peringatan: area ketuk 44px, simbol X tetap kecil di tengah */
+  .modal-header .btn-close,
+  .offcanvas-header .btn-close,
+  .alert-dismissible .btn-close {
+    box-sizing: border-box;
+    flex: none;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    background-position: center;
+    background-size: 0.875rem;
+  }
 }
 
 /* ---------- HP ---------- */
