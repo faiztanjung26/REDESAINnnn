@@ -25,17 +25,17 @@
     /* ── Empty Canvas ── */
     .empty-canvas {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        min-height: 50vh; background: linear-gradient(135deg, #f8fafc, #eef2ff);
+        min-height: 50vh; background: var(--color-sunken, #f8fafc);
         border: 2px dashed rgba(79, 70, 229, 0.2); border-radius: 24px; padding: 48px;
     }
     .empty-canvas i { font-size: 4rem; color: rgba(79, 70, 229, 0.15); }
-    .empty-canvas h4 { color: #64748b; margin-top: 16px; }
+    .empty-canvas h4 { color: var(--color-ink-muted, #64748b); margin-top: 16px; }
 
     /* ── Widget Cards ── */
     .param-card {
-        background: linear-gradient(145deg, #ffffff, #f8fafc); 
-        border-radius: 20px; 
-        border: none;
+        background: var(--color-surface, #ffffff);
+        border-radius: 20px;
+        border: 1px solid var(--color-line, transparent);
         box-shadow: 0 10px 30px -5px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
         overflow: hidden; 
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease; 
@@ -52,42 +52,42 @@
     }
     .param-card .param-title {
         font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;
-        font-weight: 800; color: #0f172a; margin: 0;
+        font-weight: 800; color: var(--color-ink, #0f172a); margin: 0;
     }
     .param-card .param-value { padding: 4px 24px 24px; }
     .param-card .param-value h2 { font-size: 2.2rem; font-weight: 800; margin: 0; line-height: 1.1; }
     .param-card .param-value .unit { font-size: 0.9rem; font-weight: 500; opacity: 0.6; margin-left: 4px; }
     .param-card .param-footer {
-        padding: 10px 24px; font-size: 0.75rem; color: #64748b;
-        border-top: 1px solid rgba(0,0,0,0.04); background: transparent;
+        padding: 10px 24px; font-size: 0.75rem; color: var(--color-ink-muted, #64748b);
+        border-top: 1px solid var(--color-line, rgba(0,0,0,0.04)); background: transparent;
     }
     .param-card .param-delete {
         position: absolute; top: 12px; right: 12px; opacity: 0; transition: opacity 0.2s;
     }
     .param-card:hover .param-delete { opacity: 1; }
     .param-card .param-subtitle {
-        font-size: 0.72rem; color: #94a3b8; margin-top: 2px; font-weight: 500;
+        font-size: 0.72rem; color: var(--color-ink-muted, #94a3b8); margin-top: 2px; font-weight: 500;
     }
 
     /* ── Info Card ── */
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 18px 14px; }
     .info-item { padding: 6px 0; }
-    .info-item-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; font-weight: 600; }
-    .info-item-value { font-size: 0.85rem; font-weight: 700; color: #1e293b; }
+    .info-item-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink-muted, #94a3b8); font-weight: 600; }
+    .info-item-value { font-size: 0.85rem; font-weight: 700; color: var(--color-ink, #1e293b); }
 
     /* ── Chart Area ── */
     .chart-container { padding: 8px 14px 14px; position: relative; height: 200px; }
     .chart-stats {
-        display: flex; gap: 12px; padding: 8px 18px; background: #fafbfc;
-        border-top: 1px solid #f1f5f9; font-size: 0.7rem;
+        display: flex; gap: 12px; padding: 8px 18px; background: var(--color-sunken, #fafbfc);
+        border-top: 1px solid var(--color-line, #f1f5f9); font-size: 0.7rem;
     }
     .chart-stats .stat { text-align: center; flex:1; }
-    .chart-stats .stat-label { color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-    .chart-stats .stat-value { font-size: 1rem; font-weight: 800; color: #334155; }
+    .chart-stats .stat-label { color: var(--color-ink-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .chart-stats .stat-value { font-size: 1rem; font-weight: 800; color: var(--color-ink-soft, #334155); }
 
     /* ── Table Card ── */
     .table-mini { font-size: 0.75rem; margin: 0; }
-    .table-mini th { background: #f8fafc; font-weight: 700; white-space: nowrap; font-size: 0.7rem; text-transform: uppercase; }
+    .table-mini th { background: var(--color-sunken, #f8fafc); font-weight: 700; white-space: nowrap; font-size: 0.7rem; text-transform: uppercase; }
     .table-mini td { padding: 6px 10px; }
     .table-card-body { padding: 0 14px 14px; max-height: 260px; overflow-y: auto; }
     .sql-error { padding: 14px 18px; color: #ef4444; font-size: 0.8rem; font-weight: 600; }
@@ -95,9 +95,9 @@
     /* ── Category Tabs in Modal ── */
     .cat-tab {
         display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
-        border-radius: 12px; border: 1px solid #e2e8f0; cursor: pointer;
-        font-size: 0.8rem; font-weight: 600; transition: all 0.2s; color: #64748b;
-        background: white;
+        border-radius: 12px; border: 1px solid var(--color-line, #e2e8f0); cursor: pointer;
+        font-size: 0.8rem; font-weight: 600; transition: all 0.2s; color: var(--color-ink-muted, #64748b);
+        background: var(--color-surface, white);
     }
     .cat-tab:hover { border-color: #6366f1; color: #6366f1; }
     .cat-tab.active { background: #6366f1; color: white; border-color: #6366f1; }
@@ -106,7 +106,7 @@
     /* ── Source Option ── */
     .source-option {
         display: flex; align-items: center; gap: 12px; padding: 12px 14px;
-        border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer;
+        border: 1px solid var(--color-line, #e2e8f0); border-radius: 12px; cursor: pointer;
         transition: all 0.2s ease; margin-bottom: 6px;
     }
     .source-option:hover, .source-option.selected {
@@ -124,7 +124,7 @@
     .source-list { max-height: 320px; overflow-y: auto; padding-right: 4px; }
     .source-list::-webkit-scrollbar { width: 5px; }
     .source-list::-webkit-scrollbar-track { background: transparent; }
-    .source-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .source-list::-webkit-scrollbar-thumb { background: var(--color-line-strong, #cbd5e1); border-radius: 10px; }
 
     .color-chip {
         width: 28px; height: 28px; border-radius: 8px; border: 2px solid transparent;
@@ -132,7 +132,7 @@
     }
     .color-chip:hover, .color-chip.selected { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 
-    .config-section { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .config-section { background: var(--color-sunken, #f8fafc); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
     .sql-textarea { font-family: 'Courier New', monospace; font-size: 0.82rem; min-height: 80px; }
     .preview-result { max-height: 150px; overflow-y: auto; font-size: 0.75rem; margin-top: 8px; }
 
@@ -165,7 +165,7 @@
     .edit-btn-inline {
         display: none; position: absolute; bottom: 8px; right: 8px; z-index: 5;
         width: 28px; height: 28px; align-items: center; justify-content: center;
-        background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+        background: var(--color-surface, white); border: 1px solid var(--color-line, #e2e8f0); border-radius: 8px;
         cursor: pointer; color: #6366f1; font-size: 0.8rem;
         box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.15s;
     }
@@ -209,7 +209,7 @@
     <div>
         <span class="text-muted small">{{ widget_data|length }} parameter aktif</span>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         {% if widget_data %}
         <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="editLayoutBtn" onclick="toggleEditMode()">
             <i class="bi bi-arrows-move me-1"></i> Edit Layout
@@ -857,7 +857,7 @@
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { ticks: { font: { size: 9 }, maxTicksLimit: 8 }, grid: { display: false } },
-                        y: { ticks: { font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.04)' } }
+                        y: { ticks: { font: { size: 10 } } }
                     }
                 }
             });
@@ -885,7 +885,7 @@
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { ticks: { font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                        x: { ticks: { font: { size: 10 } } },
                         y: { ticks: { font: { size: 10 } }, grid: { display: false } }
                     }
                 }
@@ -906,7 +906,7 @@
                         data: chartData.values || [],
                         backgroundColor: chartData.colors || CHART_COLORS,
                         borderWidth: 2,
-                        borderColor: '#fff',
+                        borderColor: () => getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim() || '#fff',
                     }]
                 },
                 options: {

@@ -25,6 +25,8 @@ jadi app **tidak butuh Node** untuk berjalan. Backend Flask (model, rute, logika
 - `templates/_ui/macros.html`: makro Jinja bersama (lencana status dan prioritas, lencana tenggat, keadaan kosong, inisial orang).
 - `static/js/wo-create.js`: perilaku form Buat WO (galat per kolom, Project Code mengikuti aset, template tugas dan checklist, draf otomatis di peramban). Datanya lewat `#woCreateData` di `templates/work_orders/create.html`; isian wajib dan isi kiriman ke server sama seperti form lama.
 - `ui_extras.py`: pembantu baca-saja untuk dashboard dan daftar WO (sapaan, Tugas Saya, tren WO 6 bulan, hitungan tab status). Tidak menulis ke database.
+- `templates/base.html`, tema grafik: `window.jtChartTheme()` mengisi `Chart.defaults` dengan warna token dan sudah terdaftar sebelum skrip halaman, jadi grafik pertama langsung memakai warna tema. Saat tema diganti, warna sumbu dan garis yang masih sama dengan warna dasar lama diganti di tempat (warna yang diatur halaman sendiri tidak disentuh). Halaman yang menggambar ulang sendiri menandai `<body data-theme-live>` dan mendengarkan event `jt-theme`. Wadah grafik harus memakai token warna (`var(--color-surface)` dan sejenisnya), bukan putih tetap, supaya teks grafik tetap terbaca di mode gelap.
+- `templates/base.html`, lencana koneksi `#jtNetBadge` di top bar: menampilkan Offline, Belum terkirim (dengan hitungan), atau Tersambung kembali. Hanya membaca `navigator.onLine` dan antrean IndexedDB `cmmsDB`; logika sinkron tetap di `static/js/offline-sync.js`. Hitungan antrean ada di fungsi `countPending` dan bisa dihapus tanpa memengaruhi bagian lain.
 
 ## Hasil build (jangan diedit tangan)
 

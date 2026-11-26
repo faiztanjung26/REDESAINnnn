@@ -32,10 +32,22 @@
             var tc = document.querySelector('meta[name="theme-color"]');
             if (tc) tc.setAttribute('content', t === 'dark' ? '#0b101d' : '#ffffff');
         })();
+
+        // Chart.js membaca warna teks dan garis dari Chart.defaults. Didaftarkan di sini supaya jalan lebih dulu daripada
+        // penangan DOMContentLoaded milik halaman (grafik pertama sudah memakai warna tema). Mengembalikan warna sebelumnya.
+        window.jtChartTheme = function () {
+            if (typeof Chart === 'undefined' || !Chart.defaults) return null;
+            var prev = { ink: Chart.defaults.color, line: Chart.defaults.borderColor };
+            var cs = getComputedStyle(document.documentElement);
+            Chart.defaults.color = cs.getPropertyValue('--color-ink-muted').trim() || '#5b6579';
+            Chart.defaults.borderColor = cs.getPropertyValue('--color-line').trim() || '#e3e7ee';
+            return prev;
+        };
+        document.addEventListener('DOMContentLoaded', function () { window.jtChartTheme(); });
     </script>
 
     <!-- CSS hasil build (sumber: frontend/src). Naikkan angka v setiap selesai build ulang. -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=10) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=11) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/legacy.css', v=10) }}">
 
     {% block head %}{% endblock %}
@@ -201,6 +213,8 @@
                 </button>
             </div>
             <div class="tb-utils">
+                <span class="tb-net" id="jtNetBadge" aria-hidden="true" hidden></span>
+                <span class="visually-hidden" id="jtNetLive" role="status" aria-live="polite"></span>
                 <button type="button" class="tb-iconbtn tb-theme" id="themeToggle" title="Mode gelap" aria-label="Mode gelap" aria-pressed="false">
                     <i class="bi bi-moon-stars tb-moon" aria-hidden="true"></i><i class="bi bi-sun tb-sun" aria-hidden="true"></i>
                 </button>
@@ -551,13 +565,26 @@
 
             function current() { return root.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light'; }
 
-            // Chart.js membaca warna teks dan garis dari Chart.defaults. Aman dipanggil kapan saja.
-            window.jtChartTheme = function () {
-                if (typeof Chart === 'undefined' || !Chart.defaults) return;
-                var cs = getComputedStyle(root);
-                Chart.defaults.color = cs.getPropertyValue('--color-ink-muted').trim() || '#5b6579';
-                Chart.defaults.borderColor = cs.getPropertyValue('--color-line').trim() || '#e3e7ee';
-            };
+            // Grafik yang sudah digambar menyimpan warna skala dan garisnya sendiri. Ganti di tempat nilai yang masih sama
+            // dengan warna dasar lama (warna yang diatur halaman sendiri tidak disentuh), lalu gambar ulang tanpa animasi.
+            function rethemeCharts(prev) {
+                if (typeof Chart === 'undefined' || !Chart.instances) return;
+                var ids = Object.keys(Chart.instances);
+                if (!ids.length) return;
+                var ink = Chart.defaults.color, line = Chart.defaults.borderColor;
+                try {
+                    ids.forEach(function (id) {
+                        var chart = Chart.instances[id];
+                        var scales = (chart.options && chart.options.scales) || {};
+                        Object.keys(scales).forEach(function (sid) {
+                            var sc = scales[sid];
+                            ['ticks', 'title', 'pointLabels'].forEach(function (k) { if (sc[k] && sc[k].color === prev.ink) sc[k].color = ink; });
+                            ['grid', 'border', 'angleLines'].forEach(function (k) { if (sc[k] && sc[k].color === prev.line) sc[k].color = line; });
+                        });
+                        chart.update('none');
+                    });
+                } catch (e) { location.reload(); }
+            }
 
             function paint(t) {
                 root.setAttribute('data-bs-theme', t);
@@ -574,14 +601,10 @@
                     var next = current() === 'dark' ? 'light' : 'dark';
                     paint(next);
                     try { localStorage.setItem('jt-theme', next); } catch (e) {}
-                    window.jtChartTheme();
+                    var prevChart = window.jtChartTheme();
                     window.dispatchEvent(new CustomEvent('jt-theme', { detail: next }));
-                    // Grafik yang sudah digambar menyimpan warnanya sendiri. Halaman yang tidak menandai
-                    // body dengan data-theme-live (artinya tidak punya penangan 'jt-theme') dimuat ulang.
-                    if (typeof Chart !== 'undefined' && Chart.instances && Object.keys(Chart.instances).length
-                        && !document.body.hasAttribute('data-theme-live')) {
-                        location.reload();
-                    }
+                    // Halaman yang menandai body dengan data-theme-live menggambar ulang grafiknya sendiri lewat 'jt-theme'.
+                    if (prevChart && !document.body.hasAttribute('data-theme-live')) rethemeCharts(prevChart);
                 });
             }
 
@@ -589,7 +612,6 @@
             window.addEventListener('beforeprint', function () { printBack = current(); if (printBack === 'dark') paint('light'); });
             window.addEventListener('afterprint', function () { if (printBack === 'dark') paint('dark'); printBack = null; });
 
-            document.addEventListener('DOMContentLoaded', window.jtChartTheme);
         })();
     </script>
 
@@ -766,6 +788,66 @@
     <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
     <script src="{{ url_for('static', filename='js/offline-db.js') }}"></script>
     <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
+    <!-- Lencana koneksi di bilah atas: hanya membaca status jaringan dan antrean IndexedDB (cmmsDB). Logika sinkron tetap di offline-sync.js. -->
+    <script>
+        (function () {
+            var badge = document.getElementById('jtNetBadge');
+            var live = document.getElementById('jtNetLive');
+            if (!badge || !live) return;
+            var pending = 0, backUntil = 0, poll = 0;
+
+            // filter() memindai tabel: boolean tidak bisa menjadi kunci indeks IndexedDB
+            function countPending() {
+                return Promise.resolve().then(function () {
+                    var db = window.cmmsDB;
+                    if (!db) return 0;
+                    return Promise.all(['procedures', 'checklists', 'mediaOutbox'].map(function (name) {
+                        var t = db[name];
+                        return t && t.filter ? t.filter(function (r) { return r.synced === false; }).count() : 0;
+                    })).then(function (a) {
+                        return a.reduce(function (sum, n) { return sum + (Number(n) || 0); }, 0);
+                    });
+                }).catch(function () { return 0; });
+            }
+
+            function render() {
+                var offline = !navigator.onLine, state = '', icon = '', text = '', hint = '', say = '';
+                if (offline) {
+                    state = 'offline'; icon = 'bi-wifi-off'; text = 'Offline';
+                    hint = 'Tidak ada koneksi internet.' + (pending ? ' ' + pending + ' perubahan tersimpan di perangkat, belum terkirim.' : '');
+                    say = 'Offline' + (pending ? ', ' + pending + ' perubahan belum terkirim' : '');
+                } else if (pending) {
+                    state = 'pending'; icon = 'bi-cloud-arrow-up'; text = 'Belum terkirim';
+                    hint = say = pending + ' perubahan di perangkat belum terkirim ke server';
+                } else if (Date.now() < backUntil) {
+                    state = 'back'; icon = 'bi-wifi'; text = 'Tersambung kembali';
+                    hint = say = text;
+                }
+                badge.hidden = !state;
+                live.textContent = say;
+                if (state) {
+                    badge.dataset.state = state;
+                    badge.title = hint;
+                    badge.innerHTML = '<i class="bi ' + icon + '" aria-hidden="true"></i><span class="tb-net-txt">' + text + '</span>' +
+                        (pending ? '<span class="tb-net-n">' + pending + '</span>' : '');
+                }
+                // Daring dan masih ada antrean: hitung ulang tiap 4 detik karena sinkron berjalan tak sinkron. Berhenti saat antrean kosong.
+                if (!offline && pending && !poll) poll = setInterval(function () { if (!document.hidden) refresh(); }, 4000);
+                if ((offline || !pending) && poll) { clearInterval(poll); poll = 0; }
+            }
+
+            function refresh(back) {
+                if (back === true) { backUntil = Date.now() + 3000; setTimeout(render, 3100); }
+                return countPending().then(function (n) { pending = n; render(); });
+            }
+
+            window.addEventListener('offline', function () { refresh(); });
+            window.addEventListener('online', function () { refresh(true); });
+            document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
+            document.addEventListener('submit', function () { if (!navigator.onLine) setTimeout(refresh, 1200); }, true);
+            refresh();
+        })();
+    </script>
     <!-- Photo Auto-Compressor -->
     <script src="{{ url_for('static', filename='js/photo-compressor.js') }}?v=2.3"></script>
     <script>
