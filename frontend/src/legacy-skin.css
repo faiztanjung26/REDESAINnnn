@@ -299,6 +299,18 @@ summary:focus-visible,
   --bs-btn-disabled-color: var(--color-ink-faint);
   --bs-btn-disabled-border-color: var(--color-line);
 }
+.btn-outline-danger {
+  --bs-btn-color: var(--color-bad-ink);
+  --bs-btn-border-color: var(--color-bad);
+  --bs-btn-hover-color: var(--color-bad-ink);
+  --bs-btn-hover-bg: var(--color-bad-bg);
+  --bs-btn-hover-border-color: var(--color-bad);
+  --bs-btn-active-color: var(--color-bad-ink);
+  --bs-btn-active-bg: var(--color-bad-bg);
+  --bs-btn-active-border-color: var(--color-bad);
+  --bs-btn-disabled-color: var(--color-ink-faint);
+  --bs-btn-disabled-border-color: var(--color-line);
+}
 /* template menambah text-white pada .btn-info: biru dasar digelapkan supaya putih di atasnya lolos 4,5:1 */
 .btn-info.text-white {
   --bs-btn-bg: #0b66b0;

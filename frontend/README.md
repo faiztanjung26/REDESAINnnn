@@ -57,6 +57,10 @@ serta angka versi `CACHE_NAME` di `static/sw.js`, supaya browser dan service wor
 - CSS biasa di dalam `<style>` template (tanpa lapisan) menang atas semua lapisan.
 - Halaman baru: pakai kelas dari `patterns.css` dan token dari `tokens.css`, jangan menulis warna heksadesimal langsung.
 
+## Baris daftar yang sempit
+
+Baris `a.jt-item` yang punya lencana sisi (`.jt-item-side`) boleh diberi kelas `jt-item--stack`. Bila lebar barisnya (bukan lebar layar) di bawah 27rem, lencana turun ke baris sendiri di bawah isi utama, jadi kode WO dan nama aset tidak terpotong. Ini memakai container query pada `li` induknya (`.jt-list > li:has(> .jt-item--stack)`), sehingga widget sempit di layar lebar ikut tertangani. Makro `wo_item` dan widget PR menunggu serta aset kedaluwarsa sudah memakainya. Lencana prioritas memakai `jt-badge--outline` (garis, tanpa isi) supaya tidak tertukar dengan lencana status yang berisi.
+
 ## Browser
 
 Tailwind v4 butuh Chrome 111+, Safari 16.4+, atau Firefox 128+. Browser yang lebih lama tidak menampilkan tata letak dengan benar.

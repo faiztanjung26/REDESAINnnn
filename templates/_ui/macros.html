@@ -21,7 +21,7 @@
 {% macro priority_badge(p) -%}
 {%- if p and p != '-' -%}
 {%- set cfg = {'Highest': ('bad', 'chevron-double-up'), 'High': ('orange', 'chevron-up'), 'Medium': ('warn', 'dash'), 'Low': ('info', 'chevron-down')}.get(p, ('mute', 'dot')) -%}
-<span class="jt-badge tone-{{ cfg[0] }}"><i class="bi bi-{{ cfg[1] }}" aria-hidden="true"></i>{{ p }}</span>
+<span class="jt-badge jt-badge--outline tone-{{ cfg[0] }}"><i class="bi bi-{{ cfg[1] }}" aria-hidden="true"></i>{{ p }}</span>
 {%- else -%}
 <span class="text-muted">&mdash;</span>
 {%- endif -%}
@@ -49,7 +49,7 @@
 {#- Satu baris WO di daftar: kode, deskripsi, aset, prioritas, dan lencana sisi (tenggat). -#}
 {% macro wo_item(wo, chip=None, tone='mute', icon='calendar-event') -%}
 <li>
-  <a class="jt-item" href="{{ url_for('work_orders.edit', id=wo.id) }}">
+  <a class="jt-item jt-item--stack" href="{{ url_for('work_orders.edit', id=wo.id) }}">
     <div class="jt-item-main">
       <div class="jt-item-title" title="{{ wo.description or '' }}"><span class="jt-code">{{ wo.code }}</span> {{ wo.description or '' }}</div>
       <div class="jt-item-meta">

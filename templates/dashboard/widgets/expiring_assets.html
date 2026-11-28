@@ -21,7 +21,7 @@
       {% for exp in expiring_assets %}
       {% set tone = 'bad' if exp.days_left <= 30 else ('warn' if exp.days_left <= 90 else 'ok') %}
       <li class="exp-asset-item" data-days="{{ exp.days_left }}">
-        <a class="jt-item" href="{{ url_for('assets.view', id=exp.asset.id) }}">
+        <a class="jt-item jt-item--stack" href="{{ url_for('assets.view', id=exp.asset.id) }}">
           <div class="jt-item-main">
             <div class="jt-item-title">{{ exp.asset.name }}</div>
             <div class="jt-item-sub">{{ exp.asset.code }} &middot; {{ exp.exp_type }} ({{ fmt_date(exp.expiry_date) }})</div>

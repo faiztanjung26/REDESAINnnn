@@ -48,7 +48,7 @@
     }
     .param-card .color-stripe { height: 4px; width: 100%; }
     .param-card .param-header {
-        padding: 18px 24px 8px; display: flex; justify-content: space-between; align-items: center;
+        padding: 18px 24px 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px;
     }
     .param-card .param-title {
         font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;
@@ -65,14 +65,18 @@
         position: absolute; top: 12px; right: 12px; opacity: 0; transition: opacity 0.2s;
     }
     .param-card:hover .param-delete { opacity: 1; }
+    /* layar sentuh tidak punya hover: tombol hapus tetap terlihat, bukan tak terlihat tapi bisa terketuk */
+    @media (hover: none) { .param-card .param-delete { opacity: 1; } }
+    /* warna badge jenis data: teks gelap di atas latar muda; warna tanpa kelas Bootstrap (ungu) tetap terbaca */
+    .param-card .param-header .badge { background-color: var(--color-sunken, #f1f5f9); color: var(--color-ink-soft, #475569); font-weight: 600; }
     .param-card .param-subtitle {
-        font-size: 0.72rem; color: var(--color-ink-muted, #94a3b8); margin-top: 2px; font-weight: 500;
+        font-size: 0.75rem; color: var(--color-ink-muted, #94a3b8); margin-top: 2px; font-weight: 500;
     }
 
     /* ── Info Card ── */
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 18px 14px; }
     .info-item { padding: 6px 0; }
-    .info-item-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink-muted, #94a3b8); font-weight: 600; }
+    .info-item-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink-muted, #94a3b8); font-weight: 600; }
     .info-item-value { font-size: 0.85rem; font-weight: 700; color: var(--color-ink, #1e293b); }
 
     /* ── Chart Area ── */
@@ -241,7 +245,7 @@
             </div>
             <div class="param-header">
                 <p class="param-title">{{ wd.widget.title }}</p>
-                <span class="badge bg-{{ wd.widget.color }}-subtle text-{{ wd.widget.color }} border border-{{ wd.widget.color }}-subtle" style="font-size: 0.6rem;">
+                <span class="badge bg-{{ wd.widget.color }}-subtle text-{{ wd.widget.color }}-emphasis border border-{{ wd.widget.color }}-subtle" style="font-size: 0.75rem;">
                     {{ wd.widget.data_source | replace('_', ' ') | title }}
                 </span>
             </div>

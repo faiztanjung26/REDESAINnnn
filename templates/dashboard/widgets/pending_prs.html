@@ -10,7 +10,7 @@
     <ul class="jt-list">
       {% for pr in pending_prs %}
       <li>
-        <a class="jt-item" href="{{ url_for('purchasing.view_po', id=pr.id) }}">
+        <a class="jt-item jt-item--stack" href="{{ url_for('purchasing.view_po', id=pr.id) }}">
           <div class="jt-item-main"><div class="jt-item-title"><span class="jt-code">{{ pr.po_number }}</span></div></div>
           <div class="jt-item-side"><span class="jt-badge tone-warn">{{ pr.status }}</span></div>
           <i class="bi bi-chevron-right jt-item-go" aria-hidden="true"></i>
